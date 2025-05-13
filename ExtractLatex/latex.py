@@ -1,5 +1,7 @@
 import re
+import os
 import json
+import shutil
 from pathlib import Path
 
 
@@ -163,8 +165,28 @@ class Latex:
             # Save to file
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(html)
+                
+            # Find images path in html and copy them to output path also
+            self.copy_images_to_output_path(html, output_path)
 
             print("[+]")
 
         except Exception as e:
             print(f"[-] Error generating or saving HTML: {e}")
+
+    def copy_images_to_output_path(self, html, output_path):
+        output_fig_path = os.path.dirname(output_path)
+        # Find all image paths
+        image_paths_indicated_in_html = re.findall(r"\\includegraphics\s*(?:\[.*?\])?\s*\{([^}]+?\.[a-zA-Z]+)\}", html)
+        absolute_image_paths_source = [os.path.join(self.folder_path, x) for x in image_paths_indicated_in_html]
+        absolute_image_paths_target = [os.path.join(output_fig_path, x) for x in image_paths_indicated_in_html]
+
+        # Create neccessary folders for each image_path
+        for image_path in absolute_image_paths_target:
+            folder_path = os.path.dirname(image_path)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+
+        # Copy these images to target
+        for source, target in zip(absolute_image_paths_source, absolute_image_paths_target):
+            shutil.copyfile(source, target)
