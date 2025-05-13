@@ -1,0 +1,731 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Toward Self-Improvement of LLMs via Imagination, Searching, and Criticizing</title>
+  </head>
+  <body>
+    <h1>
+      Toward Self-Improvement of LLMs via Imagination, Searching, and Criticizing
+    </h1>
+    
+    <h1>
+      Abstract
+    </h1>
+    <p>
+      Despite the impressive capabilities of Large Language Models (LLMs) on various tasks, they still struggle with scenarios that involves complex reasoning and planning. Recent work proposed advanced prompting techniques and the necessity of fine-tuning with high-quality data to augment LLMs' reasoning abilities. However, these approaches are inherently constrained by data availability and quality. In light of this, self-correction and self-learning emerge as viable solutions, employing strategies that allow LLMs to refine their outputs and learn from self-assessed rewards. Yet, the efficacy of LLMs in self-refining its response, particularly in complex reasoning and planning task, remains dubious. In this paper, we introduce \model{} for the self-improvements of LLMs, which integrates Monte Carlo Tree Search (MCTS) with LLMs to establish a self-improving loop, thereby enhancing the capabilities of LLMs without additional annotations. Drawing inspiration from the success of AlphaGo, \model{} addresses the unique challenges of combining MCTS with LLM for self-improvement, including data scarcity, the vastness search spaces of language tasks, and the subjective nature of feedback in language tasks. \model{} is comprised of prompt synthesis component, an efficient MCTS approach tailored for language tasks, and a trio of critic models for precise feedback. Our experimental results in mathematical reasoning tasks demonstrate that \model{} significantly enhances the performance of LLMs without additional annotations, showing the potential for self-improvement in LLMs.
+    </p>
+    
+    <h1>
+      Introduction 
+    </h1>
+    <p>
+      \label{sec:intro} LLMs, trained on trillions of tokens with billions of parameters have shown unparalleled capabilities in a wide range of natural language processing tasks <a href="#touvron-2023">touvron-2023</a>, <a href="#team-2023">team-2023</a>, <a href="#openai-2023">openai-2023</a>. Nevertheless, they continue to face challenges in scenarios requiring complex reasoning and strategic planning <a href="#valmeekam-2022">valmeekam-2022</a>, <a href="#stechly-2024">stechly-2024</a>. While advanced prompting approaches such as Chain, Tree, Graph-of-Thought <a href="#wei-2022">wei-2022</a>, <a href="#yao-2024">yao-2024</a>, <a href="#besta-2024">besta-2024</a>, <a href="#ding-2023">ding-2023</a>, which generate intermediate steps in the reasoning process demonstrate large improvements on reasoning capability of LLMs, it remains essential to fine-tune LLMs using a substantial volume of high-quality, supervised data to fundamentally improve the model performance <a href="#nye-2021">nye-2021</a>, <a href="#lewkowycz-2022">lewkowycz-2022</a>, <a href="#chung-2022">chung-2022</a>. This methodology is inherently limited by the scope and quality of data that humans can provide. Considering existing challenges, the concept of self-correction and self-learning have been proposed as promising solutions <a href="#madaan-2024">madaan-2024</a>, <a href="#saunders-2022">saunders-2022</a>, <a href="#chen-2024">chen-2024</a>. Within these framework, LLMs typically operate by employing two main strategies: 1) they continuously refine their responses based on the feedback of their past responses, and 2) they extensively sample responses then learn from preferences judged by itself as reward models with PPO or DPO <a href="#yuan-2024">yuan-2024</a>, <a href="#yuan-2024">yuan-2024</a>, <a href="#chen-2024">chen-2024</a>. However, it remains a matter of ongoing research whether LLMs can effectively critique their own outputs to either enhance response quality or apply a scalar reward to indicate the quality of responses, especially in contexts demanding intricate planning and reasoning <a href="#valmeekam-2022">valmeekam-2022</a>, <a href="#stechly-2024">stechly-2024</a>, <a href="#huang-2023">huang-2023</a>, <a href="#hong-2023">hong-2023</a>. On the other hand, advanced search algorithms such as Monte Carlo Tree Search (MCTS), combined with reinforcement learning, have enabled models to learn from self-play and achieve human parity or even surpass human performance in complex tasks such as the game of Go <a href="#silver-2016">silver-2016</a>, <a href="#silver-2017">silver-2017</a>. This naturally raises a question: is it viable to leverage the strengths of MCTS alongside LLMs to inaugurate a novel paradigm of self-improving? More precisely, could the assimilation of MCTS empower LLMs to more effectively explore better responses, guided by strategic signals, and subsequently optimize these responses to enhance overall performance? To answer this question, we begin with a systematic examination of AlphaGo, identifying three critical aspects for its success: ($\RN{1}$) The large volume of expert and self-play data; imitation learning on expert data enables it to simulate human-like strategies, and the reinforcement learning on self-play data fosters the emergence of novel tactics that surpass human capabilities <a href="#clark-2015">clark-2015</a>. ($\RN{2}$) The use of tree search, which facilitates the exploration of potential moves through statistical sampling of the large search space. This approach allows AlphaGo to effectively identify and simulate the most promising strategies, thereby making highly informed decisions in the complex and vast decision space <a href="#silver-2016">silver-2016</a>. ($\RN{3}$) Accurate and unambiguous environment feedback; the direct and accurate feedback (win or loss) provided by the game of Go offers a clear and unequivocal learning signal <a href="#silver-2017">silver-2017</a>. The integration of MCTS with LLMs for self-improvement has several challenges: ($\RN{1}$) Limited Data: High-quality annotated data for LLMs is generally scarce. Furthermore, how to construct of synthetic data for LLMs training, similar to AlphaGo's self-play data, remains unclear. ($\RN{2}$) Search Efficiency: The vast number of potential token combinations in natural language tasks results in an exponentially large search space, posing a significant challenge to the efficiency of MCTS <a href="#Ramamurthy2022IsRL">Ramamurthy2022IsRL</a>. ($\RN{3}$) Imperfect Feedback: In contrast to the clear win/loss feedback in Go, feedback in natural language tasks is often subjective and nuanced, without a straightforward measure of success.
+      <br/><br/>
+      <img src="figures/framework_crop.pdf" alt="framework_crop">
+      <br/>
+      Figure <a href="#framework_crop">framework_crop</a>: Imagination-Searching-Criticizing self-improvement loop: Imagination component synthesizes prompts as new learning examples, with MCTS searching better trajectories guided by signals from critics for policy improving.
+      <br/><br/>
+      In this paper, we introduce \model{}, an imagination-searching-criticizing framework designed for the self-improvement of LLMs . \model{} consists of three key components, as illustrated in Figure <a href="#framework_crop">framework_crop</a>. First, an imagination component is designed to synthesize prompts, alleviating the issues of data scarcity. Second, we propose <em>eMCTS</em> tailored for efficient searching in language tasks. Particularly, it has been show that planning at multiple levels of temporal abstraction is critical for RL problems with a long horizon and large action space <a href="#sutton-1999">sutton-1999</a>, <a href="#peng-2017">peng-2017</a>, <a href="#Luketina2019ASO">Luketina2019ASO</a>. As such, we propose formulating the text generation process as options over a Markov Decision Process (MDP) problem, where each option represents the generation of a collection of tokens for a specific subtask, similar to the concept of chains in chain-of-thought prompting. This formulation improves search efficiency by substantially reducing the search depth. Additionally, we propose the use of state fusion and adaptive branching factors to further enhance search efficiency by balancing the trade-off between search width and depth. Lastly, since accurate feedback is crucial to the success of MCTS, we introduce a trio of critic models to guide eMCTS, including a value function for estimating future rewards, a process reward model for assessing node correctness, and an outcome reward model for evaluating the overall trajectory. For complex tasks with which LLMs struggle assessing such as arithmetic computation and code execution, to ensure the accuracy of feedback, we augment the critics with the capacity to make dynamic decisions on which tools to use, when to use them, and how to use them effectively. After eMCTS stage, we collect the trajectory with the largest reward from the critic models as the training examples to improve LLMs. The experimental results on mathematical reasoning tasks demonstrate that \model{} can efficiently search for better responses and use them to improve LLMs' performance, forming an effective self-improving loop. Notably, based on LLaMA-2 70b, \model{} can improve its performance from 57.8 to 92.0 on GSM8K and from 20.7 to 51.0 on MATH, performing comparably to GPT-4. In summary, our contributions are threefold:
+      <br/><br/>
+      &bull; We examine the inherent challenges in harnessing AlphaGo's self-learning algorithms for LLMs, which are data scarcity, the complexity of search spaces, and the nuanced nature of feedback.
+      <br/>
+      &bull; We introduce \model{}, an imagination-searching-criticizing framework that integrates MCTS with LLMs, enabling them to self-improve without the need for additional annotations.
+      <br/>
+      &bull; Experiments on mathematical reasoning problems show that, by employing \model{}, we can significantly enhance the performance of LLaMA-2 70B, elevating it to levels comparable with GPT-4 on the GSM8K and MATH datasets when eMCTS decoding is utilized.
+    </p>
+    
+    <h1>
+      Related work
+    </h1>
+    <p>
+      \label{sec:related_work} <strong>Search with LLM</strong> Effective search strategy has been shown crucial for tasks that involve complex reasoning and planning, such as go <a href="#silver-2016">silver-2016</a> and math reasoning <a href="#gsm8k">gsm8k</a>, <a href="#math">math</a>. For math reasoning tasks, various search methods have been studied. One direction of research <a href="#zhu2024deductive">zhu2024deductive</a>, <a href="#xie2024self">xie2024self</a> designed beam search with dynamic pruning, where beam items of low quality are pruned. Another line of work <a href="#yao2024tree">yao2024tree</a>, <a href="#long2023large">long2023large</a>, <a href="#besta-2024">besta-2024</a>, <a href="#hao-2023">hao-2023</a>, <a href="#feng2023alphazero">feng2023alphazero</a> maintains a tree or a graph that represents the current progress of solving the input question where potential branches are iteratively expanded. Both our approach and <a href="#feng2023alphazero">feng2023alphazero</a> are based on the MCTS algorithm, while one main difference is how to define a search step: <a href="#feng2023alphazero">feng2023alphazero</a> fix a search step to be either a token or a sentence, while our approach is more flexible on deciding steps. More importantly, we also study how to leverage MCTS for effective self-improve. We also design the MCTS process more carefully, such as we merge multiple critique signals to effectively guide the search process. As the result, our approach achieves much better performances than <a href="#feng2023alphazero">feng2023alphazero</a>.
+      <br/><br/>
+      <strong>LLM Self-improving</strong> Being a key to the success of scalable oversight <a href="#bowman-2022">bowman-2022</a>, self-improving for LLM aims to align the LLM to human preference and values mainly using the supervision from the knowledge inside the LLM. One crucial part of self-improving is how to obtain reliable signal of critique to distinguish between good responses from the LLM and bad ones. Initial work <a href="#bai-2022">bai-2022</a>, <a href="#wang-2022">wang-2022</a> first asks the LLM to generate input queries of diverse tasks and the corresponding outputs. They then rely on hand-crafted heuristic rules to filter out redundant or low-quality data pairs (e.g. the query is too long or too short). Since it is non-trivial to compose effective heuristic rule, later work <a href="#sun-2023">sun-2023</a>, <a href="#li-2023">li-2023</a>, <a href="#guo-2024">guo-2024</a> proposes a few general principles or judging criteria and ask the LLM itself to evaluate the quality its responses based on these guidance. They hope that the LLM can automatically designate these principles into each data point to better guide data filtering. However, this requires the LLM to have strong abilities to apply these principles for each specific case and make correct judgements. Different from previous work, we propose to leverage the supervision from MCTS for LLM self-improvement: taking the outputs of MCTS to continue train the LLM. This is because the outputs from MCTS are usually in much better quality then standard nucleus sampling, and the large gap ensure that the LLM can self improve. Another line of research explores cheaply available knowledge. Some <a href="#saunders-2022">saunders-2022</a>, <a href="#wang-2023shepherd">wang-2023shepherd</a> collects large-scale critique data from question-and-answer websites (e.g., stack exchange) for continue pretraining, while others <a href="#gou-2023">gou-2023</a> utilize external tools to provide more fine-grained guidance. The goal of both directions is to enhance critique ability of the LLM for self-improving. Our approach based on MCTS is intuitively orthogonal to this line of research.
+    </p>
+    
+    <h1>
+      Formal setting 
+    </h1>
+    <p>
+      <strong>Preliminaries</strong> <br/>
+      \label{sec:pre} 
+      <em>Problem Formulation</em> In this paper, we consider a LLM characterized by probability $p_\theta$ and denoted as policy $\pi_\theta$. It takes a sequence $\vx =[x_1, \cdots, x_n]$ as input, which is typically referred as prompt, to generate the response $\vy = [y_1, \cdots, y_m]$. The response $\vy$ can be viewed as samples from the conditional probability distribution $p_\theta(\cdot|\vx)$. In the context of LLMs, each $x_i$ and $y_i$ represents a token from a pre-defined vocabulary. The policy $\pi_\theta$ operates in an autoregressive manner, where each token is generated sequentially, relying solely on the context provided by the previously generated tokens. The policy therefore constitutes a Markov process in which the conditional probability distribution $p_\theta(\vy|\vx)$ can be decomposed and expressed with the chain rule: $p_\theta(\vy|\vx) = \prod_{i=1}^{m} p_{\theta}(y_i|\vx, \vy_{<i})$. With this property, the text generation task can be formulated as an Markov Decision Process (MDP) problem consisting of $(\mathcal{S}, \mathcal{A}, T, R, \gamma)$ in which:
+      <br/><br/>
+      &bull; <strong>State</strong> $\vs_t \in \mathcal{S}$: Represents the context information of current trajectory, i.e. current status of the generation process, e.g. a partial response to a prompt. The initial state $s_0$ corresponds to the original prompt. <br/>
+      &bull; <strong>Action</strong> $a_t \in \mathcal{A}$: Denotes a single action or sampled token from the vocabulary, leading to a transition to a new state $\vs_{t+1}$, by concatenating $\vs_t$ and $a_t$. <br/>
+      &bull; <strong>Reward</strong> $r_t = R(\vs_t, a_t)$: Manifest the evaluation of the generation to the prompt, reflecting the desirability or preferences of each state-action pair, such as whether the actions follow instructions in the prompt. <br/><br/>
+      Here, $\gamma$ denotes the discount factor, while $T$ signifies the transition probability function (omitted here as the transition is deterministic in text generation). This MDP framework sets the stage for applying Reinforcement Learning (RL) methods to optimize the policy $\pi_\theta$ aiming to maximize the expected cumulative reward $R$. Based on these setups, we describe the self-improving problem. Given a LLM $\pi_\theta$ and an initial dataset $\mathcal{D}^0$, which consists of $N$ expert-generated prompt-response pairs $\{(\vx_i^0, \vy_i^0) \mid i \in [N]\}$, the goal of self-improving is to iteratively refine $\pi_\theta$ to maximize the reward. The refinement process includes learning from synthesized prompts and corresponding responses. These responses are obtained using an advanced search algorithm that navigates the space of possible responses to maximize the expected reward. The detailed process is described in Algorithm 1.
+      <br/><br/>
+      <strong>Algorithm 1: LLM self-improving loop</strong>
+      <br/>
+      <em>Input</em>: Initial dataset $\mathcal{D}^0 = \{(\vx_i^0, \vy_i^0) \mid i \in [N]\}$, policy model $\pi_\theta^0$, reward model $R$, number of self-improving training loops $K$ <br/>
+      <em>Output</em>: $\theta^k$ <br/>
+      For $k \leftarrow 1, \dots, K$: <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Generate synthetic prompts $[\vx^k] = \texttt{SYN}(\pi_\theta^{k-1}, \mathcal{D}^{k-1})$ <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Collect trajectories with search algorithm, e.g. MCTS guided by $R$: $[\hat{\vy}^k] = \texttt{MCTS}(\pi_\theta^{k-1}, [\vx^k])$ <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Construct dataset $\mathcal{D}^k = \{(\vx^k, \hat{\vy}^k) \}$ <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Update policy $\theta^k = \arg\min_\theta L(\pi_\theta^{k-1}, \mathcal{D}^k)$
+      <br/><br/>
+      <strong>Monte Carlo Tree Search (MCTS)</strong> <br/>
+      MCTS is a sampling-based search algorithm for policy optimization in decision-making problems. It iteratively builds a search tree by repeating four phases: selection, expansion, evaluation, and backpropagation. In the selection phase, it recursively selects the children from the root node by the Upper Confidence Bound (UCB) bandit, given by $UCB(i)=w_i+C*\sqrt{2*\ln{\frac{N_i}{n_i}}}$, where $n_i$ and $N_i$ are the visit counts for the node $i$ and its parent respectively, $C$ is a hyperparameter balancing exploration and exploitation, and $w_i$ is the average value of all descendant nodes of $i$. After selection, the tree undergoes expansion according to the defined policy. During evaluation, the value of the newly expanded node is estimated by sampling or model-based methods, and finally, in backpropagation, the estimated value is propagated to all ancestor nodes.
+      <br/><br/>
+      <strong>\model{}</strong> <br/>
+      \label{sec:method} 
+      <em>Overview</em> The architecture of \model{} is depicted in Figure <a href="#framework_crop">framework_crop</a>, comprising three key components. Firstly, the imagination component is tasked with synthesizing prompts as learning examples. Secondly, an efficient search component, named eMCTS, is proposed to search high-quality trajectories for optimizing the policy. Lastly, the search process is guided by critics specifically designed to provide reliable signals.
+      <br/><br/>
+      <em>Data Synthesizing</em> Let $\mathcal{D}^0 = \{(\vx_i, \vy_i) \mid i \in [N]\}$ denote the initial dataset of expert-generated prompt-response pairs. The data synthesizing process aims to expand this dataset by generating a set of synthesized prompts $\mathcal{D}^1 = \{(\vx_i^1,\cdots) \mid i \in [N]\}$. The generation of each synthesized prompt $\vx_i^1$ is described mathematically as a transformation $g$ applied to one or more examples from $\mathcal{D}^0$: 
+      $$
+      \vx_i^1 = g(\vx_{i_1}^0,\cdots,\vx_{i_m}^0, \pi^0)
+      $$
+      where $\vx_{i_1}^0,\cdots,\vx_{i_m}^0$ are selected examples from $\mathcal{D}^0$. The function $g$ may be a learnable function, heuristic rules, a strong LLM, or the policy model $\pi^0$ itself equipped with synthesis instructions. This process enriches the diversity and complexity for training the policy model. Among various strategies, such as Self-instruct <a href="#wang-2022">wang-2022</a>, Evol-instruct <a href="#xu2023wizardlm">xu2023wizardlm</a>, we opt for a method similar to that described in <a href="#yu-2023">yu-2023</a>.
+      <br/><br/>
+      <em>eMCTS</em> <br/>
+      Instead of token-level or sentence-level search, we adopt option-level MCTS where each option represents a sequence of tokens (from multiple tokens to several sentences). Table <a href="#table-option">table-option</a> compares token-level, sentence-level, and option-level search nodes.
+      <br/><br/>
+      <em>Importance Weighted Expansion</em> Previous work often assumes a constant branching factor. Here, we dynamically adjust the branching factor based on the importance of each node. We define the importance of a state $\vs_t$ as:
+      $$
+      I(\vs_t) = \max_{\vo_t} |v^{\pi}([\vs_t,\vo_t])- v^{\pi}(\vs_t)|
+      $$
+      and set the allowed children number $n(\vs_t)$ as:
+      $$
+      n(\vs_t) = \max\left(c_{\mathtt{min}}(t), \min\left(\lfloor \alpha I(\vs_t) \rfloor, c_{\mathtt{max}}(t)\right)\right).
+      $$
+      <br/><br/>
+      <em>State Merge</em> To maximize diversity among states under the same node, we partition available options into groups based on similarity. Each new option is compared via a heuristic (e.g. edit distance or model-based method) as outlined in Algorithm 2.
+      <br/><br/>
+      <strong>Algorithm 2: Find Action with Minimum Distance Larger Than Threshold</strong>
+      <br/>
+      <em>Input</em>: max number of trials $max\_trials$, threshold $thres$ <br/>
+      <em>Output</em>: pool of children nodes <br/>
+      Set $n \gets 0$, $min\_dist \gets 0$ <br/>
+      While $n < max\_trials$ and $min\_d \leq thres$: <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Sample $\vo_t \sim \pi(s_t)$ <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Compute $min\_d \gets \min_{\vo \in A_{t, \mathtt{pool}}} \mathtt{Dist}(\vo_t, \vo)$ <br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;$n \gets n + 1$ <br/>
+      Add $\vs_{t+1} = [\vs_t, \vo_t]$ to the pool of children nodes.
+      <br/><br/>
+      <em>Fast Rollout with Specialized LM</em> Since the policy $\pi_\theta$ is computationally heavy for rollouts, a smaller specialized LM, $\pi^{\mathtt{fast}}$, is used to perform fast simulations until termination.
+      <br/><br/>
+      <em>Critic</em> <br/>
+      Three critic models guide the search process: the value function $v^\pi$, process reward model (PRM), and outcome reward model (ORM). <br/><br/>
+      <strong>Value Function.</strong> The value function $v^\pi(\vs)$ estimates the expected future discounted reward from state $\vs$. It is trained by approximating $v^\pi_\phi(\vs) \approx \frac{1}{J} \sum_{j=1}^{J} G^{(j)}(\vs)$ and optimizing the mean squared error loss:
+      $$
+      \mathcal{L}_\phi = - \mathbb{E}_{(\vs, v)\sim \mathcal{D}_{\mathtt{value}}} \big(v_\phi^\pi(\vs) - v\big)^2.
+      $$
+      <br/><br/>
+      <strong>PRM.</strong> To mitigate delayed credit assignment issues, PRM predicts an immediate textual reward $r_t^{\mathtt{PRM}}$ for taking an option $\vo_t$ in state $\vs_t$. It is trained with prompt templates that include the state, action, and assessment.
+      <br/><br/>
+      <strong>ORM.</strong> ORM evaluates entire trajectories to assess their alignment with the desired end goal. It is similarly formulated as a text generation task.
+      <br/><br/>
+      <em>Policy Self-Improvement</em> <br/>
+      The self-improvement loop consists of data generation and policy finetuning. Training examples are collected by performing eMCTS on synthetic prompts and filtering high-quality trajectories via a quality evaluating function $f$. The prompt template for finetuning is:
+      <br/><br/>
+      <em>
+      A chat between a curious user and an artificial intelligence assistant.  
+      The assistant gives helpful, detailed, and polite answers to the user's questions.  
+      User: $\vx_i$  
+      Assistant: $\vy_i$
+      </em>
+      <br/><br/>
+      The finetuning loss is given by:
+      $$
+      \mathcal{L}_{\theta_k} = \mathbb{E}_{(\vx^k_i, \vy^k_i) \sim \mathcal{D}_k} \big[\log \pi_{\theta_k}(\vy^k_i|\vx^k_i) \big].
+      $$
+      This results in an updated policy $\pi_{\theta_{k+1}}$. Other methods such as DPO or PPO are left for future work.
+    </p>
+    
+    <h1>
+      Experimental setting and results
+    </h1>
+    <p>
+      \label{sec:exp}
+      <strong>Evaluation Setups</strong>
+      <br/>
+      <em>Datasets</em> \model{} is evaluated on mathematical reasoning tasks, specifically GSM8K <a href="#gsm8k">gsm8k</a> and MATH <a href="#math">math</a>. For GSM8K, the whole test set is used. For MATH, a subset is chosen as in prior work.
+      <br/><br/>
+      <em>Metrics</em> The performance is measured by the accuracy of correct answers and the average number of rollouts (nodes in the tree) as a measure of computational efficiency.
+      <br/><br/>
+      <strong>Baseline Systems</strong>
+      <br/>
+      \model{} is compared against proprietary models such as GPT-4, GPT-3.5, Claude-2, PaLM-2, and Gemini, as well as open-source models including LLaMA-2 70B and WizardMath 70B V1.0. CoT prompting is used as the primary prompting method; PAL prompting performance is also reported.
+      <br/><br/>
+      <strong>Implementation Details</strong>
+      <br/>
+      LLaMA-2 70B is used as the policy model for GSM8K and WizardMath 70B V10 for MATH. For the critic models and fast rollout policy, Abel-002-7B is used. Detailed MCTS parameters (including constants $c$, $\alpha$, $c_\mathtt{min}(t)$, $c_\mathtt{max}(t)$, and termination conditions) are provided for each dataset. Policy self-improvement is conducted for up to 3 epochs with specific training hyperparameters, and for the second self-improvement round, 7.9k MetaMath prompts are sampled.
+      <br/><br/>
+      <strong>Results</strong>
+      <br/>
+      Table <a href="#table-main_results">table-main_results</a> lists performance comparisons on GSM8K and MATH. The results show that \model{} using only final answer annotations and self-improvement through synthetic prompts outperforms models trained on larger datasets with both rationales and final answer annotations. Moreover, when decoded with eMCTS, \model{} achieves performance comparable to GPT-4. Table <a href="#table-search_comparison">table-search_comparison</a> further compares various search methods (greedy, self-consistency, re-ranking, and eMCTS) and demonstrates that eMCTS is more efficient while achieving superior accuracy.
+      <br/><br/>
+      Additionally, ablation studies (Tables <a href="#table-ablation">table-ablation</a> (a) and (b)) on GSM8K and MATH evaluate the impact of individual components of eMCTS (such as PRM, fast-rollout with ORM, state merge, and the number of rollouts). Figure <a href="#fig-search_ablation">fig-search_ablation</a> illustrates the ablation study on GSM8K and Figure <a href="#fig-self_improving_ablations">fig-self_improving_ablations</a> shows the effect of different self-improving data collection methods and iterations.
+    </p>
+    
+    <h1>
+      Discussion and conclusion
+    </h1>
+    <p>
+      <strong>Limitations and Future Work</strong>
+      <br/>
+      Despite the promising results of \model{}, several limitations warrant further exploration. (i) The current synthetic prompt generation employs relatively simple methods; future work should explore advanced techniques (e.g. Self-Instruct) to generate diverse and capability-aware prompts. (ii) Although \model{} shows improvements when decoded with eMCTS, its performance with greedy sampling remains substantially lower; further investigation is needed to fully leverage MCTS in the self-improvement loop. (iii) The critic models are static in the current framework. Future research should explore mechanisms for continual updates to better adapt to evolving policy models. (iv) The evaluation has been limited to mathematical reasoning tasks and should be extended to other domains.
+      <br/><br/>
+      <strong>Conclusion</strong>
+      <br/>
+      \label{sec:con} In this paper, we introduce \model{}, an imagination-searching-criticizing framework for the self-improvement of LLMs without requiring additional annotations. Central to the approach is the integration of MCTS with LLMs. To address challenges such as data scarcity, the vast search space, and the subjective nature of feedback in language tasks, we propose a data synthesizer for prompt generation, an optimized MCTS for efficient search, and a trio of critic models that provide precise feedback. Experimental findings on mathematical reasoning tasks reveal that \model{} significantly improves LLM performance without extra annotations, and when decoded with eMCTS, performs comparably to GPT-4, highlighting its potential for self-improvement in complex problem-solving.
+    </p>
+    
+    <h1>
+      Bibliography
+    </h1>
+    <span id="schulman-2017">
+    </span>
+    <ul>
+      <li> first-author: John Schulman
+      <li> title: Proximal policy optimization algorithms
+      <li> year: 2017
+    </ul>
+    
+    <span id="gulcehre-2023">
+    </span>
+    <ul>
+      <li> first-author: Caglar Gulcehre
+      <li> title: Reinforced Self-Training (ReST) for Language Modeling
+      <li> year: 2023
+    </ul>
+    
+    <span id="ouyang-2022">
+    </span>
+    <ul>
+      <li> first-author: Long Ouyang
+      <li> title: Training language models to follow instructions with human feedback
+      <li> year: 2022
+    </ul>
+    
+    <span id="gao-2021">
+    </span>
+    <ul>
+      <li> first-author: Tianyu Gao
+      <li> title: SimCSE: Simple Contrastive Learning of Sentence Embeddings
+      <li> year: 2021
+    </ul>
+    
+    <span id="goodfellow-2016">
+    </span>
+    <ul>
+      <li> first-author: Ian Goodfellow
+      <li> title: Deep learning
+      <li> year: 2016
+    </ul>
+    
+    <span id="kopf-2023">
+    </span>
+    <ul>
+      <li> first-author: Andreas Köpf
+      <li> title: OpenAssistant Conversations--Democratizing Large Language Model Alignment
+      <li> year: 2023
+    </ul>
+    
+    <span id="touvron-2023">
+    </span>
+    <ul>
+      <li> first-author: Hugo Touvron
+      <li> title: Llama 2: Open foundation and fine-tuned chat models
+      <li> year: 2023
+    </ul>
+    
+    <span id="bai-2022">
+    </span>
+    <ul>
+      <li> first-author: Yuntao Bai
+      <li> title: Training a helpful and harmless assistant with reinforcement learning from human feedback
+      <li> year: 2022
+    </ul>
+    
+    <span id="peng-2023">
+    </span>
+    <ul>
+      <li> first-author: Baolin Peng
+      <li> title: Instruction tuning with gpt-4
+      <li> year: 2023
+    </ul>
+    
+    <span id="zheng-2023">
+    </span>
+    <ul>
+      <li> first-author: Rui Zheng
+      <li> title: Secrets of RLHF in Large Language Models Part I: PPO
+      <li> year: 2023
+    </ul>
+    
+    <span id="chen-2023">
+    </span>
+    <ul>
+      <li> first-author: Lichang Chen
+      <li> title: Alpagasus: Training a better alpaca with fewer data
+      <li> year: 2023
+    </ul>
+    
+    <span id="zhou-2023">
+    </span>
+    <ul>
+      <li> first-author: Chunting Zhou
+      <li> title: Lima: Less is more for alignment
+      <li> year: 2023
+    </ul>
+    
+    <span id="wei-2023">
+    </span>
+    <ul>
+      <li> first-author: Lai Wei
+      <li> title: InstructionGPT-4: A 200-Instruction Paradigm for Fine-Tuning MiniGPT-4
+      <li> year: 2023
+    </ul>
+    
+    <span id="bowman-2022">
+    </span>
+    <ul>
+      <li> first-author: Samuel R. Bowman
+      <li> title: Measuring progress on scalable oversight for large language models
+      <li> year: 2022
+    </ul>
+    
+    <span id="song-2023">
+    </span>
+    <ul>
+      <li> first-author: Feifan Song
+      <li> title: Preference ranking optimization for human alignment
+      <li> year: 2023
+    </ul>
+    
+    <span id="rafailov-2023">
+    </span>
+    <ul>
+      <li> first-author: Rafael Rafailov
+      <li> title: Direct preference optimization: Your language model is secretly a reward model
+      <li> year: 2023
+    </ul>
+    
+    <span id="sun-2023">
+    </span>
+    <ul>
+      <li> first-author: Zhiqing Sun
+      <li> title: Principle-driven self-alignment of language models from scratch with minimal human supervision
+      <li> year: 2023
+    </ul>
+    
+    <span id="li-2023">
+    </span>
+    <ul>
+      <li> first-author: Xian Li
+      <li> title: Self-alignment with instruction backtranslation
+      <li> year: 2023
+    </ul>
+    
+    <span id="silver-2016">
+    </span>
+    <ul>
+      <li> first-author: David Silver
+      <li> title: Mastering the game of Go with deep neural networks and tree search
+      <li> year: 2016
+    </ul>
+    
+    <span id="gou-2023">
+    </span>
+    <ul>
+      <li> first-author: Zhibin Gou
+      <li> title: CRITIC: Large Language Models Can Self-Correct with Tool-Interactive Critiquing
+      <li> year: 2023
+    </ul>
+    
+    <span id="guo-2024">
+    </span>
+    <ul>
+      <li> first-author: Hongyi Guo
+      <li> title: Human-instruction-free llm self-alignment with limited samples
+      <li> year: 2024
+    </ul>
+    
+    <span id="wang-2023">
+    </span>
+    <ul>
+      <li> first-author: Tianlu Wang
+      <li> title: Shepherd: A critic for language model generation
+      <li> year: 2023
+    </ul>
+    
+    <span id="yu-2023">
+    </span>
+    <ul>
+      <li> first-author: Longhui Yu
+      <li> title: Metamath: Bootstrap your own mathematical questions for large language models
+      <li> year: 2023
+    </ul>
+    
+    <span id="saunders-2022">
+    </span>
+    <ul>
+      <li> first-author: William Saunders
+      <li> title: Self-critiquing models for assisting human evaluators
+      <li> year: 2022
+    </ul>
+    
+    <span id="dong-2023">
+    </span>
+    <ul>
+      <li> first-author: Hanze Dong
+      <li> title: Raft: Reward ranked finetuning for generative foundation model alignment
+      <li> year: 2023
+    </ul>
+    
+    <span id="christiano-2017">
+    </span>
+    <ul>
+      <li> first-author: Paul F. Christiano
+      <li> title: Deep reinforcement learning from human preferences
+      <li> year: 2017
+    </ul>
+    
+    <span id="yuan-2023">
+    </span>
+    <ul>
+      <li> first-author: Zheng Yuan
+      <li> title: Rrhf: Rank responses to align language models with human feedback without tears
+      <li> year: 2023
+    </ul>
+    
+    <span id="stiennon-2020">
+    </span>
+    <ul>
+      <li> first-author: Nisan Stiennon
+      <li> title: Learning to summarize with human feedback
+      <li> year: 2020
+    </ul>
+    
+    <span id="bai-2022">
+    </span>
+    <ul>
+      <li> first-author: Yuntao Bai
+      <li> title: Constitutional ai: Harmlessness from ai feedback
+      <li> year: 2022
+    </ul>
+    
+    <span id="glaese-2022">
+    </span>
+    <ul>
+      <li> first-author: Amelia Glaese
+      <li> title: Improving alignment of dialogue agents via targeted human judgements
+      <li> year: 2022
+    </ul>
+    
+    <span id="leike-2018">
+    </span>
+    <ul>
+      <li> first-author: Jan Leike
+      <li> title: Scalable agent alignment via reward modeling: a research direction
+      <li> year: 2018
+    </ul>
+    
+    <span id="hendrycks-2021">
+    </span>
+    <ul>
+      <li> first-author: Dan Hendrycks
+      <li> title: Measuring Mathematical Problem Solving With the MATH Dataset
+      <li> year: 2021
+    </ul>
+    
+    <span id="luo-2023">
+    </span>
+    <ul>
+      <li> first-author: Haipeng Luo
+      <li> title: WizardMath: Empowering Mathematical Reasoning for Large Language Models via Reinforced Evol-Instruct
+      <li> year: 2023
+    </ul>
+    
+    <span id="sutton-1999">
+    </span>
+    <ul>
+      <li> first-author: Richard S. Sutton
+      <li> title: Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning
+      <li> year: 1999
+    </ul>
+    
+    <span id="qiu-2022">
+    </span>
+    <ul>
+      <li> first-author: Liang Qiu
+      <li> title: Valuenet: A new dataset for human value driven dialogue system
+      <li> year: 2022
+    </ul>
+    
+    <span id="cobbe-2021">
+    </span>
+    <ul>
+      <li> first-author: Karl Cobbe
+      <li> title: Training verifiers to solve math word problems
+      <li> year: 2021
+    </ul>
+    
+    <span id="skalse-2022">
+    </span>
+    <ul>
+      <li> first-author: Joar Skalse
+      <li> title: Defining and characterizing reward gaming
+      <li> year: 2022
+    </ul>
+    
+    <span id="khetarpal-2022">
+    </span>
+    <ul>
+      <li> first-author: Khimya Khetarpal
+      <li> title: Towards continual reinforcement learning: A review and perspectives
+      <li> year: 2022
+    </ul>
+    
+    <span id="gupta-2023">
+    </span>
+    <ul>
+      <li> first-author: Kshitij Gupta
+      <li> title: Continual Pre-Training of Large Language Models: How to (re) warm your model?
+      <li> year: 2023
+    </ul>
+    
+    <span id="mccloskey-1989">
+    </span>
+    <ul>
+      <li> first-author: Michael McCloskey
+      <li> title: Catastrophic interference in connectionist networks: The sequential learning problem
+      <li> year: 1989
+    </ul>
+    
+    <span id="openai-2023">
+    </span>
+    <ul>
+      <li> first-author: OpenAI
+      <li> title: GPT-4 technical report
+      <li> year: 2023
+    </ul>
+    
+    <span id="brown-2020">
+    </span>
+    <ul>
+      <li> first-author: Tom Brown
+      <li> title: Language models are few-shot learners
+      <li> year: 2020
+    </ul>
+    
+    <span id="pengcheck-2023">
+    </span>
+    <ul>
+      <li> first-author: Baolin Peng
+      <li> title: Check your facts and try again: Improving large language models with external knowledge and automated feedback
+      <li> year: 2023
+    </ul>
+    
+    <span id="zhang-2023">
+    </span>
+    <ul>
+      <li> first-author: Yue Zhang
+      <li> title: Siren's Song in the AI Ocean: A Survey on Hallucination in Large Language Models
+      <li> year: 2023
+    </ul>
+    
+    <span id="askell-2021">
+    </span>
+    <ul>
+      <li> first-author: Amanda Askell
+      <li> title: A general language assistant as a laboratory for alignment
+      <li> year: 2021
+    </ul>
+    
+    <span id="ganguli-2022">
+    </span>
+    <ul>
+      <li> first-author: Deep Ganguli
+      <li> title: Red teaming language models to reduce harms: Methods, scaling behaviors, and lessons learned
+      <li> year: 2022
+    </ul>
+    
+    <span id="he-2020">
+    </span>
+    <ul>
+      <li> first-author: Pengcheng He
+      <li> title: Deberta: Decoding-enhanced bert with disentangled attention
+      <li> year: 2020
+    </ul>
+    
+    <span id="wangfar-2023">
+    </span>
+    <ul>
+      <li> first-author: Yizhong Wang
+      <li> title: How Far Can Camels Go? Exploring the State of Instruction Tuning on Open Resources
+      <li> year: 2023
+    </ul>
+    
+    <span id="wang-2022">
+    </span>
+    <ul>
+      <li> first-author: Yizhong Wang
+      <li> title: Self-instruct: Aligning language model with self generated instructions
+      <li> year: 2022
+    </ul>
+    
+    <span id="chiang-2023">
+    </span>
+    <ul>
+      <li> first-author: Wei-Lin Chiang
+      <li> title: Vicuna: An Open-Source Chatbot Impressing GPT-4 with 90%* ChatGPT Quality
+      <li> year: 2023
+    </ul>
+    
+    <span id="taori-2023">
+    </span>
+    <ul>
+      <li> first-author: Rohan Taori
+      <li> title: Stanford Alpaca: An Instruction-following LLaMA model
+      <li> year: 2023
+    </ul>
+    
+    <span id="feng-2023">
+    </span>
+    <ul>
+      <li> first-author: Xidong Feng
+      <li> title: Alphazero-like tree-search can guide large language model decoding and training
+      <li> year: 2023
+    </ul>
+    
+    <span id="yao-2024">
+    </span>
+    <ul>
+      <li> first-author: Shunyu Yao
+      <li> title: Tree of thoughts: Deliberate problem solving with large language models
+      <li> year: 2024
+    </ul>
+    
+    <span id="taylor-2014">
+    </span>
+    <ul>
+      <li> first-author: Matthew E. Taylor
+      <li> title: Reinforcement learning agents providing advice in complex video games
+      <li> year: 2014
+    </ul>
+    
+    <span id="clouse-1996">
+    </span>
+    <ul>
+      <li> first-author: Jeffery Allen Clouse
+      <li> title: On integrating apprentice learning and reinforcement learning
+      <li> year: 1996
+    </ul>
+    
+    <span id="vaneyck-2012">
+    </span>
+    <ul>
+      <li> first-author: Gabriel Van Eyck
+      <li> title: Revisiting move groups in monte-carlo tree search
+      <li> year: 2012
+    </ul>
+    
+    <span id="gelly-2007">
+    </span>
+    <ul>
+      <li> first-author: Sylvain Gelly
+      <li> title: Combining online and offline knowledge in UCT
+      <li> year: 2007
+    </ul>
+    
+    <span id="gelly-2011">
+    </span>
+    <ul>
+      <li> first-author: Sylvain Gelly
+      <li> title: Monte-Carlo tree search and rapid action value estimation in computer Go
+      <li> year: 2011
+    </ul>
+    
+    <span id="dewaard-2016">
+    </span>
+    <ul>
+      <li> first-author: Maarten De Waard
+      <li> title: Monte carlo tree search with options for general video game playing
+      <li> year: 2016
+    </ul>
+    
+    <span id="silver-2018">
+    </span>
+    <ul>
+      <li> first-author: David Silver
+      <li> title: A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play
+      <li> year: 2018
+    </ul>
+    
+    <span id="zhu-2024">
+    </span>
+    <ul>
+      <li> first-author: Tinghui Zhu
+      <li> title: Deductive Beam Search: Decoding Deducible Rationale for Chain-of-Thought Reasoning
+      <li> year: 2024
+    </ul>
+    
+    <span id="xie-2024">
+    </span>
+    <ul>
+      <li> first-author: Yuxi Xie
+      <li> title: Self-evaluation guided beam search for reasoning
+      <li> year: 2024
+    </ul>
+    
+    <span id="long-2023">
+    </span>
+    <ul>
+      <li> first-author: Jieyi Long
+      <li> title: Large language model guided tree-of-thought
+      <li> year: 2023
+    </ul>
+    
+    <span id="besta-2024">
+    </span>
+    <ul>
+      <li> first-author: Maciej Besta
+      <li> title: Graph of thoughts: Solving elaborate problems with large language models
+      <li> year: 2024
+    </ul>
+    
+    <span id="hao-2023">
+    </span>
+    <ul>
+      <li> first-author: Shibo Hao
+      <li> title: Reasoning with Language Model is Planning with World Model
+      <li> year: 2023
+    </ul>
+    
+    <span id="gao-pal-2023">
+    </span>
+    <ul>
+      <li> first-author: Luyu Gao
+      <li> title: Pal: Program-aided language models
+      <li> year: 2023
+    </ul>
+    
+    <span id="chern-2023">
+    </span>
+    <ul>
+      <li> first-author: Ethan Chern
+      <li> title: Generative AI for Math: Abel
+      <li> year: 2023
+    </ul>
+    
+    <span id="liu-2023">
+    </span>
+    <ul>
+      <li> first-author: Jiacheng Liu
+      <li> title: Making ppo even better: Value-guided monte-carlo tree search decoding
+      <li> year: 2023
+    </ul>
+    
+    <span id="auer-2002">
+    </span>
+    <ul>
+      <li> first-author: Peter Auer
+      <li> title: Finite-time analysis of the multiarmed bandit problem
+      <li> year: 2002
+    </ul>
+  </body>
+</html>
