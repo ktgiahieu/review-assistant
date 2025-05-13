@@ -1,0 +1,813 @@
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Toward Self-Improvement of LLMs via Imagination, Searching, and Criticizing</title>
+</head>
+<body>
+<h1>
+      Toward Self-Improvement of LLMs via Imagination, Searching, and Criticizing
+    </h1>
+<h1>
+      Abstract
+    </h1><p>
+      Sequential recommendation systems (SRS) serve the purpose of predicting users' subsequent preferences based on their past interactions and have been applied across various domains such as e-commerce and social networking platforms. However, practical SRS encounters challenges due to the fact that most users engage with only a limited number of items, while the majority of items are seldom consumed. These challenges, termed as the long-tail user and long-tail item dilemmas, often create obstacles for traditional SRS methods. Mitigating these challenges is crucial as they can significantly impact user satisfaction and business profitability. While some research endeavors have alleviated these issues, they still grapple with issues such as seesaw or noise stemming from the scarcity of interactions. The emergence of large language models (LLMs) presents a promising avenue to address these challenges from a semantic standpoint. In this study, we introduce the Large Language Models Enhancement framework for Sequential Recommendation (LLM-ESR), which leverages semantic embeddings from LLMs to enhance SRS performance without increasing computational overhead. To combat the long-tail item challenge, we propose a dual-view modeling approach that fuses semantic information from LLMs with collaborative signals from traditional SRS. To address the long-tail user challenge, we introduce a retrieval augmented self-distillation technique to refine user preference representations by incorporating richer interaction data from similar users. Through comprehensive experiments conducted on three authentic datasets using three widely used SRS models, our proposed enhancement framework demonstrates superior performance compared to existing methodologies.
+    </p>
+
+<h1>
+      Introduction 
+    </h1><p>
+<b>\label{sec:intro}</b> The objective of sequential recommendation is to predict the next likely item for users based on their historical records 
+      <a href="#fang-2020">fang-2020</a>, <a href="#wang-2019">wang-2019</a>. Owing to its wide-ranging applicability in various domains such as e-commerce 
+      <a href="#singer-2022">singer-2022</a> and social media 
+      <a href="#chang-2021">chang-2021</a>, sequential recommendation has garnered considerable attention in recent years. Given that the essence of sequential recommendation revolves around extracting user preferences from their interaction records, several innovative architectures have been proposed. For instance, SASRec 
+      <a href="#kang-2018">kang-2018</a> applies the self-attention technique to capture the users' long-term preference, while FMLPRec 
+      <a href="#li-2022">li-2022</a> introduces a pure MLP architecture to identify dynamics in users' preference. Despite significant advancements in sequential recommendation, the long-tail challenges continue to undermine its practical utility. Generally, these challenges can be categorized into two types, affecting either the user or the item side. To illustrate, we present the performance of a well-known SRS model, SASRec 
+      <a href="#kang-2018">kang-2018</a>, on the Amazon Beauty dataset, along with its statistics in 
+      Figure 
+      <a href="#preliminary">preliminary</a>.
+      <br/><br/>
+<b>i) Long-tail User Challenge</b>: In Figure 
+      <a href="#preliminary">preliminary</a> (a), we note that above $80\%$ users have interacted with fewer than 10 items (i.e., long-tail users), and SASRec's performance is subpar for these users compared to those with more interaction records. This suggests that the majority of users receive less than optimal recommendation services. <b>ii) Long-tail Item Challenge</b>: Figure 
+      <a href="#preliminary">preliminary</a> (b) demonstrates that SASRec performs significantly better on more popular items. However, the histogram indicates that around $71.4\%$ items own no more than $30$ interaction records, meaning they are less frequently consumed. Addressing these long-tail challenges is crucial for elevating user experience and seller benefits.
+      <br/><br/>
+<div>
+<span id="preliminary"></span>
+<img alt="Figure preliminary" src="figures/preliminary.pdf"/>
+<p>
+          Figure preliminary: The preliminary experiments of SASRec on Beauty dataset.
+        </p>
+</div>
+<br/>
+      To tackle the long-tail item challenge, existing studies 
+      <a href="#jang-2020">jang-2020</a>, <a href="#kim-2023">kim-2023</a> examine the co-occurrence pattern between popular and long-tail items, aiming to enrich the representation of long-tail items with that of popular ones. Nevertheless, ignorance of the true relationship between items may cause a seesaw problem 
+      <a href="#liu-2020">liu-2020</a>. As for the long-tail user challenge, existing research 
+      <a href="#liu-2021">liu-2021</a>, <a href="#liu-2023">liu-2023</a> explores the interaction history of all users, attempting to augment pseudo items for tail users. However, these approaches still only rely on collaborative information, which inclines to generate noisy items due to inaccurate similarity between users 
+      <a href="#liu-2023">liu-2023</a>. At this time, superb semantic relations between users or items can make an effect, which indicates the potential of utilizing semantics to face long-tail challenges. Recent advancements in large language models (LLMs) offer promise for alleviating long-tail challenges from a semantic perspective. However, LLMs are initially designed for natural language processing tasks but not for recommendation ones. Some works 
+      <a href="#zhao-2023">zhao-2023</a>, <a href="#min-2023">min-2023</a> have made efforts to adapt, but two problems still exist. 
+      <br/><br/>
+<b>i) Inefficient Integration</b>: Recent research has explored deriving informative prompts to activate ChatGPT 
+      <a href="#wang-2023">wang-2023</a>, 
+      <a href="#gao-2023">gao-2023</a> or modifying the tokenization method of LLaMA 
+      <a href="#touvron-2023">touvron-2023</a>, <a href="#liao-2023">liao-2023</a>, <a href="#yang-2023">yang-2023</a> for sequential recommendation. Despite their impressive performance, these approaches are challenging to apply in industrial settings. This is because recommender systems typically require low latency for online deployment, whereas LLMs often entail high inference costs 
+      <a href="#geng-2024">geng-2024</a>. 
+      <br/><br/>
+<b>ii) Deficiency of Semantic Information</b>: Several recent works 
+      <a href="#harte-2023">harte-2023</a>, <a href="#hu-2024">hu-2024</a> propose utilizing embeddings derived from LLMs to initialize the item embedding layer of sequential recommendation models, thereby integrating semantic information. However, the fine-tuning process, if not done without freezing the embedding layer, may erode the original semantic relationships between items. Additionally, these approaches focus solely on the item side, neglecting the potential benefits of incorporating semantic information on the user side which could aid the sequence encoder of an SRS model.
+      <br/><br/>
+      In this paper, to better integrate LLMs into SRS for addressing long-tail challenges, we design a <b><u>L</u><u>L</u><u>M</u>-<u>E</u><u>S</u><u>R</u></b> framework. Firstly, we derive the semantic embeddings of items and users by encoding prompt texts from LLMs. Since these embeddings can be cached in advance, our integration does not impose any extra inference burden. To tackle the long-tail item challenge, we devise a dual-view modeling framework that combines semantic and collaborative information. Specifically, the embeddings derived from LLMs are frozen to avoid deficiency of semantics. Next, we propose a retrieval augmented self-distillation method to enhance the sequence encoder of an SRS model using similar users. The similarity between users is measured by the user representations from LLMs. Finally, it is important to note that the proposed framework is model-agnostic, allowing it to be adapted to any sequential recommendation model. The contributions of this paper are as follows:
+      <br/><br/>
+      • We propose a large language models enhancement framework, which can alleviate both long-tail user and item challenges for SRS by introducing semantic information from LLMs.
+      <br/>
+      • To avoid the inference burden of LLMs, we design an embedding-based enhancement method. Besides, the derived embeddings are utilized directly to retain the original semantic relations.
+      <br/>
+      • We conduct extensive experiments on three real-world datasets with three backbone SRS models to validate the effectiveness and flexibility of LLM-ESR.
+    </p>
+
+<h1>
+      Related work
+    </h1><p>
+<b>Sequential Recommendation</b>. The core of sequential recommendation 
+      <a href="#fang-2020">fang-2020</a>, <a href="#wang-2019">wang-2019</a>, <a href="#liu-2023">liu-2023</a> refers to capturing the sequence pattern for the next likely item. Thus, at the early stage, researchers focus on fabricating the architecture to improve model capacity. GRU4Rec 
+      <a href="#hidasi-2015">hidasi-2015</a> and Caser 
+      <a href="#tang-2018">tang-2018</a> apply RNNs and CNNs 
+      <a href="#lecun-1998">lecun-1998</a> for sequence modeling. Later, inspired by the great success of self-attention 
+      <a href="#vaswani-2017">vaswani-2017</a> in natural language processing, SASRec 
+      <a href="#kang-2018">kang-2018</a> and Bert4Rec 
+      <a href="#sun-2019">sun-2019</a> verify its potential in SRS. Also, Zhou et al. 
+      <a href="#zhou-2022">zhou-2022</a> proposes a pure MLP architecture, achieving similar accuracy but higher efficiency compared with SASRec. Despite the great progress in SRS, long-tail problems are still underexplored. As for the long-tail item problem, CITIES 
+      <a href="#jang-2020">jang-2020</a> designs an embedding inference function for those long-tail items specially. In terms of the long-tail user problem, data augmentation is the main way 
+      <a href="#liu-2021">liu-2021</a>, <a href="#liu-2023">liu-2023</a>. Only one work, MELT 
+      <a href="#kim-2023">kim-2023</a>, addresses both problems simultaneously but still sticks to a collaborative perspective. By comparison, the proposed LLM-ESR handles both long-tail problems better from a semantic view by introducing LLMs.
+      <br/><br/>
+<b>LLMs for Recommendation</b>. Large language models 
+      <a href="#zhao-2024">zhao-2024</a>, <a href="#min-2023">min-2023</a> have attracted widespread attention due to their powerful abilities in semantic understanding. Recently, several works have explored how to utilize LLMs in recommender systems 
+      <a href="#zhao-2024">zhao-2024</a>, <a href="#lin-2023">lin-2023</a>, <a href="#li-2023">li-2023</a>, <a href="#liu-2024">liu-2024</a>, which can be categorized into two lines: LLMs as recommender systems and LLMs enhancing recommender systems. The first line aims to complete recommendation tasks by LLMs directly. For example, ChatRec 
+      <a href="#gao-2023">gao-2023</a> proposes a dialogue process to complete recommendation tasks step by step. DRDT 
+      <a href="#wang-2023">wang-2023</a> integrates a retrieval-based dynamic reflection process for SRS by in-context learning. Other researchers explore fine-tuning open-sourced LLMs for recommendation, such as TALLRec 
+      <a href="#bao-2023">bao-2023</a>. The second line, LLMs enhancing recommendation, is more practical because it avoids the extra inference cost of LLMs. For instance, RLMRec 
+      <a href="#ren-2024">ren-2024</a> aligns with LLMs by an auxiliary loss, and works by Harte et al. 
+      <a href="#harte-2023">harte-2023</a> and Hu et al. 
+      <a href="#hu-2024">hu-2024</a> adopt LLMs embedding as the initialization for traditional models. The proposed LLM-ESR belongs to the latter category while further preserving the semantic information.
+    </p>
+
+<h1>
+      Formal setting 
+    </h1><p>
+<b>Problem Definition</b>
+<br/>
+<b>\label{sec:preliminary}</b> The goal of the sequential recommendation is to give out the next item that users are possible to interact with based on their interaction records. The set of users and items are denoted as $ \mathcal{U}=\{u_1,\dots,u_i,\dots,u_{|\mathcal{U}|}\} $ and $ \mathcal{V}=\{v_1,\dots,v_i,\dots,v_{|\mathcal{V}|}\} $, respectively, where $ |\mathcal{U}| $ and $ |\mathcal{V}| $ are the number of users and items. Each user has an interaction sequence, which arranges the interacted items by timeline, denoted as $ \mathcal{S}_u=\{v^{(u)}_1,\dots,v^{(u)}_i,\dots,v^{(u)}_{n_u}\} $. $ n_u $ represents the interaction number of user $ u $. For simplicity, we omit the superscript $(u)$ in the following sections. Then, the problem of sequential recommendation can be defined as follows:
+      <br/><br/>
+      $arg \max_{v_i \in \mathcal{V}} P(v_{n_u+1}=v_i|\mathcal{S}_u)$
+      <br/><br/>
+      Following the existing works related to long-tailed SRS 
+      <a href="#jang-2020">jang-2020</a>, <a href="#kim-2023">kim-2023</a>, we can split the users and items into tail and head groups. Let $ n_u $ and $ p_v $ denote the length of a user’s interaction sequence and the popularity of the item $ v $ (i.e., the total interaction number). Firstly, we sort the users and items by the values of $ n_u $ and $ p_v $ in descending order. Then, take out the top $20\%$ users and items as <b>head user</b> and <b>head item</b> according to the Pareto principle 
+      <a href="#box-1986">box-1986</a>, denoted as $ \mathcal{U}_{head} $ and $ \mathcal{V}_{head} $. The rest of the users and items are the <b>tail user</b> and <b>tail item</b>, i.e., $ \mathcal{U}_{tail}=\mathcal{U}\setminus\mathcal{U}_{head} $ and $ \mathcal{V}_{tail}=\mathcal{V}\setminus\mathcal{V}_{head} $. To alleviate the long-tail challenges, we aim to elevate the recommending performance for $ \mathcal{U}_{tail} $ and $ \mathcal{V}_{tail} $.
+      <br/><br/>
+<b>LLM-ESR</b>
+<br/>
+<div>
+<span id="overview"></span>
+<img alt="Figure overview" src="figures/framework_v5.pdf"/>
+<p>
+          Figure overview: The overview of the proposed LLM-ESR framework.
+        </p>
+</div>
+<br/>
+      The overview of the proposed LLM-ESR is shown in Figure overview. To acquire the semantic information, we adopt LLMs to encode textual users' historical interactions and items' attributes into LLMs user embedding and LLMs item embedding. Then, two modules are proposed to augment long-tail items and long-tail users respectively, i.e., Dual-view Modeling and Retrieval Augmented Self-Distillation.
+      <br/><br/>
+<b>i) Dual-view Modeling</b>: This module consists of two branches. One is <i>semantic-view modeling</i>, which aims to extract the semantic information from the user's interaction sequence. It first utilizes the semantic embedding layer, derived from LLMs item embedding, to encode the items. Then, an adapter is designed for dimension adaptation and space transformation. The output item embedding sequence will be fed into cross-attention for fusion and then a sequence encoder to get the user representation in the semantic view. The other branch is <i>collaborative-view modeling</i>, which transforms the interaction sequence into an embedding sequence by a collaborative embedding layer. Next, followed by a cross-attention and the sequence encoder, the collaborative user preference is obtained. At the end of this module, the user representations in the two views will be fused for the final recommendations.
+      <br/><br/>
+<b>ii) Retrieval Augmented Self-Distillation</b>: This module aims to enhance long-tail users through informative interactions from similar users. First, the derived LLMs user embedding is considered as a semantic user base for retrieving similar users. Then, similar users are fed into the dual-view modeling module to get their user representations, which serve as the guide signal for self-distillation. Finally, the derived distillation loss is utilized as an auxiliary loss for training.
+      <br/><br/>
+<b>Dual-view Modeling Details</b>
+<br/>
+<i>Semantic-view Modeling</i>: In general, the attributes and descriptions of items contain abundant semantics. To utilize the powerful semantic understanding abilities of LLMs, we organize the attributes and descriptions into textual prompts (the template of prompts can be found in Appendix, section "Prompt Design"). To avoid possible inference burden brought by LLMs, we cache the embeddings derived from LLMs for usage. Specifically, the embeddings can be obtained by taking out the last hidden state of open-sourced LLMs, such as LLaMA 
+      <a href="#touvron-2023">touvron-2023</a>, or via public APIs such as text-embedding-ada-002. We adopt the latter in this paper. Let $ \mathbf{E}_{se} \in \mathbb{R}^{|\mathcal{V}| \times d_{llm}} $ denote the LLMs embedding of all items, where $ d_{llm} $ is the dimension of the LLMs embedding. Then, the semantic embedding layer $ \mathbf{E}_{se} $ from LLMs can be used for semantic-view modeling to enhance long-tail items. However, previous works 
+      <a href="#harte-2023">harte-2023</a>, <a href="#hu-2024">hu-2024</a> often adapt it as the initialization of the item embedding layer, which may ruin the original semantic relations during fine-tuning. In order to retain the semantics, we freeze $ \mathbf{E}_{se} $ and propose an adapter to transform the raw semantic space into the recommending space. For each item $ i $, we can get its LLMs embedding $ \mathbf{e}^{llm}_i $ by taking the $i$-th row of $ \mathbf{E}_{se} $. Then, it is fed into a tunable adapter to get the semantic embedding:
+      <br/><br/>
+      $ \mathbf{e}^{se}_{i} = \mathbf{W}^a_2(\mathbf{W}^a_1 \mathbf{e}^{llm}_{i} + \mathbf{b}^a_1) + \mathbf{b}^a_2 $
+      <br/><br/>
+      where $ \mathbf{W}^a_1 \in \mathbb{R}^{\frac{d_{llm}}{2} \times d_{llm}} $, $ \mathbf{W}^a_2 \in \mathbb{R}^{d \times \frac{d_{llm}}{2}} $, $ \mathbf{b}^a_1 \in \mathbb{R}^{\frac{d_{llm}}{2} \times 1} $, and $ \mathbf{b}^a_2 \in \mathbb{R}^{d \times 1} $ are the weights and biases of the adapter. Following this process, we obtain the item embedding sequence of the user's interaction records, denoted as $ \mathcal{S}^{se}=[\mathbf{e}^{se}_1,\dots,\mathbf{e}^{se}_{n_u}] $. Similar to a general SRS model, we employ a sequence encoder $ f_{\theta} $ (e.g., self-attention layers 
+      <a href="#vaswani-2017">vaswani-2017</a> for SASRec 
+      <a href="#kang-2018">kang-2018</a>) to get the user preference representation in the semantic view:
+      <br/><br/>
+      $ \mathbf{u}^{se}=f_{\theta}(\mathcal{S}^{se}) $
+      <br/><br/>
+      where $ \mathbf{u}^{se} \in \mathbb{R}^{d \times 1} $ is the user preference representation in the semantic view and $ \theta $ denotes the parameters of the sequence encoder.
+      <br/><br/>
+<i>Collaborative-view Modeling</i>: To utilize collaborative information, we adopt a trainable item embedding layer and update it using interaction data. Let $ \mathbf{E}_{co} \in \mathbb{R}^{|\mathcal{V}| \times d} $ denote the collaborative embedding layer of the items. Then, the item embedding sequence $ \mathcal{S}^{co}=[\mathbf{e}^{co}_1,\dots,\mathbf{e}^{co}_{n_u}] $ is obtained by extracting the corresponding rows from $ \mathbf{E}_{co} $. To get the user preference $ \mathbf{u}^{co} $ in the collaborative view, we input this embedding sequence to the sequence encoder, i.e., $ \mathbf{u}^{co}=f_{\theta}(\mathcal{S}^{co}) $. Note that the sequence encoder $ f_{\theta} $ is shared between the two views.
+      <br/><br/>
+<i>Two-level Fusion</i>: To effectively integrate the semantic and collaborative views, we design a two-level fusion method: sequence-level fusion and logit-level fusion. At the sequence level, we propose a cross-attention mechanism where $ \mathcal{S}^{se} $ acts as query and $ \mathcal{S}^{co} $ as key and value. Let $ \mathbf{Q}=\mathcal{S}^{se}\mathbf{W}^Q $, $ \mathbf{K}=\mathcal{S}^{co}\mathbf{W}^K $, $ \mathbf{V}=\mathcal{S}^{co}\mathbf{W}^V $, where $ \mathbf{W}^Q,\mathbf{W}^K,\mathbf{W}^V \in \mathbb{R}^{d \times d} $. Then, the fused collaborative embedding sequence is:
+      <br/><br/>
+      $ \hat{\mathcal{S}}^{co}={\rm Softmax}\left(\frac{\mathbf{Q}\mathbf{K}^T}{\sqrt{d}}\right)\mathbf{V} $
+      <br/><br/>
+      The same process is applied to obtain a corresponding semantic embedding sequence $ \hat{\mathcal{S}}^{se} $. Finally, these are passed to $ f_{\theta}(\cdot) $. At the logit level, we concatenate the two-view user and item embeddings for recommendation. The probability score for recommending item $ j $ for user $ u $ is computed as:
+      <br/><br/>
+      $ P(v_{n_u+1}=v_j|v_{1:n_u}) = [\mathbf{e}^{se}_j:\mathbf{e}^{co}_j]^T[\mathbf{u}^{se}:\mathbf{u}^{co}] $
+      <br/><br/>
+      and the pairwise ranking loss is:
+      <br/><br/>
+      $ \mathcal{L}_{Rank}=-\sum_{u \in \mathcal{U}} \sum_{k=1}^{n_u} \log \sigma \Big(P(v^{+}_{k+1}=|v_{1:k})-P(v^{-}_{k+1}=|v_{1:k})\Big) $
+      <br/><br/>
+<b>Retrieval Augmented Self-Distillation</b>
+<br/>
+      To address the long-tail user problem, a self-distillation method is proposed. First, we retrieve similar users based on the cosine similarity of their LLMs-derived embeddings. For a target user $ k $, the similar user set is retrieved as:
+      <br/><br/>
+      $ \mathcal{U}_k={\rm Top}\Big(\{ {\rm cos}(\mathbf{u}^{llm}_k, \mathbf{u}^{llm}_j) \}_{j=1}^{|\mathcal{U}|}, N\Big) $
+      <br/><br/>
+      where $ N $ is a hyper-parameter. Then, using the dual-view modeling, the teacher mediator for user $ k $ is obtained by mean pooling over the representations of the retrieved similar users:
+      <br/><br/>
+      $ [\mathbf{u}_{T_k}^{se}:\mathbf{u}_{T_k}^{co}]={\rm Mean\_Pooling}\Big(\{[\mathbf{u}_{j}^{se}:\mathbf{u}_{j}^{co}]\}_{j=1}^{|\mathcal{U}_k|}\Big) $
+      <br/><br/>
+      The student mediator is the target user’s representation $ [\mathbf{u}_{k}^{se}:\mathbf{u}_{k}^{co}] $. The self-distillation loss is then:
+      <br/><br/>
+      $ \mathcal{L}_{SD} = \frac{1}{|\mathcal{U}|}\sum^{|\mathcal{U}|}_{k=1} \Big| [\mathbf{u}_{k}^{se}:\mathbf{u}_{k}^{co}] - [\mathbf{u}_{T_k}^{se}:\mathbf{u}_{T_k}^{co}] \Big|^2 $
+      <br/><br/>
+      (Note: Gradients through the teacher mediator are stopped.)
+      <br/><br/>
+<b>Train and Inference</b>
+<br/>
+<i>Train</i>: During training, only the collaborative embedding layer, the adapter, the cross-attention components, and the sequence encoder are updated, while the semantic embedding layer and the semantic user base remain frozen. The overall loss is:
+      <br/><br/>
+      $ \mathcal{L} = \mathcal{L}_{Rank} + \alpha \cdot \mathcal{L}_{SD} $
+      <br/><br/>
+      where $ \alpha $ is a hyper-parameter.
+      <br/><br/>
+<i>Inference</i>: At inference, the retrieval augmented self-distillation module is not used. Final recommendations are obtained through the dual-view modeling process.
+      <br/><br/>
+      For a clearer description, the training and inference processes are summarized in Algorithm 1:
+      <br/><br/>
+<b>Algorithm 1: Train and inference process of LLM-ESR</b>
+<br/>
+      1. Indicate the backbone sequential recommendation model $ f_{\theta} $.<br/>
+      2. Indicate the number of retrieved similar users $ N $.<br/>
+      3. Indicate the weight $ \alpha $ for the self-distillation loss.<br/>
+      4. Get the semantic embeddings $ \mathbf{E}_{se} $ and $ \mathbf{U}_{llm} $ via LLMs.<br/>
+      5. Initialize the embedding layers in the dual-view framework using the raw and dimension-reduced $ \mathbf{E}_{se} $, freezing the raw $ \mathbf{E}_{se} $.<br/>
+      6. For each batch of users:<br/>
+          a. Compute the semantic and collaborative user preferences $ \mathbf{u}^{se} $ and $ \mathbf{u}^{co} $.<br/>
+          b. Compute the probability scores using the concatenated representations.<br/>
+          c. Calculate $ \mathcal{L}_{Rank} $.<br/>
+          d. Retrieve similar users using the cosine similarity formula.<br/>
+          e. Compute $ \mathcal{L}_{SD} $.<br/>
+          f. Update parameters with the combined loss $ \mathcal{L} $.<br/>
+      7. During inference, load the frozen $ \mathbf{E}_{se} $ and trained parameters, then for each user, compute $ \mathbf{u}^{se} $ and $ \mathbf{u}^{co} $, evaluate probability scores, and output the recommended list.
+    </p>
+
+<h1>
+      Experimental setting and results
+    </h1><p>
+<b>\label{sec:experiment}</b>
+<br/><br/>
+<b>Experimental Settings</b>
+<br/>
+<b>Dataset</b>: The experiments are conducted on three commonly used datasets – Yelp, Fashion, and Beauty. Yelp (available at the provided URL) contains check-in histories and reviews of users (only the check-in data and attributes of points-of-interest are used). Amazon 
+      <a href="#mcauley-2015">mcauley-2015</a> is a large e-commerce dataset with user reviews on commodities; two sub-categories, Fashion and Beauty, are used. Preprocessing follows the procedures in SASRec 
+      <a href="#kang-2018">kang-2018</a>. Users with fewer than three interactions are dropped. For data split, the last and penultimate items of each user’s sequence are used for testing and validation, respectively. The dataset statistics are summarized in Table 
+      <a href="#table-exp-dataset">table-exp-dataset</a>.
+      <br/><br/>
+<div>
+<span id="table-exp-dataset"></span>
+<table border="1">
+<tr>
+<th>Dataset</th>
+<th># Users</th>
+<th># Items</th>
+<th>Sparsity</th>
+<th>Avg.length</th>
+</tr>
+<tr>
+<td>Yelp</td>
+<td>15,720</td>
+<td>11,383</td>
+<td>99.89%</td>
+<td>12.23</td>
+</tr>
+<tr>
+<td>Fashion</td>
+<td>9,049</td>
+<td>4,722</td>
+<td>99.92%</td>
+<td>3.82</td>
+</tr>
+<tr>
+<td>Beauty</td>
+<td>52,204</td>
+<td>57,289</td>
+<td>99.99%</td>
+<td>7.57</td>
+</tr>
+</table>
+<p>
+          Table table-exp-dataset: The statistics of the preprocessed datasets.
+        </p>
+</div>
+<br/>
+<b>Backbone and Baselines</b>: Three popular sequential recommendation models are tested – GRU4Rec 
+      <a href="#hidasi-2015">hidasi-2015</a>, Bert4Rec 
+      <a href="#sun-2019">sun-2019</a>, and SASRec 
+      <a href="#kang-2018">kang-2018</a>. Two groups of baselines are compared: traditional (e.g., CITIES 
+      <a href="#jang-2020">jang-2020</a> and MELT 
+      <a href="#kim-2023">kim-2023</a>) and LLM-based (e.g., RLMRec 
+      <a href="#ren-2024">ren-2024</a> and LLMInit 
+      <a href="#harte-2023">harte-2023</a>, <a href="#hu-2024">hu-2024</a>).
+      <br/><br/>
+<b>Implementation Details</b>: All experiments run on an Intel Xeon Gold 6133 platform with Tesla V100 GPUs, using Python 3.9.5 and PyTorch 1.12.0. Hyper-parameters are tuned based on N@10 on the validation set with early stopping in place. Detailed settings for GRU4Rec, SASRec, and Bert4Rec are provided, with common settings for learning rate, batch size (128), and Adam optimizer. The LLM embeddings are derived from the OpenAI API “text-ada-embedding-002”. Code is released online.
+      <br/><br/>
+<b>Evaluation Metrics</b>: Top-10 recommendation lists are evaluated using Hit Rate (H@10) and Normalized Discounted Cumulative Gain (N@10). For each test instance, 100 non-interacted items are sampled as negatives, and results are averaged over three runs.
+      <br/><br/>
+<b>Overall Performance</b>: Table 
+      <a href="#table-exp-overall">table-exp-overall</a> summarizes the performance of competing baselines and LLM-ESR across overall, tail, and head groups.
+      <br/><br/>
+<div>
+<span id="table-exp-overall"></span>
+<!-- The table HTML content with results is included verbatim from the original paper -->
+<table border="1">
+<tr>
+<th rowspan="2">Dataset</th>
+<th rowspan="2">Model</th>
+<th colspan="2">Overall</th>
+<th colspan="2">Tail Item</th>
+<th colspan="2">Head Item</th>
+<th colspan="2">Tail User</th>
+<th colspan="2">Head User</th>
+</tr>
+<tr>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+</tr>
+<!-- Detailed row entries omitted for brevity; please refer to the original table content -->
+<tr>
+<td align="center" colspan="12">[Table rows with experimental results]</td>
+</tr>
+</table>
+<p>
+          Table table-exp-overall: The overall results of competing baselines and our LLM-ESR.
+        </p>
+</div>
+<br/>
+<b>Ablation Study</b>: Table 
+      <a href="#table-exp-ablation">table-exp-ablation</a> shows the ablation study on the Yelp dataset with SASRec as the backbone.
+      <br/><br/>
+<div>
+<span id="table-exp-ablation"></span>
+<table border="1">
+<tr>
+<th rowspan="2">Model</th>
+<th colspan="2">Overall</th>
+<th colspan="2">Tail Item</th>
+<th colspan="2">Head Item</th>
+<th colspan="2">Tail User</th>
+<th colspan="2">Head User</th>
+</tr>
+<tr>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+<th>H@10</th>
+<th>N@10</th>
+</tr>
+<!-- Detailed ablation rows omitted for brevity -->
+<tr>
+<td align="center" colspan="12">[Ablation study table rows]</td>
+</tr>
+</table>
+<p>
+          Table table-exp-ablation: The ablation study on the Yelp dataset with SASRec.
+        </p>
+</div>
+<br/>
+<b>Hyper-parameter Analysis</b>: Figure 
+      <a href="#exp-hyper">exp-hyper</a> shows how the weight of self-distillation loss $ \alpha $ and the number of retrieved similar users $ N $ affect performance.
+      <br/><br/>
+<div>
+<span id="exp-hyper"></span>
+<img alt="Hyper-parameter analysis" src="figures/hyper.pdf"/>
+<p>
+          Figure exp-hyper: Hyper-parameter experiments on $ \alpha $ and $ N $.
+        </p>
+</div>
+<br/>
+<b>Group Analysis</b>: Figure 
+      <a href="#exp-group">exp-group</a> illustrates the performance across 5 user and item groups split by sequence length $ n_u $ and popularity $ p_v $. LLM-ESR shows improvements especially on the long-tail groups.
+      <br/><br/>
+<div>
+<span id="exp-group"></span>
+<img alt="Group analysis" src="figures/group.pdf"/>
+<p>
+          Figure exp-group: Results in meticulous user and item groups.
+        </p>
+</div>
+</p>
+
+<h1>
+      Discussion and conclusion
+    </h1><p>
+      In this paper, we propose a large language model enhancement framework for sequential recommendation (LLM-ESR) to handle the long-tail user and long-tail item challenges. Firstly, we acquire and cache the semantic embeddings derived from LLMs to ensure inference efficiency. Then, a dual-view modeling framework is proposed to combine semantics from LLMs and collaborative signals from traditional models, which helps improve recommendations for long-tail items. Next, we design retrieval augmented self-distillation to alleviate the long-tail user challenge. Comprehensive experiments verify the effectiveness and flexibility of LLM-ESR.
+      <br/><br/>
+      This research was partially supported by Tencent (CCF-Tencent Open Fund), Research Impact Fund (No.R1015-23), APRC – CityU New Research Initiatives (No.9610565, Start-up Grant for New Faculty of CityU), CityU – HKIDS Early Career Research Grant (No.9360163), Hong Kong ITC Innovation and Technology Fund Midstream Research Programme for Universities Project (No.ITS/034/22MS), Hong Kong Environmental and Conservation Fund (No. 88/2022), and SIRG – CityU Strategic Interdisciplinary Research Grant (No.7020046, No.7020074), National Key Research and Development Program of China (2022ZD0117102), National Natural Science Foundation of China (No.62293551, No.62177038, No.62277042, No.62137002, No.61721002, No.61937001, No.62377038), Innovation Research Team of Ministry of Education (IRT_17R86), and Project of China Knowledge Centre for Engineering Science and Technology.
+    </p>
+
+<h1>
+      Bibliography
+    </h1><p>
+<span id="fang-2020"></span>
+<ul>
+<li>first-author: Fang</li>
+<li>title: Deep learning for sequential recommendation: Algorithms, influential factors, and evaluations</li>
+<li>year: 2020</li>
+</ul>
+<span id="wang-2019"></span>
+<ul>
+<li>first-author: Wang</li>
+<li>title: Sequential recommender systems: challenges, progress and prospects</li>
+<li>year: 2019</li>
+</ul>
+<span id="chang-2021"></span>
+<ul>
+<li>first-author: Chang</li>
+<li>title: Sequential recommendation with graph neural networks</li>
+<li>year: 2021</li>
+</ul>
+<span id="singer-2022"></span>
+<ul>
+<li>first-author: Singer</li>
+<li>title: Sequential modeling with multiple attributes for watchlist recommendation in e-commerce</li>
+<li>year: 2022</li>
+</ul>
+<span id="ayadi-2023"></span>
+<ul>
+<li>first-author: Ayadi</li>
+<li>title: Effective healthcare service recommendation with network representation learning: A recursive neural network approach</li>
+<li>year: 2023</li>
+</ul>
+<span id="kang-2018"></span>
+<ul>
+<li>first-author: Kang</li>
+<li>title: Self-attentive sequential recommendation</li>
+<li>year: 2018</li>
+</ul>
+<span id="zhou-2022"></span>
+<ul>
+<li>first-author: Zhou</li>
+<li>title: Filter-enhanced MLP is all you need for sequential recommendation</li>
+<li>year: 2022</li>
+</ul>
+<span id="li-2022"></span>
+<ul>
+<li>first-author: Li</li>
+<li>title: MLP4Rec: A Pure MLP Architecture for Sequential Recommendations</li>
+<li>year: 2022</li>
+</ul>
+<span id="sun-2019"></span>
+<ul>
+<li>first-author: Sun</li>
+<li>title: BERT4Rec: Sequential recommendation with bidirectional encoder representations from transformer</li>
+<li>year: 2019</li>
+</ul>
+<span id="hidasi-2015"></span>
+<ul>
+<li>first-author: Hidasi</li>
+<li>title: Session-based recommendations with recurrent neural networks</li>
+<li>year: 2015</li>
+</ul>
+<span id="tang-2018"></span>
+<ul>
+<li>first-author: Tang</li>
+<li>title: Personalized top-n sequential recommendation via convolutional sequence embedding</li>
+<li>year: 2018</li>
+</ul>
+<span id="kim-2023"></span>
+<ul>
+<li>first-author: Kim</li>
+<li>title: MELT: Mutual Enhancement of Long-Tailed User and Item for Sequential Recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="jang-2020"></span>
+<ul>
+<li>first-author: Jang</li>
+<li>title: Cities: Contextual inference of tail-item embeddings for sequential recommendation</li>
+<li>year: 2020</li>
+</ul>
+<span id="liu-2021"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Augmenting sequential recommendation with pseudo-prior items via reversely pre-training transformer</li>
+<li>year: 2021</li>
+</ul>
+<span id="liu-2023"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Diffusion augmentation for sequential recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="liu-2020"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Long-tail session-based recommendation</li>
+<li>year: 2020</li>
+</ul>
+<span id="zhao-2024"></span>
+<ul>
+<li>first-author: Zhao</li>
+<li>title: Recommender systems in the era of large language models (llms)</li>
+<li>year: 2024</li>
+</ul>
+<span id="lin-2023"></span>
+<ul>
+<li>first-author: Lin</li>
+<li>title: How can recommender systems benefit from large language models: A survey</li>
+<li>year: 2023</li>
+</ul>
+<span id="li-2023"></span>
+<ul>
+<li>first-author: Li</li>
+<li>title: Large language models for generative recommendation: A survey and visionary discussions</li>
+<li>year: 2023</li>
+</ul>
+<span id="harte-2023"></span>
+<ul>
+<li>first-author: Harte</li>
+<li>title: Leveraging large language models for sequential recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="hu-2024"></span>
+<ul>
+<li>first-author: Hu</li>
+<li>title: Enhancing Sequential Recommendation via LLM-based Semantic Embedding Learning</li>
+<li>year: 2024</li>
+</ul>
+<span id="ren-2024"></span>
+<ul>
+<li>first-author: Ren</li>
+<li>title: Representation learning with large language models for recommendation</li>
+<li>year: 2024</li>
+</ul>
+<span id="geng-2024"></span>
+<ul>
+<li>first-author: Geng</li>
+<li>title: Breaking the Length Barrier: LLM-Enhanced CTR Prediction in Long Textual User Behaviors</li>
+<li>year: 2024</li>
+</ul>
+<span id="li-2023"></span>
+<ul>
+<li>first-author: Li</li>
+<li>title: E4SRec: An elegant effective efficient extensible solution of large language models for sequential recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="yang-2023"></span>
+<ul>
+<li>first-author: Yang</li>
+<li>title: Large language model can interpret latent space of sequential recommender</li>
+<li>year: 2023</li>
+</ul>
+<span id="liao-2023"></span>
+<ul>
+<li>first-author: Liao</li>
+<li>title: Llara: Aligning large language models with sequential recommenders</li>
+<li>year: 2023</li>
+</ul>
+<span id="zhang-2023"></span>
+<ul>
+<li>first-author: Zhang</li>
+<li>title: Collm: Integrating collaborative embeddings into large language models for recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="bao-2023"></span>
+<ul>
+<li>first-author: Bao</li>
+<li>title: Tallrec: An effective and efficient tuning framework to align large language model with recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="wang-2023"></span>
+<ul>
+<li>first-author: Wang</li>
+<li>title: DRDT: Dynamic reflection with divergent thinking for llm-based sequential recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="gao-2023"></span>
+<ul>
+<li>first-author: Gao</li>
+<li>title: Chat-rec: Towards interactive and explainable llms-augmented recommender system</li>
+<li>year: 2023</li>
+</ul>
+<span id="touvron-2023"></span>
+<ul>
+<li>first-author: Touvron</li>
+<li>title: LLaMA: Open and Efficient Foundation Language Models</li>
+<li>year: 2023</li>
+</ul>
+<span id="dong-2022"></span>
+<ul>
+<li>first-author: Dong</li>
+<li>title: A survey on in-context learning</li>
+<li>year: 2022</li>
+</ul>
+<span id="zhao-2023"></span>
+<ul>
+<li>first-author: Zhao</li>
+<li>title: A survey of large language models</li>
+<li>year: 2023</li>
+</ul>
+<span id="min-2023"></span>
+<ul>
+<li>first-author: Min</li>
+<li>title: Recent advances in natural language processing via large pre-trained language models: A survey</li>
+<li>year: 2023</li>
+</ul>
+<span id="gou-2021"></span>
+<ul>
+<li>first-author: Gou</li>
+<li>title: Knowledge distillation: A survey</li>
+<li>year: 2021</li>
+</ul>
+<span id="zhang-2019"></span>
+<ul>
+<li>first-author: Zhang</li>
+<li>title: Be your own teacher: Improve the performance of convolutional neural networks via self distillation</li>
+<li>year: 2019</li>
+</ul>
+<span id="box-1986"></span>
+<ul>
+<li>first-author: Box</li>
+<li>title: An analysis for unreplicated fractional factorials</li>
+<li>year: 1986</li>
+</ul>
+<span id="shang-2019"></span>
+<ul>
+<li>first-author: Shang</li>
+<li>title: Pre-training of graph augmented transformers for medication recommendation</li>
+<li>year: 2019</li>
+</ul>
+<span id="amos-2023"></span>
+<ul>
+<li>first-author: Amos</li>
+<li>title: Never Train from Scratch: Fair Comparison of Long-Sequence Models Requires Data-Driven Priors</li>
+<li>year: 2023</li>
+</ul>
+<span id="pearson-1901"></span>
+<ul>
+<li>first-author: Pearson</li>
+<li>title: LIII. On lines and planes of closest fit to systems of points in space</li>
+<li>year: 1901</li>
+</ul>
+<span id="vaswani-2017"></span>
+<ul>
+<li>first-author: Vaswani</li>
+<li>title: Attention is all you need</li>
+<li>year: 2017</li>
+</ul>
+<span id="mcauley-2015"></span>
+<ul>
+<li>first-author: McAuley</li>
+<li>title: Image-based recommendations on styles and substitutes</li>
+<li>year: 2015</li>
+</ul>
+<span id="lecun-1998"></span>
+<ul>
+<li>first-author: LeCun</li>
+<li>title: Gradient-based learning applied to document recognition</li>
+<li>year: 1998</li>
+</ul>
+<span id="kenton-2019"></span>
+<ul>
+<li>first-author: Kenton</li>
+<li>title: BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</li>
+<li>year: 2019</li>
+</ul>
+<span id="behnamghader-2024"></span>
+<ul>
+<li>first-author: BehnamGhader</li>
+<li>title: Llm2vec: Large language models are secretly powerful text encoders</li>
+<li>year: 2024</li>
+</ul>
+<span id="wang-2023"></span>
+<ul>
+<li>first-author: Wang</li>
+<li>title: Improving text embeddings with large language models</li>
+<li>year: 2023</li>
+</ul>
+<span id="liu-2023"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Disentangling interest and conformity for eliminating popularity bias in session-based recommendation</li>
+<li>year: 2023</li>
+</ul>
+<span id="li-2023"></span>
+<ul>
+<li>first-author: Li</li>
+<li>title: STRec: Sparse Transformer for Sequential Recommendations</li>
+<li>year: 2023</li>
+</ul>
+<span id="liu-2023"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Moelora: An moe-based parameter efficient fine-tuning method for multi-task medical applications</li>
+<li>year: 2023</li>
+</ul>
+<span id="liu-2024"></span>
+<ul>
+<li>first-author: Liu</li>
+<li>title: Large Language Model Distilling Medication Recommendation Model</li>
+<li>year: 2024</li>
+</ul>
+<span id="hu-2021"></span>
+<ul>
+<li>first-author: Hu</li>
+<li>title: Lora: Low-rank adaptation of large language models</li>
+<li>year: 2021</li>
+</ul>
+</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
