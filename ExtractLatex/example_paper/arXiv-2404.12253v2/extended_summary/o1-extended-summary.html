@@ -1,8 +1,8 @@
-<md>
-# Markdown Support
-           
-           Awesomeness
-         </md>
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
 
 <h1>
 AlphaLLM: An Imagination-Searching-Criticizing Framework for the Self-Improvement of LLMs
@@ -257,7 +257,30 @@ The termination function for options can be either be learned or rule-based. In 
 <span id="table-1">
 </span>
 
-<md>
+
+<!-- | Model               | Decoding | #Annotation | RN | FA | SYN | GSM8K | MATH |
+|---------------------|----------|------------|----|----|-----|-------|------|
+| GPT-3.5            | Sampling | -          | -  | -  | -   | 80.8  | 35.5 |
+| GPT-4              | Sampling | -          | -  | -  | -   | 92.0  | 42.5 |
+| GPT-4 (PAL)        | Sampling | -          | -  | -  | -   | 94.2  | 51.8 |
+| Gemini 1.0 Pro     | Sampling | -          | -  | -  | -   | 77.9  | 32.6 |
+| Gemini 1.0 Ultra   | Sampling | -          | -  | -  | -   | 88.9  | 53.2 |
+| Gemini 1.5 Pro     | Sampling | -          | -  | -  | -   | 92.5  | 58.5 |
+| Claude-2           | Sampling | -          | -  | -  | -   | 85.2  | 32.5 |
+| PaLM-2 540B        | Sampling | -          | -  | -  | -   | 80.7  | 34.3 |
+| Llama-2-70b        | Greedy   | 0          | ×  | ×  | ×   | 57.8  | -    |
+| Llama-2-70b SFT    | Greedy   | 7.5k       | ✓  | ✓  | ×   | 69.3  | -    |
+| WizardMath-70B-V1.0| Greedy   | 96k        | ✓  | ✓  | ×   | -     | 20.7 |
+| <span class="smallcaps">AlphaLLM</span> & Greedy         | 7.5k/7.5k  | ×  | ✓  | ✓   | 73.7  | 23.6 |
+| <span class="smallcaps">AlphaLLM</span> & ηMcts         | 7.5k/7.5k  | ×  | ✓  | ×   | 88.9  | 48.7 |
+| <span class="smallcaps">AlphaLLM</span> & ηMcts         | 7.5k/7.5k  | ×  | ✓  | ✓   | 92.0  | 51.0 | -->
+
+
+
+<body>
+  <div id="content"></div>
+<script>
+    const markdownText = `
 | Model               | Decoding | #Annotation | RN | FA | SYN | GSM8K | MATH |
 |---------------------|----------|------------|----|----|-----|-------|------|
 | GPT-3.5            | Sampling | -          | -  | -  | -   | 80.8  | 35.5 |
@@ -274,7 +297,13 @@ The termination function for options can be either be learned or rule-based. In 
 | <span class="smallcaps">AlphaLLM</span> & Greedy         | 7.5k/7.5k  | ×  | ✓  | ✓   | 73.7  | 23.6 |
 | <span class="smallcaps">AlphaLLM</span> & ηMcts         | 7.5k/7.5k  | ×  | ✓  | ×   | 88.9  | 48.7 |
 | <span class="smallcaps">AlphaLLM</span> & ηMcts         | 7.5k/7.5k  | ×  | ✓  | ✓   | 92.0  | 51.0 |
-</md>
+
+
+
+    `;
+    document.getElementById('content').innerHTML = marked.parse(markdownText);
+  </script>
+</body>
 
 <p>
 Table table-1: Performance comparisons of various methods on the GSM8K and MATH datasets.
