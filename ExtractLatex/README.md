@@ -1,10 +1,12 @@
-# Extract Latex
+# Extract Latex and convert everything to Markdown
 
-To extract latex from Arxiv downloaded folder, use `extract_latex.py`
+To extract latex from Arxiv downloaded folder and convert everything to Markdown:
 
-To run the code:
 ```bash
-python3 extract_latex.py
+python3 latex.py folder_with_latex_source -o output_folder
 ```
 
-Note: Make sure to configure input folder, and output file names in `extract_latex.py`
+Prerequisites:
+
+- pdflatex
+- pandoc
