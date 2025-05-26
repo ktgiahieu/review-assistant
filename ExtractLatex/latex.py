@@ -1036,7 +1036,7 @@ class LatexToMarkdownConverter:
             else:
                 end_document_command_pattern = r"\\end\{document\}"
                 if re.search(end_document_command_pattern, tex_content, flags=re.MULTILINE):
-                    modified_tex_content = re.sub(end_document_command_pattern, r"\\bibliography{references}\n\\end\{document\}", modified_tex_content, flags=re.MULTILINE)
+                    modified_tex_content = re.sub(end_document_command_pattern, r"\\bibliography{references}\n\n\\end{document}", modified_tex_content, flags=re.MULTILINE)
                 else:
                     raise Exception('Cannot add references...')
 
@@ -1464,11 +1464,27 @@ class LatexToMarkdownConverter:
         processed_table_content = re.sub(r"\\begin{threeparttable}(?:\[[^\]]*\])?", "% threeparttable start removed\n", processed_table_content)
         processed_table_content = re.sub(r"\\end{threeparttable}", "% threeparttable end removed\n", processed_table_content)
         
+        def replace_content_inside_shortstack(match):
+            # Get the content inside \shortstack{...}
+            content = match.group(1)
+            # Replace '\\' (possibly followed by whitespace) with a single space.
+            # The regex r"\\\\\s*" matches two literal backslashes '\\'
+            # followed by zero or more whitespace characters (\s*).
+            processed_content = re.sub(r"\\\\\s*", " ", content)
+            return processed_content
+
+        # Regex to find \shortstack{content}.
+        # - \\shortstack\{ matches the literal "\shortstack{".
+        # - (.*?) captures any characters non-greedily (group 1) until the first closing brace.
+        # - \} matches the literal "}".
+        print(re.findall(r"\\shortstack\{((?:[^{}]*|\{[^{}]*\})*)\}", processed_table_content))
+        processed_table_content = re.sub(r"\\shortstack\{((?:[^{}]*|\{[^{}]*\})*)\}", replace_content_inside_shortstack, processed_table_content)
+        
         if processed_table_content != initial_table_content_for_log:
             self._log("Applied LaTeX table preprocessing to expanded content.", "info")
         else:
             self._log("No changes made during LaTeX table preprocessing of expanded content.", "debug")
-            
+        print(processed_table_content)
         return processed_table_content
 
     # --- Checklist Preprocessing Methods ---
