@@ -38,10 +38,8 @@ except ImportError:
 # Attempt to import pdf2image
 try:
     from pdf2image import convert_from_path
-    from pdf2image.exceptions import Pdf2ImageError # Import the specific error
 except ImportError:
     convert_from_path = None
-    Pdf2ImageError = None # Define as None if import fails
 
 
 # List of common venue style file name patterns (regex)
@@ -67,6 +65,7 @@ VENUE_STYLE_PATTERNS = [
     r"acmart"
 ]
 
+PROCESSED_BBL_MARKER = "% L2M_PROCESSED_BBL_V1_DO_NOT_EDIT_MANUALLY_BELOW_THIS_LINE"
 
 class LatexToMarkdownConverter:
     def __init__(self, folder_path_str, verbose=True, template_path=None,
@@ -86,7 +85,6 @@ class LatexToMarkdownConverter:
         self.Comment = Comment
         self.PILImage = PILImage 
         self.convert_from_path = convert_from_path 
-        self.Pdf2ImageError = Pdf2ImageError       
         self.poppler_path = poppler_path           
 
         if self.PdfReader is None and self.verbose:
@@ -142,7 +140,7 @@ class LatexToMarkdownConverter:
         initial_content = tex_content
         if mode == "venue_only":
             for style_pattern_re in VENUE_STYLE_PATTERNS:
-                pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{(" + style_pattern_re + r")\}[^\n]*)$"
+                pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{(" + style_pattern_re + r"),*[^\}]*\}[^\n]*)$"
                 modified_content = re.sub(pattern, r"\1% \2", modified_content, flags=re.MULTILINE | re.IGNORECASE)
         elif mode == "all_project":
             styles_to_comment_out = self._get_project_sty_basenames()
@@ -150,7 +148,7 @@ class LatexToMarkdownConverter:
                 self._log("No project-specific .sty files to comment out for 'all_project' mode.", "debug")
                 return tex_content
             for sty_basename in styles_to_comment_out:
-                pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{" + re.escape(sty_basename) + r"\}[^\n]*)$"
+                pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{" + re.escape(sty_basename) + r",*[^\}]*\}[^\n]*)$"
                 modified_content = re.sub(pattern, r"\1% \2", modified_content, flags=re.MULTILINE)
 
         if modified_content != initial_content: self._log(f"Commented out \\usepackage commands (mode: {mode}).", "debug")
@@ -158,35 +156,109 @@ class LatexToMarkdownConverter:
         return modified_content
 
     def _generate_bbl_content(self):
-        if not self.main_tex_path: self._log("Cannot generate .bbl: Main .tex not identified.", "error"); return None
+        """
+        Generates or retrieves BBL content.
+        If a .bbl file exists and is marked as processed, it's used from cache.
+        Otherwise, it generates/reads the raw .bbl, processes it fully (abstracts, etc.),
+        writes the processed version (with marker) back to the .bbl file, and returns it.
+        Falls back to using any .bbl file in the folder if the specific one isn't found/generated.
+        """
+        if not self.main_tex_path:
+            self._log("Cannot generate .bbl: Main .tex not identified.", "error")
+            return None
+
         main_file_stem = self.main_tex_path.stem
         specific_bbl_path = self.folder_path / f"{main_file_stem}.bbl"
-        if specific_bbl_path.exists():
-            try:
-                with open(specific_bbl_path, "r", encoding="utf-8", errors="ignore") as f:
-                    self._log(f"Using existing .bbl file: {specific_bbl_path}", "info")
-                    return f.read()
-            except Exception as e: self._log(f"Error reading existing .bbl '{specific_bbl_path}': {e}", "warn")
+        raw_bbl_content_to_process = None
 
-        self._log("Attempting to generate .bbl file via LaTeX/BibTeX...", "info")
-        commands = [["pdflatex", "-interaction=nonstopmode", "-draftmode", self.main_tex_path.name], ["bibtex", main_file_stem]]
-        original_cwd = Path.cwd()
-        os.chdir(self.folder_path)
-        try:
-            for i, cmd_args in enumerate(commands):
-                self._log(f"Running BBL generation command: {' '.join(cmd_args)}", "debug")
-                process = subprocess.run(cmd_args, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore')
-                if process.returncode != 0:
-                    self._log(f"Error running {' '.join(cmd_args)}. STDERR: {process.stderr[:500]}", "error")
-                    if i == 0 and "pdflatex" in cmd_args[0]: self._log("Initial pdflatex run failed. Cannot generate .aux for BibTeX.", "error")
-                    return None
-            generated_bbl_path = Path(f"{main_file_stem}.bbl")
-            if generated_bbl_path.exists():
-                self._log(f".bbl file generated successfully: {generated_bbl_path}", "success")
-                with open(generated_bbl_path, "r", encoding="utf-8", errors="ignore") as f: return f.read()
-            self._log(".bbl file was not generated despite commands succeeding.", "error"); return None
-        except Exception as e: self._log(f"Exception during .bbl generation: {e}", "error"); return None
-        finally: os.chdir(original_cwd)
+        # 1. Check existing specific .bbl file
+        if specific_bbl_path.exists():
+            self._log(f"Found existing specific .bbl file: {specific_bbl_path}", "debug")
+            try:
+                content = specific_bbl_path.read_text(encoding="utf-8", errors="ignore")
+                if content.startswith(PROCESSED_BBL_MARKER + "\n"):
+                    self._log("Using cached fully processed specific .bbl file.", "success")
+                    return content.split(PROCESSED_BBL_MARKER + "\n", 1)[1]
+                else:
+                    self._log("Existing specific .bbl found but not marked as processed. Will use its raw content.", "info")
+                    raw_bbl_content_to_process = content
+            except Exception as e:
+                self._log(f"Error reading existing specific .bbl file '{specific_bbl_path}': {e}. Will attempt generation/fallback.", "warn")
+                raw_bbl_content_to_process = None
+
+        # 2. If no usable specific BBL yet, try to generate it
+        if raw_bbl_content_to_process is None:
+            self._log(f"Attempting to generate specific .bbl file: {specific_bbl_path.name}...", "info")
+            original_cwd = Path.cwd()
+            os.chdir(self.folder_path)
+            bibtex_run_successful = False
+            try:
+                commands = [
+                    ["pdflatex", "-interaction=nonstopmode", "-draftmode", self.main_tex_path.name],
+                    ["bibtex", main_file_stem]
+                ]
+                for i, cmd_args in enumerate(commands):
+                    self._log(f"Running BBL generation command: {' '.join(cmd_args)}", "debug")
+                    process = subprocess.run(cmd_args, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore')
+                    if process.returncode != 0:
+                        self._log(f"Error running {' '.join(cmd_args)}. STDERR: {process.stderr[:500]}", "error")
+                        if i == 0 and "pdflatex" in cmd_args[0]:
+                            self._log("Initial pdflatex run failed for BBL generation.", "error")
+                        bibtex_run_successful = False # Mark as failed
+                        
+                        # Remove badly generated bbl file
+                        if specific_bbl_path.exists():
+                            specific_bbl_path.unlink()
+                        
+                        break 
+                    bibtex_run_successful = True # Mark as successful if all commands pass
+                
+                if bibtex_run_successful and specific_bbl_path.exists():
+                    self._log(f"Specific .bbl file generated successfully: {specific_bbl_path}", "debug")
+                    raw_bbl_content_to_process = specific_bbl_path.read_text(encoding="utf-8", errors="ignore")
+                elif bibtex_run_successful: # Commands succeeded but file not created
+                    self._log(f"BibTeX ran but did not create '{specific_bbl_path.name}'.", "warn")
+                # If bibtex_run_successful is False, it means a command failed.
+                    
+            except Exception as e:
+                self._log(f"Exception during .bbl generation: {e}", "error")
+
+            finally:
+                os.chdir(original_cwd)
+
+        # 3. If still no BBL, try any alternative .bbl file in the project folder
+        if raw_bbl_content_to_process is None:
+            self._log(f"Specific .bbl file '{specific_bbl_path.name}' not found or generated. Searching for any .bbl file in '{self.folder_path}'...", "info")
+            bbl_files_in_folder = list(self.folder_path.glob("*.bbl"))
+            if bbl_files_in_folder:
+                alternative_bbl_path = bbl_files_in_folder[0]
+                self._log(f"Found alternative .bbl file: '{alternative_bbl_path.name}'. Using its raw content.", "info")
+                try:
+                    # We use the raw content of the alternative. It will be processed and saved to specific_bbl_path.
+                    # We do not check for PROCESSED_BBL_MARKER in the alternative here, to keep logic simpler
+                    # and ensure the canonical `specific_bbl_path` gets the processed, marked version.
+                    raw_bbl_content_to_process = alternative_bbl_path.read_text(encoding="utf-8", errors="ignore")
+                except Exception as e:
+                    self._log(f"Error reading alternative .bbl file '{alternative_bbl_path.name}': {e}", "warn")
+            else:
+                self._log("No .bbl files (specific or alternative) found in the project folder.", "warn")
+
+        # 4. Process and Cache (if raw content was obtained)
+        if raw_bbl_content_to_process is not None:
+            self._log("Starting full BBL processing (abstracts, keys) for caching...", "info")
+            processed_bbl_string = self._fully_process_bbl(raw_bbl_content_to_process)
+            
+            try:
+                with open(specific_bbl_path, "w", encoding="utf-8") as f:
+                    f.write(PROCESSED_BBL_MARKER + "\n")
+                    f.write(processed_bbl_string)
+                self._log(f"Successfully wrote processed BBL content to '{specific_bbl_path}' (cached).", "success")
+            except Exception as e_write:
+                self._log(f"Error writing processed BBL to cache file '{specific_bbl_path}': {e_write}", "warn")
+            
+            return processed_bbl_string # Return the content without the marker for inlining
+        
+        self._log("Failed to obtain BBL content through any method.", "error")
         return None
 
 
@@ -307,7 +379,7 @@ class LatexToMarkdownConverter:
 
 
     def _get_springer_abstract_from_url(self, springer_url: str, api_key: str) -> str | None:
-        doi_match = re.search(r'/(?:chapter|article)/(10\.\d{4,9}/[-._;()/:A-Z0-9]+)', springer_url, re.IGNORECASE)
+        doi_match = re.search(r'/(?:chapter|article|book)/(10\.\d{4,9}/[-._;()/:A-Z0-9]+)', springer_url, re.IGNORECASE)
         if not doi_match:
             self._log(f"Springer API: Could not extract DOI from URL: {springer_url}", "warn")
             return "❌ Error: Could not extract DOI from the provided URL."
@@ -751,15 +823,20 @@ class LatexToMarkdownConverter:
         
         if begin_thebibliography_match:
             bbl_preamble = raw_bbl_content[:begin_thebibliography_match.start()]
+            # Corrected patterns: \\\\ for literal \, \\{ for literal { etc.
             external_cleanup_patterns_str = [
-                r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*",
-                r"\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*",
-                r"\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*",
+                r"\\providecommand\\{\\natexlab\\}\\[1\\]\\{#1\\}\\s*",
+                r"\\providecommand\\{\\url\\}\\[1\\]\\{\\texttt\\{#1\\}\\}\\s*",
+                r"\\providecommand\\{\\doi\\}\\[1\\]\\{doi:\s*#1\\}\\s*",
                 r"\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*",
                 r"\\expandafter\\ifx\\csname\s*doi\\endcsname\\relax[\s\S]*?\\fi\s*",
             ]
             for p_str in external_cleanup_patterns_str:
-                bbl_preamble = re.sub(p_str, "", bbl_preamble, flags=re.DOTALL)
+                try:
+                    bbl_preamble = re.sub(p_str, "", bbl_preamble, flags=re.DOTALL)
+                except re.error as e_re:
+                    self._log(f"Regex error cleaning external BBL preamble with pattern '{p_str}': {e_re}", "warn")
+
             bbl_preamble = bbl_preamble.strip()
 
         bibliography_env_start_for_pandoc = r"\begin{thebibliography}{}" # Use empty arg for Pandoc
@@ -776,29 +853,32 @@ class LatexToMarkdownConverter:
         bbl_items_text = raw_bbl_content[items_text_start_offset:items_text_end_offset].strip()
 
         if bbl_items_text:
+            # Corrected patterns for internal cleanup
             internal_cleanup_patterns = [
-                re.compile(r"^\s*\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", flags=re.MULTILINE | re.DOTALL),
-                re.compile(r"^\s*\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*", flags=re.MULTILINE | re.DOTALL),
-                re.compile(r"^\s*\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\providecommand\\{\\natexlab\\}\\[1\\]\\{#1\\}\\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\providecommand\\{\\url\\}\\[1\\]\\{\\texttt\\{#1\\}\\}\\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\providecommand\\{\\doi\\}\\[1\\]\\{doi:\s*#1\\}\\s*", flags=re.MULTILINE | re.DOTALL),
                 re.compile(r"^\s*\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*", flags=re.MULTILINE | re.DOTALL),
                 re.compile(r"^\s*\\expandafter\\ifx\\csname\s*doi\\endcsname\\relax[\s\S]*?\\fi\s*", flags=re.MULTILINE | re.DOTALL),
             ]
             
             cleaned_any_internal_preamble = False
-            original_bbl_items_text_len_for_log = len(bbl_items_text) # For logging comparison
+            original_bbl_items_text_len_for_log = len(bbl_items_text) 
             
-            # Iteratively clean the start of bbl_items_text from known preamble commands
             while True:
                 text_before_cleaning_pass = bbl_items_text
-                for pattern in internal_cleanup_patterns:
-                    bbl_items_text = pattern.sub("", bbl_items_text).strip()
+                for pattern_obj in internal_cleanup_patterns:
+                    try:
+                        bbl_items_text = pattern_obj.sub("", bbl_items_text).strip()
+                    except re.error as e_re_int:
+                         self._log(f"Regex error cleaning internal BBL preamble with pattern '{pattern_obj.pattern}': {e_re_int}", "warn")
                 if bbl_items_text == text_before_cleaning_pass: 
                     break 
                 cleaned_any_internal_preamble = True 
             
             if cleaned_any_internal_preamble:
                  self._log(f"Cleaned internal BBL preamble. Remaining item text starts with: '{bbl_items_text[:100]}...'", "debug")
-            elif original_bbl_items_text_len_for_log > 0 and not bbl_items_text.startswith(r"\bibitem") and bbl_items_text: # Check if it's not empty
+            elif original_bbl_items_text_len_for_log > 0 and not bbl_items_text.startswith(r"\bibitem") and bbl_items_text: 
                  self._log(f"BBL item text starts with non-bibitem content after internal preamble cleaning attempt: '{bbl_items_text[:100]}...'", "debug")
 
 
@@ -937,7 +1017,28 @@ class LatexToMarkdownConverter:
         content_to_inline = (references_heading_tex + processed_bbl_string) if processed_bbl_string.strip() else ""
 
         modified_tex_content = re.sub(r"^\s*\\bibliographystyle\{[^{}]*\}\s*$", "", tex_content, flags=re.MULTILINE)
+        
         bibliography_command_pattern = r"^\s*\\bibliography\{[^{}]*(?:,[^{}]*)*\}\s*$"
+        input_references_bbl_command_pattern = r"\\input{[^\}]*.bbl}"
+        if re.search(bibliography_command_pattern, tex_content, flags=re.MULTILINE):
+            modified_tex_content = re.sub(input_references_bbl_command_pattern, "", modified_tex_content, flags=re.MULTILINE)
+        elif re.search(input_references_bbl_command_pattern, tex_content, flags=re.MULTILINE):
+            modified_tex_content = re.sub(input_references_bbl_command_pattern, r"\\bibliography{references}", modified_tex_content, flags=re.MULTILINE)
+        else:
+            # add before
+            #\clearpage
+            #\appendix
+            #if possible
+            clearpage_appendix_command_pattern = r"\\clearpage\n\\appendix"
+            if re.search(clearpage_appendix_command_pattern, tex_content, flags=re.MULTILINE):
+                # Add r"\\bibliography{references}" before it
+                modified_tex_content = re.sub(clearpage_appendix_command_pattern, r"\\bibliography{references}\n\\clearpage\n\\appendix", modified_tex_content, flags=re.MULTILINE)
+            else:
+                end_document_command_pattern = r"\\end\{document\}"
+                if re.search(end_document_command_pattern, tex_content, flags=re.MULTILINE):
+                    modified_tex_content = re.sub(end_document_command_pattern, r"\\bibliography{references}\n\\end\{document\}", modified_tex_content, flags=re.MULTILINE)
+                else:
+                    raise Exception('Cannot add references...')
 
         if content_to_inline: # Only try to inline if there's content
             if re.search(bibliography_command_pattern, modified_tex_content, flags=re.MULTILINE):
@@ -1100,10 +1201,8 @@ class LatexToMarkdownConverter:
                                 conversion_done = True
                             else:
                                 self._log(f"pdf2image returned no images for '{copied_file_abs_path.name}'.", "warn")
-                        except self.Pdf2ImageError as e_pdf2img_specific: 
-                            self._log(f"pdf2image specific error for '{copied_file_abs_path.name}': {e_pdf2img_specific}. Check Poppler path/installation.", "warn")
                         except Exception as e_pdf2img_generic: 
-                            self._log(f"Generic error during pdf2image conversion for '{copied_file_abs_path.name}': {e_pdf2img_generic}", "warn")
+                            self._log(f"Error during pdf2image conversion for '{copied_file_abs_path.name}': {e_pdf2img_generic}", "warn")
                     
                     if conversion_done:
                         target_filename_in_figures_subdir = target_png_filename_stem
@@ -1176,8 +1275,6 @@ class LatexToMarkdownConverter:
                      self._log(f"Markdown path '{original_md_path_in_doc}' effectively unchanged to '{new_md_path_for_doc}'.", "debug")
         
         # After all path updates, convert any remaining <embed> to <img> within <figure>
-        # This regex specifically targets <embed ...> and replaces it with <img ... />
-        # while keeping the attributes and the surrounding <figure>...</figure> tags.
         final_markdown_content = re.sub(r"(<figure>.*?)<embed(\s+[^>]*?)>(.*?</figure>)", 
                                         r"\1<img\2 />\3", 
                                         updated_markdown_content, flags=re.DOTALL | re.IGNORECASE)
@@ -1374,6 +1471,153 @@ class LatexToMarkdownConverter:
             
         return processed_table_content
 
+    # --- Checklist Preprocessing Methods ---
+    def _add_paragraph_spacing_to_checklist_block(self, text_block):
+        lines = text_block.splitlines()
+        result_lines = []
+        if not lines:
+            return ""
+
+        for i, line in enumerate(lines):
+            current_stripped = line.strip()
+            
+            if result_lines: 
+                prev_line_in_result_stripped = result_lines[-1].strip()
+                
+                current_is_qajg_transformed = current_stripped.startswith(r"{\bf Question:") or \
+                                              current_stripped.startswith(r"{\bf Answer:") or \
+                                              current_stripped.startswith(r"{\bf Justification:") or \
+                                              current_stripped.startswith(r"{\bf Guidelines:")
+                
+                prev_was_main_item = prev_line_in_result_stripped.startswith(r"\item") and \
+                                     not prev_line_in_result_stripped.startswith(r"{\bf")
+                prev_was_qaj_transformed = prev_line_in_result_stripped.startswith(r"{\bf Question:") or \
+                                           prev_line_in_result_stripped.startswith(r"{\bf Answer:") or \
+                                           prev_line_in_result_stripped.startswith(r"{\bf Justification:")
+
+                if current_is_qajg_transformed and prev_line_in_result_stripped: 
+                    if prev_was_main_item or prev_was_qaj_transformed:
+                        if not (prev_line_in_result_stripped.startswith(r"{\bf Guidelines:") and \
+                                current_stripped.startswith(r"\begin{itemize}")):
+                            result_lines.append("")
+            
+            result_lines.append(line) 
+
+        final_lines = []
+        if result_lines:
+            start_idx = 0
+            while start_idx < len(result_lines) and not result_lines[start_idx].strip():
+                start_idx += 1
+            
+            for j in range(start_idx, len(result_lines)):
+                if not (result_lines[j].strip() == "" and final_lines and not final_lines[-1].strip()):
+                    final_lines.append(result_lines[j])
+            
+            while final_lines and not final_lines[-1].strip():
+                final_lines.pop()
+                
+        return "\n".join(final_lines)
+
+    def _validate_checklist_major_item_structure(self, major_item_lines_list):
+        if not major_item_lines_list or not re.match(r"^\s*\\item(?!\s*\[)", major_item_lines_list[0].strip()):
+            return False
+
+        cursor = 1 
+
+        def _get_next_significant_line_content(lines, current_cursor):
+            idx = current_cursor
+            while idx < len(lines) and not lines[idx].strip(): 
+                idx += 1
+            if idx < len(lines):
+                return lines[idx].strip(), idx + 1 
+            return None, idx 
+
+        expected_sequence_items = [
+            r"\item\[\] Question:",
+            r"\item\[\] Answer:",
+            r"\item\[\] Justification:",
+            r"\item\[\] Guidelines:",
+        ]
+
+        for i, pattern_start in enumerate(expected_sequence_items):
+            line_content, cursor = _get_next_significant_line_content(major_item_lines_list, cursor)
+            if not (line_content and line_content.startswith(pattern_start)):
+                return False
+            
+            if pattern_start == r"\item\[\] Guidelines:":
+                next_struct_line_content, _ = _get_next_significant_line_content(major_item_lines_list, cursor)
+                if not (next_struct_line_content and next_struct_line_content.startswith(r"\begin{itemize}")):
+                    return False
+        
+        return True
+
+    def _transform_checklist_enumerate_block_content(self, content):
+        transformed_content = content
+        transformed_content = re.sub(
+            r"^(\s*)\\item\[\]\s*(Question|Answer|Justification):\s*(.*)$",
+            r"\1{\\bf \2:} \3", transformed_content, flags=re.MULTILINE)
+        transformed_content = re.sub(
+            r"^(\s*)\\item\[\]\s*(Guidelines):\s*$",
+            r"\1{\\bf \2:}", transformed_content, flags=re.MULTILINE)
+        
+        spaced_content = self._add_paragraph_spacing_to_checklist_block(transformed_content)
+        return spaced_content
+
+    def _preprocess_checklist_enumerations(self, latex_full_text: str) -> str:
+        self._log("Preprocessing LaTeX checklist 'enumerate' environments...", "debug")
+        initial_content = latex_full_text
+
+        def replacement_validator_transformer(matchobj):
+            begin_env = matchobj.group(1)
+            content = matchobj.group(2)
+            end_env = matchobj.group(3)
+            
+            content_lines = content.splitlines()
+            
+            main_item_indices = [
+                i for i, line in enumerate(content_lines) 
+                if re.match(r"^\s*\\item(?!\s*\[)", line.strip())
+            ]
+
+            if not main_item_indices:
+                return matchobj.group(0) 
+
+            major_item_line_blocks = []
+            for k in range(len(main_item_indices)):
+                start_idx = main_item_indices[k]
+                end_idx = main_item_indices[k+1] if k + 1 < len(main_item_indices) else len(content_lines)
+                major_item_line_blocks.append(content_lines[start_idx:end_idx])
+
+            if not major_item_line_blocks:
+                 return matchobj.group(0)
+
+            all_sub_blocks_are_valid = True
+            for item_block_lines_list in major_item_line_blocks:
+                if not self._validate_checklist_major_item_structure(item_block_lines_list):
+                    all_sub_blocks_are_valid = False
+                    break
+            
+            if all_sub_blocks_are_valid:
+                self._log(f"Found a valid QAJG checklist block. Applying transformations.", "debug")
+                processed_content = self._transform_checklist_enumerate_block_content(content)
+                return begin_env + processed_content + end_env
+            else:
+                self._log(f"Enumerate block did not match strict QAJG structure. Leaving unchanged.", "debug")
+                return matchobj.group(0)
+
+        fixed_text = re.sub(
+            r"(\\begin\{enumerate\})([\s\S]*?)(\\end\{enumerate\})",
+            replacement_validator_transformer,
+            latex_full_text
+        )
+        
+        if fixed_text != initial_content:
+            self._log("Applied checklist enumeration preprocessing.", "info")
+        else:
+            self._log("No changes made during checklist enumeration preprocessing.", "debug")
+        return fixed_text
+    # --- End Checklist Preprocessing Methods ---
+
     def _run_pandoc_conversion(self, tex_content_for_pandoc, pandoc_timeout=None):
         final_md_path = self.final_output_folder_path / "paper.md"; tmp_tex_path_obj = None
         pandoc_local_out = "_pandoc_temp_paper.md"; original_cwd = Path.cwd()
@@ -1460,13 +1704,11 @@ class LatexToMarkdownConverter:
         try: self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
         except Exception as e: self._log(f"Output dir error: {e}", "error"); return False
 
-        raw_bbl_content = self._generate_bbl_content()
-        if raw_bbl_content is None:
-            self._log("Failed to generate or find BBL content. Cannot proceed with BBL processing.", "error")
+        # _generate_bbl_content now returns the fully processed BBL string (from cache or new processing)
+        processed_bbl_with_abstracts_and_keys = self._generate_bbl_content()
+        if processed_bbl_with_abstracts_and_keys is None:
+            self._log("Failed to generate or process BBL content. Cannot proceed.", "error")
             return False
-
-        self._log("Processing BBL content for abstracts and keys (once)...", "info")
-        processed_bbl_with_abstracts_and_keys = self._fully_process_bbl(raw_bbl_content)
 
         problematic_macros = r"""\providecommand{\linebreakand}{\par\noindent\ignorespaces} \providecommand{\email}[1]{\texttt{#1}} \providecommand{\IEEEauthorblockN}[1]{#1\par} \providecommand{\IEEEauthorblockA}[1]{#1\par} \providecommand{\and}{\par\noindent\ignorespaces} \providecommand{\And}{\par\noindent\ignorespaces} \providecommand{\AND}{\par\noindent\ignorespaces} \providecommand{\IEEEoverridecommandlockouts}{} \providecommand{\CLASSINPUTinnersidemargin}{} \providecommand{\CLASSINPUToutersidemargin}{} \providecommand{\CLASSINPUTtoptextmargin}{} \providecommand{\CLASSINPUTbottomtextmargin}{} \providecommand{\CLASSOPTIONcompsoc}{} \providecommand{\CLASSOPTIONconference}{} \providecommand{\@toptitlebar}{} \providecommand{\@bottomtitlebar}{} \providecommand{\@thanks}{} \providecommand{\@notice}{} \providecommand{\@noticestring}{} \providecommand{\acksection}{} \newenvironment{ack}{\par\textbf{Acknowledgments}\par}{\par} \providecommand{\answerYes}[1]{[Yes] ##1} \providecommand{\answerNo}[1]{[No] ##1} \providecommand{\answerNA}[1]{[NA] ##1} \providecommand{\answerTODO}[1]{[TODO] ##1} \providecommand{\justificationTODO}[1]{[TODO] ##1} \providecommand{\textasciitilde}{~} \providecommand{\textasciicircum}{^} \providecommand{\textbackslash}{\symbol{92}}"""
 
@@ -1477,13 +1719,16 @@ class LatexToMarkdownConverter:
         ]
 
         initial_main_tex_content_for_processing = self.original_main_tex_content
+        # Step 1: Expand includes and preprocess table environments
         expanded_and_table_processed_tex = self._preprocess_latex_table_environments(initial_main_tex_content_for_processing)
+        # Step 2: Preprocess checklist enumerations on the already expanded and table-processed content
+        fully_preprocessed_tex = self._preprocess_checklist_enumerations(expanded_and_table_processed_tex)
 
 
         for i, attempt_config in enumerate(pandoc_attempts_config):
             self._log(f"Pandoc Conversion Attempt {i+1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
 
-            current_tex_base = expanded_and_table_processed_tex
+            current_tex_base = fully_preprocessed_tex # Use the fully preprocessed content
 
             if attempt_config["mode"] == "venue_only":
                 style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="venue_only")
