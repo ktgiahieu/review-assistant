@@ -547,7 +547,7 @@ class LatexToMarkdownConverter:
 
         except requests.exceptions.HTTPError as http_err:
             log_url_info = f"original URL: {url}" + (f", effective (error) URL: {effective_url}" if url != effective_url else "")
-            self._log(f"HTML Parsing: HTTP error {http_err.response.status_code} for {log_url_info}: {http_err}", "warn")
+            self._log(f"HTML Parsing: HTTP error {http_err.response.status_code} for {log_url_info}: {http_err}", "debug")
             self._log(f"HTML Parsing: Checking API fallback conditions. Status: {http_err.response.status_code}, Effective URL: {effective_url}", "debug")
 
             if http_err.response.status_code == 403: 
@@ -689,7 +689,7 @@ class LatexToMarkdownConverter:
                                 html_abs = self._fetch_and_parse_html_for_abstract(s2_url)
                                 if html_abs: self._log("S2 (via HTML parse): Abstract found.", "success"); time.sleep(0.3); return html_abs
                     self._log(f"S2(A{attempt}): Found papers for '{cleaned_title}' but no abstract (or via fallback URLs).", "debug"); return None
-            except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "warn")
+            except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "debug")
             time.sleep(0.3)
         return None
 
@@ -1004,184 +1004,314 @@ class LatexToMarkdownConverter:
         Converts specified figures to PNG and updates their paths in the markdown content.
         Figures are expected to be in a 'figures' subdirectory of output_base_path.
         Markdown paths will be updated to './figures/filename.ext'.
+        Also converts <embed> tags within <figure> to <img> tags.
         """
-        if not figure_details_list:
-            return markdown_content
+        updated_markdown_content = markdown_content # Start with the original content
 
-        updated_markdown_content = markdown_content
-        NO_CONVERSION_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+        if figure_details_list: # Process figure paths and conversions only if there are details
+            NO_CONVERSION_EXTENSIONS = ['.jpg', '.jpeg', '.png']
 
-        for fig_info in figure_details_list:
-            original_md_path_in_doc = fig_info["raw_markdown_path"]
-            
-            copied_file_abs_path = Path(fig_info["copied_dest_abs_path"]) 
-            original_ext = fig_info["original_ext"]
-            original_filename_stem = copied_file_abs_path.stem
-
-            target_filename_in_figures_subdir = copied_file_abs_path.name
-            conversion_done = False # Flag to track if any conversion (pdf2image or Pillow) succeeded
-
-            # --- PDF Conversion using pdf2image (Primary for PDFs) ---
-            if self.convert_from_path and original_ext == '.pdf':
-                target_png_filename_stem = f"{original_filename_stem}.png"
-                target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
+            for fig_info in figure_details_list:
+                original_md_path_in_doc = fig_info["raw_markdown_path"]
                 
-                if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
-                    self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (from PDF) already exists. Using it.", "debug")
-                    conversion_done = True
-                else:
-                    try:
-                        self._log(f"Attempting PDF to PNG conversion for '{copied_file_abs_path.name}' using pdf2image...", "debug")
-                        images = self.convert_from_path(copied_file_abs_path, 
-                                                        poppler_path=self.poppler_path, 
-                                                        first_page=1, last_page=1, fmt='png')
-                        if images:
-                            images[0].save(target_png_abs_path_in_figures_subdir, "PNG")
-                            self._log(f"Successfully converted PDF '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' using pdf2image.", "success")
-                            conversion_done = True
-                        else:
-                            self._log(f"pdf2image returned no images for '{copied_file_abs_path.name}'.", "warn")
-                    except self.Pdf2ImageError as e_pdf2img_specific: 
-                        self._log(f"pdf2image specific error for '{copied_file_abs_path.name}': {e_pdf2img_specific}. Check Poppler path/installation.", "warn")
-                    except Exception as e_pdf2img_generic: 
-                        self._log(f"Generic error during pdf2image conversion for '{copied_file_abs_path.name}': {e_pdf2img_generic}", "warn")
-                
-                if conversion_done:
-                    target_filename_in_figures_subdir = target_png_filename_stem
-                    if copied_file_abs_path.exists() and copied_file_abs_path.suffix == '.pdf' and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                copied_file_abs_path = Path(fig_info["copied_dest_abs_path"]) 
+                original_ext = fig_info["original_ext"]
+                original_filename_stem = copied_file_abs_path.stem
+
+                target_filename_in_figures_subdir = copied_file_abs_path.name
+                conversion_done = False 
+
+                # --- PDF Conversion using pdf2image (Primary for PDFs) ---
+                if self.convert_from_path and original_ext == '.pdf':
+                    target_png_filename_stem = f"{original_filename_stem}.png"
+                    target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
+                    
+                    if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                        self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (from PDF) already exists. Using it.", "debug")
+                        conversion_done = True
+                    else:
                         try:
-                            copied_file_abs_path.unlink()
-                            self._log(f"Deleted original PDF '{copied_file_abs_path.name}' from figures subdir after pdf2image conversion.", "debug")
-                        except Exception as e_del:
-                            self._log(f"Failed to delete original PDF '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
+                            self._log(f"Attempting PDF to PNG conversion for '{copied_file_abs_path.name}' using pdf2image...", "debug")
+                            images = self.convert_from_path(copied_file_abs_path, 
+                                                            poppler_path=self.poppler_path, 
+                                                            first_page=1, last_page=1, fmt='png')
+                            if images:
+                                images[0].save(target_png_abs_path_in_figures_subdir, "PNG")
+                                self._log(f"Successfully converted PDF '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' using pdf2image.", "success")
+                                conversion_done = True
+                            else:
+                                self._log(f"pdf2image returned no images for '{copied_file_abs_path.name}'.", "warn")
+                        except self.Pdf2ImageError as e_pdf2img_specific: 
+                            self._log(f"pdf2image specific error for '{copied_file_abs_path.name}': {e_pdf2img_specific}. Check Poppler path/installation.", "warn")
+                        except Exception as e_pdf2img_generic: 
+                            self._log(f"Generic error during pdf2image conversion for '{copied_file_abs_path.name}': {e_pdf2img_generic}", "warn")
+                    
+                    if conversion_done:
+                        target_filename_in_figures_subdir = target_png_filename_stem
+                        if copied_file_abs_path.exists() and copied_file_abs_path.suffix == '.pdf' and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                            try:
+                                copied_file_abs_path.unlink()
+                                self._log(f"Deleted original PDF '{copied_file_abs_path.name}' from figures subdir after pdf2image conversion.", "debug")
+                            except Exception as e_del:
+                                self._log(f"Failed to delete original PDF '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
 
-            # --- Pillow Conversion (Fallback for PDFs if pdf2image failed, or for other types) ---
-            if not conversion_done and original_ext not in NO_CONVERSION_EXTENSIONS:
-                target_png_filename_stem = f"{original_filename_stem}.png"
-                target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
-                
-                pillow_conversion_attempted = False
-                if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
-                    self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (Pillow fallback) already exists. Using it.", "debug")
-                    conversion_done = True 
-                elif self.PILImage:
-                    pillow_conversion_attempted = True
-                    self._log(f"Attempting conversion to PNG for '{copied_file_abs_path.name}' (in figures subdir) using Pillow...", "debug")
-                    try:
-                        if original_ext in ['.pdf', '.eps'] and not shutil.which("gs"):
-                            self._log(f"Ghostscript (gs) command not found. Pillow may fail to convert '{copied_file_abs_path.name}'. Install Ghostscript for PDF/EPS conversion.", "warn")
-                        if original_ext == '.svg':
-                            self._log(f"Pillow does not directly support SVG conversion. Skipping Pillow conversion for '{copied_file_abs_path.name}'.", "warn")
-                        else:
-                            img = self.PILImage.open(copied_file_abs_path)
-                            if img.mode == 'P' and 'transparency' in img.info: img = img.convert("RGBA")
-                            elif img.mode not in ['RGB', 'RGBA', 'L', 'LA']: img = img.convert("RGBA")
-                            img.save(target_png_abs_path_in_figures_subdir, "PNG")
-                            self._log(f"Successfully converted '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' (in figures subdir) using Pillow.", "debug")
-                            conversion_done = True
-                    except FileNotFoundError: 
-                        self._log(f"Pillow conversion failed for '{copied_file_abs_path.name}': A dependent component (like Ghostscript for PDF/EPS) might be missing or not in PATH.", "warn")
-                    except Exception as e_conv:
-                        self._log(f"Error converting '{copied_file_abs_path.name}' to PNG using Pillow: {e_conv}", "warn")
-                elif not pillow_conversion_attempted: 
-                    self._log("Pillow (PIL) library not found. Cannot convert images using Pillow.", "warn")
-
-                if conversion_done:
-                    target_filename_in_figures_subdir = target_png_filename_stem 
-                    if copied_file_abs_path.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                # --- Pillow Conversion (Fallback for PDFs if pdf2image failed, or for other types) ---
+                if not conversion_done and original_ext not in NO_CONVERSION_EXTENSIONS:
+                    target_png_filename_stem = f"{original_filename_stem}.png"
+                    target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
+                    
+                    pillow_conversion_attempted = False
+                    if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                        self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (Pillow fallback) already exists. Using it.", "debug")
+                        conversion_done = True 
+                    elif self.PILImage:
+                        pillow_conversion_attempted = True
+                        self._log(f"Attempting conversion to PNG for '{copied_file_abs_path.name}' (in figures subdir) using Pillow...", "debug")
                         try:
-                            copied_file_abs_path.unlink()
-                            self._log(f"Deleted original file '{copied_file_abs_path.name}' from figures subdir after Pillow conversion.", "debug")
-                        except Exception as e_del:
-                            self._log(f"Failed to delete original file '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
-                elif pillow_conversion_attempted: 
-                     self._log(f"Pillow conversion skipped or failed for '{copied_file_abs_path.name}'. Markdown will link to original in figures subdir.", "debug")
+                            if original_ext in ['.pdf', '.eps'] and not shutil.which("gs"):
+                                self._log(f"Ghostscript (gs) command not found. Pillow may fail to convert '{copied_file_abs_path.name}'. Install Ghostscript for PDF/EPS conversion.", "warn")
+                            if original_ext == '.svg':
+                                self._log(f"Pillow does not directly support SVG conversion. Skipping Pillow conversion for '{copied_file_abs_path.name}'.", "warn")
+                            else:
+                                img = self.PILImage.open(copied_file_abs_path)
+                                if img.mode == 'P' and 'transparency' in img.info: img = img.convert("RGBA")
+                                elif img.mode not in ['RGB', 'RGBA', 'L', 'LA']: img = img.convert("RGBA")
+                                img.save(target_png_abs_path_in_figures_subdir, "PNG")
+                                self._log(f"Successfully converted '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' (in figures subdir) using Pillow.", "debug")
+                                conversion_done = True
+                        except FileNotFoundError: 
+                            self._log(f"Pillow conversion failed for '{copied_file_abs_path.name}': A dependent component (like Ghostscript for PDF/EPS) might be missing or not in PATH.", "warn")
+                        except Exception as e_conv:
+                            self._log(f"Error converting '{copied_file_abs_path.name}' to PNG using Pillow: {e_conv}", "warn")
+                    elif not pillow_conversion_attempted: 
+                        self._log("Pillow (PIL) library not found. Cannot convert images using Pillow.", "warn")
+
+                    if conversion_done:
+                        target_filename_in_figures_subdir = target_png_filename_stem 
+                        if copied_file_abs_path.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                            try:
+                                copied_file_abs_path.unlink()
+                                self._log(f"Deleted original file '{copied_file_abs_path.name}' from figures subdir after Pillow conversion.", "debug")
+                            except Exception as e_del:
+                                self._log(f"Failed to delete original file '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
+                    elif pillow_conversion_attempted: 
+                         self._log(f"Pillow conversion skipped or failed for '{copied_file_abs_path.name}'. Markdown will link to original in figures subdir.", "debug")
 
 
-            # --- Update Markdown Path ---
-            new_md_path_for_doc = f"./figures/{target_filename_in_figures_subdir}"
-            escaped_original_md_path = re.escape(original_md_path_in_doc)
-            
-            md_link_pattern = rf"(!\[(?:[^\]]*)\]\()({escaped_original_md_path})(\))"
-            updated_markdown_content = re.sub(md_link_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
-            
-            img_src_pattern = rf'(<img\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>)'
-            updated_markdown_content = re.sub(img_src_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
+                # --- Update Markdown Path ---
+                new_md_path_for_doc = f"./figures/{target_filename_in_figures_subdir}"
+                escaped_original_md_path = re.escape(original_md_path_in_doc)
+                
+                md_link_pattern = rf"(!\[(?:[^\]]*)\]\()({escaped_original_md_path})(\))"
+                updated_markdown_content = re.sub(md_link_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
+                
+                img_src_pattern = rf'(<img\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>)'
+                updated_markdown_content = re.sub(img_src_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
 
-            figure_embed_pattern = rf'(<figure>.*?<embed\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>.*?</figure>)'
-            updated_markdown_content = re.sub(figure_embed_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content, flags=re.DOTALL)
+                figure_embed_pattern = rf'(<figure>.*?<embed\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>.*?</figure>)'
+                updated_markdown_content = re.sub(figure_embed_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content, flags=re.DOTALL)
 
-            if original_md_path_in_doc != new_md_path_for_doc and original_md_path_in_doc in markdown_content : 
-                 self._log(f"Updated Markdown path for '{original_md_path_in_doc}' to '{new_md_path_for_doc}'.", "debug")
-            elif original_md_path_in_doc == new_md_path_for_doc:
-                 self._log(f"Markdown path '{original_md_path_in_doc}' effectively unchanged to '{new_md_path_for_doc}'.", "debug")
+                if original_md_path_in_doc != new_md_path_for_doc and original_md_path_in_doc in markdown_content : 
+                     self._log(f"Updated Markdown path for '{original_md_path_in_doc}' to '{new_md_path_for_doc}'.", "debug")
+                elif original_md_path_in_doc == new_md_path_for_doc:
+                     self._log(f"Markdown path '{original_md_path_in_doc}' effectively unchanged to '{new_md_path_for_doc}'.", "debug")
+        
+        # After all path updates, convert any remaining <embed> to <img> within <figure>
+        final_markdown_content = re.sub(r"(<figure>.*?)<embed(\s+[^>]*?src\s*=\s*[\"'][^\"']+[\"'][^>]*?)>(.*?</figure>)", 
+                                        r"\1<img\2 />\3", 
+                                        updated_markdown_content, flags=re.DOTALL | re.IGNORECASE)
+        if final_markdown_content != updated_markdown_content: # Check if any embed->img replacement actually happened
+            self._log("Converted standalone <embed> to <img> tags in <figure> elements.", "debug")
+        
+        return final_markdown_content
 
-        return updated_markdown_content
-
-    def _preprocess_latex_table_environments(self, latex_content: str) -> str:
+    def _resolve_include_path(self, filename: str, current_dir: Path) -> Path | None:
         """
-        Converts specific non-standard LaTeX table environments to standard ones
-        to aid tools like Pandoc.
+        Resolves the path of an included TeX file.
+        Searches relative to current_dir, then project_folder.
+        Tries with .tex extension and without.
         """
-        self._log("Preprocessing LaTeX table environments...", "debug")
-        initial_content = latex_content
-        processed_content = latex_content 
+        # Normalize filename (e.g., remove leading/trailing whitespace)
+        filename = filename.strip()
         
-        # def remove_pipes_from_spec(match):
-        #     tabular_start = match.group(1)
-        #     optional_align = match.group(2) if match.group(2) else ""
-        #     column_specs = match.group(3)
-        #     tabular_end = match.group(4)
-        #     cleaned_specs = column_specs.replace("|", "")
-        #     return f"{tabular_start}{optional_align}{cleaned_specs}{tabular_end}"
+        # Paths to try for resolution
+        potential_filenames = []
+        if filename.endswith(".tex"):
+            potential_filenames.append(filename)
+            potential_filenames.append(filename[:-4]) # Try without .tex
+        else:
+            potential_filenames.append(filename)
+            potential_filenames.append(filename + ".tex") # Try with .tex
 
-        # processed_content = re.sub(
-        #     r"(\\begin{tabular})(\[[^\]]*\])?({[^}]*})([\s\S]*?\\end{tabular})",
-        #     remove_pipes_from_spec,
-        #     processed_content # Apply to already potentially modified content
-        # )
+        # Search locations: current file's directory, then project root
+        search_dirs = [current_dir, self.folder_path]
         
-        processed_content = re.sub(r'\\cr', r'\\\\', processed_content)
+        for fname_variant in potential_filenames:
+            for search_dir in search_dirs:
+                try_path = (search_dir / fname_variant).resolve()
+                if try_path.is_file():
+                    return try_path
+        return None
+
+    def _input_replacer(self, match: re.Match, current_dir: Path, visited_files: set) -> str:
+        """
+        Replacement function for re.sub to handle \input and \include.
+        Recursively expands the content of the included file.
+        """
+        command = match.group(1)  # 'input' or 'include'
+        filename_group = match.group(2) # filename from {filename}
+
+        resolved_path = self._resolve_include_path(filename_group, current_dir)
+
+        if resolved_path and resolved_path not in visited_files:
+            self._log(f"Expanding {command}: {resolved_path.name} (from {current_dir})", "debug")
+            visited_files.add(resolved_path)
+            try:
+                with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f_inc:
+                    included_content = f_inc.read()
+                # Recursively expand includes within this newly included content
+                expanded_included_content = self._recursively_expand_tex_includes(
+                    resolved_path, 
+                    included_content, 
+                    visited_files
+                )
+                return f"\n% --- Start content from {resolved_path.name} ---\n{expanded_included_content}\n% --- End content from {resolved_path.name} ---\n"
+            except Exception as e_inc:
+                self._log(f"Could not read included file {resolved_path}: {e_inc}", "warn")
+                return match.group(0) # Return original command if file not found/readable
+        elif resolved_path in visited_files:
+            self._log(f"Skipping already visited file during expansion: {resolved_path.name}", "debug")
+            return f"% Skipped re-inclusion of {resolved_path.name}\n" # Comment out to avoid loops
+        else:
+            self._log(f"Could not resolve include path for '{filename_group}' from dir '{current_dir}'. Command: {match.group(0)}", "warn")
+            return match.group(0) # Return original command if file not found
+
+    def _recursively_expand_tex_includes(self, current_file_path: Path, current_content: str, visited_files: set) -> str:
+        """
+        Recursively replaces \input{file} and \include{file} commands with the content
+        of the specified files.
+        """
+        include_pattern = re.compile(r"\\(input|include)\s*\{([^}]+)\}")
+        current_dir = current_file_path.parent
         
-        processed_content = re.sub(
+        # Iteratively apply substitution until no more changes are made,
+        # as an included file might itself include other files.
+        # The visited_files set prevents infinite loops.
+        while True:
+            new_content = include_pattern.sub(
+                lambda m: self._input_replacer(m, current_dir, visited_files),
+                current_content
+            )
+            if new_content == current_content: # No more substitutions made in this pass
+                break
+            current_content = new_content
+            
+        return current_content
+
+    def _preprocess_latex_table_environments(self, initial_main_tex_content: str) -> str:
+        """
+        Expands includes and then converts specific non-standard LaTeX table environments 
+        to standard ones to aid tools like Pandoc.
+        """
+        self._log("Preprocessing LaTeX: Expanding includes and then converting table environments...", "debug")
+        
+        # 1. Recursively expand all \input and \include commands from the main .tex file
+        visited_files = {self.main_tex_path.resolve()} 
+        expanded_content = self._recursively_expand_tex_includes(
+            current_file_path=self.main_tex_path, 
+            current_content=initial_main_tex_content, 
+            visited_files=visited_files
+        )
+        self._log(f"LaTeX content expanded to ~{len(expanded_content)//1024} KB before table conversion.", "debug")
+
+        # 2. Apply table conversions to the fully expanded content
+        initial_table_content_for_log = expanded_content 
+        processed_table_content = expanded_content 
+        
+        processed_table_content = re.sub(r'\\cr', r'\\\\', processed_table_content) 
+        processed_table_content = re.sub(r'\\centering', '', processed_table_content) 
+        processed_table_content = re.sub(r'\\vspace{[^}]*}', '', processed_table_content)
+        processed_table_content = re.sub(r'\\setlength{[^}]*}{[^}]*}', '', processed_table_content)
+        processed_table_content = re.sub(r'\\small', '', processed_table_content)
+        
+        def remove_pipes_from_multicolumn_spec(match):
+            # group 1: \multicolumn{num_cols}
+            # group 2: the part of the alignment spec (e.g., 'c|r', 'c', '|c|')
+            # group 3: the content {actual content}
+            multicolumn_command = match.group(1)
+            align_spec_with_braces = match.group(2) # e.g. "{c|}" or "{c}"
+            content = match.group(3)
+            
+            # Remove pipes from the alignment spec inside the braces
+            cleaned_align_spec_no_braces = align_spec_with_braces[1:-1].replace("|", "")
+            cleaned_align_spec_with_braces = "{" + cleaned_align_spec_no_braces + "}"
+            return f"{multicolumn_command}{cleaned_align_spec_with_braces}{content}"
+
+        processed_table_content = re.sub(
+            r"(\\multicolumn\s*\{[^}]*\})(\{[^}|]*?\|[^}]*?\})(\{[^}]*\})", # Matches if | is present
+            remove_pipes_from_multicolumn_spec,
+            processed_table_content
+        )
+        
+        def remove_pipes_from_tabular_spec(match):
+            tabular_start = match.group(1) 
+            optional_align = match.group(2) if match.group(2) else "" 
+            column_specs_with_braces = match.group(3) 
+            
+            cleaned_specs_no_braces = column_specs_with_braces[1:-1].replace("|", "")
+            cleaned_specs_with_braces = "{" + cleaned_specs_no_braces + "}"
+            return f"{tabular_start}{optional_align}{cleaned_specs_with_braces}"
+
+        processed_table_content = re.sub(
+            r"(\\begin{tabular})(\[[^\]]*\])?({[^}]*})", 
+            remove_pipes_from_tabular_spec,
+            processed_table_content
+        )
+        
+        processed_table_content = re.sub(
             r"\\scalebox{[^}]*}{\s*(\\begin{tabular}[\s\S]*?\\end{tabular})\s*}",
             r"\1",  
-            processed_content
+            processed_table_content
+        )
+        processed_table_content = re.sub(
+            r"\\scalebox{[^}]*}\[[^\]]*\]{\s*(\\begin{tabular}[\s\S]*?\\end{tabular})\s*}",
+            r"\1",
+            processed_table_content
         )
 
-        processed_content = re.sub(
+        processed_table_content = re.sub(
             r"\\begin{wraptable}(?:\[[^\]]*\])?\s*\{[^}]*\}\s*\{[^}]*\}",
             r"\\begin{table}[htb]",
-            processed_content
+            processed_table_content
         )
-        processed_content = re.sub(
+        processed_table_content = re.sub(
             r"\\end{wraptable}",
             r"\\end{table}",
-            processed_content
+            processed_table_content
         )
 
-        processed_content = re.sub(
+        processed_table_content = re.sub(
             r"\\begin{table\*}(?:\[[^\]]*\])?",
             r"\\begin{table}[htb]",
-            processed_content
+            processed_table_content
         )
-        processed_content = re.sub(
+        processed_table_content = re.sub(
             r"\\end{table\*}",
             r"\\end{table}",
-            processed_content
+            processed_table_content
         )
             
-        processed_content = re.sub(r"\\begin{tablenotes}\s*(?:\[.*?\])?([\s\S]*?)\\end{tablenotes}", r"\n\1\n", processed_content) 
+        processed_table_content = re.sub(r"\\begin{tablenotes}\s*(?:\[.*?\])?([\s\S]*?)\\end{tablenotes}", r"\n% tablenotes content:\n\1\n", processed_table_content) 
         
-        processed_content = re.sub(r"\\begin{threeparttable}(?:\[[^\]]*\])?", "", processed_content)
-        processed_content = re.sub(r"\\end{threeparttable}", "", processed_content)
+        processed_table_content = re.sub(r"\\begin{threeparttable}(?:\[[^\]]*\])?", "% threeparttable start removed\n", processed_table_content)
+        processed_table_content = re.sub(r"\\end{threeparttable}", "% threeparttable end removed\n", processed_table_content)
         
-        if processed_content != initial_content:
-            self._log("Applied LaTeX table preprocessing (pipes, scalebox, wraptable, table*, threeparttable, tablenotes).", "info")
+        if processed_table_content != initial_table_content_for_log:
+            self._log("Applied LaTeX table preprocessing to expanded content.", "info")
         else:
-            self._log("No changes made during LaTeX table preprocessing.", "debug")
+            self._log("No changes made during LaTeX table preprocessing of expanded content.", "debug")
             
-        return processed_content
+        return processed_table_content
 
     def _run_pandoc_conversion(self, tex_content_for_pandoc, pandoc_timeout=None):
         final_md_path = self.final_output_folder_path / "paper.md"; tmp_tex_path_obj = None
@@ -1222,17 +1352,18 @@ class LatexToMarkdownConverter:
                         output_figures_subdir
                     )
 
+                    updated_markdown_content = self._convert_and_update_figure_paths_in_markdown(
+                        markdown_content_after_pandoc,
+                        copied_figure_details, 
+                        self.final_output_folder_path
+                    )
+                    with open(final_md_path, "w", encoding="utf-8") as md_f:
+                        md_f.write(updated_markdown_content)
+                    
                     if copied_figure_details:
-                        updated_markdown_content = self._convert_and_update_figure_paths_in_markdown(
-                            markdown_content_after_pandoc,
-                            copied_figure_details,
-                            self.final_output_folder_path
-                        )
-                        with open(final_md_path, "w", encoding="utf-8") as md_f:
-                            md_f.write(updated_markdown_content)
                         self._log("Markdown figure paths updated and relevant images processed into 'figures' subdirectory.", "success")
                     else:
-                        self._log("No figures found in Markdown to process.", "debug")
+                        self._log("No local figures found in Markdown to process for copy/conversion, but checked for embed->img conversion.", "debug")
                     return True
                 else:
                     self._log(f"Pandoc seemed to succeed but final markdown file '{final_md_path}' not found after move.", "error")
@@ -1284,12 +1415,21 @@ class LatexToMarkdownConverter:
             {"mode": "all_project", "desc": "All project-specific styles commented", "timeout": 45}
         ]
 
+        # Preprocess table environments on the original main content (which will then be expanded)
+        # This initial_main_tex_content will be passed to _preprocess_latex_table_environments
+        # which now handles the recursive expansion internally.
+        initial_main_tex_content_for_processing = self.original_main_tex_content
+        
+        # The _preprocess_latex_table_environments method now handles the expansion
+        # and then applies table regexes.
+        expanded_and_table_processed_tex = self._preprocess_latex_table_environments(initial_main_tex_content_for_processing)
+
+
         for i, attempt_config in enumerate(pandoc_attempts_config):
             self._log(f"Pandoc Conversion Attempt {i+1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
 
-            current_tex_base = self.original_main_tex_content
-            current_tex_base = self._preprocess_latex_table_environments(current_tex_base)
-
+            # Start with the fully expanded and table-preprocessed content for each attempt
+            current_tex_base = expanded_and_table_processed_tex
 
             if attempt_config["mode"] == "venue_only":
                 style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="venue_only")

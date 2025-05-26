@@ -230,6 +230,110 @@ Some text after the wrapped table. Duis aute irure dolor in reprehenderit in vol
     \caption{Performance comparison of the Value Function model and \prm{} on the GSM8K test set.}
     \label{table:ablation_critic_example}
 \end{table}
+
+
+
+
+\begin{table}[h]
+\small
+\centering
+\begin{minipage}{.5\linewidth}
+\centering
+
+\begin{tabular}{c|c|c|c|c|c}
+\toprule
+\texttt{AB} & \prm{} & \texttt{FR}-\orm{} & \texttt{SM} & \texttt{LG-\#Rollout} & Acc \cr
+\midrule
+$\times$ & $\times$ & $\times$ & $\times$ & $\times$ & 79.5 \\
+$\checkmark$ & $\times$ & $\times$ & $\times$ & $\times$ & 84.9 \\
+$\checkmark$ & $\checkmark$ & $\times$ & $\times$ & $\times$ & 85.9 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & $\times$ & 86.5 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\times$ & 87.0 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 88.9 \\
+\bottomrule
+\end{tabular}
+\vspace{2mm}
+\caption*{(a) Ablation study on GSM8K}
+% \caption{First Table: Ablation study on GSM8K test set.}
+\end{minipage}%
+\begin{minipage}{.5\linewidth}
+\centering
+
+\begin{tabular}{cc|cc}
+\toprule
+\texttt{TA}-\orm{} & \texttt{Option}  & \texttt{Acc} & \texttt{\#Rollout} \cr
+\midrule
+$\times$ & $\times$ & 38.8 & 201 \\
+$\checkmark$ & $\times$ & 44.1 & 198 \\
+$\checkmark$ & $\checkmark$ & 45.4 & 148 \\
+\bottomrule
+\end{tabular}
+\vspace{2mm}
+\caption*{(b) Ablation study on MATH}
+\end{minipage}
+\caption{\textbf{(a)}: Ablation studies on the GSM8K test set of various components of \emcts{}, including adaptive branching, \prm{}, fast-rollout with \orm{}, state merge, and large number of rollouts. \textbf{(b)}: Ablation studies of the impacts of tool-augmented \orm{} and option-level formulation  on MATH.}
+\label{table:ablation}
+\end{table}
+
+
+% 2) ablation study:
+% search times, each components
+
+
+\begin{table}[h]
+\small
+\centering
+\begin{minipage}{.45\linewidth}
+\centering
+
+    \begin{tabular}{cl|c|c}
+    \toprule
+        \multicolumn{2}{c|}{\texttt{Method}}         & \texttt{Threshold}  & \texttt{Acc}\\
+        % \hline
+        \midrule
+           &   Edit distance	               & $20$ & $86.8$ \\
+           &   Edit distance	             & $50$ & $87.0$\\
+           &  Cosine Similarity	            & $0.7$ & $86.3$\\
+           & Model-based	& N/A	& $86.7$ \\
+        \bottomrule
+    \end{tabular}
+\vspace{2mm}
+\caption*{(a) Ablation on the choice of state merge functions.}
+% \caption{First Table: Ablation study on GSM8K test set.}
+\end{minipage}%
+\begin{minipage}{.55\linewidth}
+\centering
+
+    \begin{tabular}{cl|c}
+    \toprule
+        \multicolumn{2}{c|}{\texttt{\#Trajetory}}         & \texttt{Acc}\\
+        \midrule
+           &   $1$	                & $85.9$ \\
+           &   $4$	           & $86.5$\\
+           &  $8$	       & $86.7$\\
+        \bottomrule
+    \end{tabular}
+\vspace{2mm}
+\caption*{(b) Ablation on the number of trajectories.}
+\end{minipage}
+\caption{\textbf{(a)}: Ablation studies on the choice of heuristic/model-based functions in state merge on GSM8K with base Llama2-70b. The model used in the model-based state merge is Llama-2-70b-chat. \textbf{(b)}: Ablation studies of the number of rollout trajectories in fast-rollout estimation on GSM8K with base Llama2-70b.}
+\label{table:ablation_sm}
+\end{table}
+
+
+\begin{tabular}{cl|c|c}
+\toprule
+    \multicolumn{2}{c|}{\texttt{Method}}         & \texttt{Threshold}  & \texttt{Acc}\\
+    % \hline
+    \midrule
+        &   Edit distance	               & $20$ & $86.8$ \\
+        &   Edit distance	             & $50$ & $87.0$\\
+        &  Cosine Similarity	            & $0.7$ & $86.3$\\
+        & Model-based	& N/A	& $86.7$ \\
+    \bottomrule
+\end{tabular}
+
+
 % \section{Related Work}
 % \label{sec:related_work}
 % \input{related_work}

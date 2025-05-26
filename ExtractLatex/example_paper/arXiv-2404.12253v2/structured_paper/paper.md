@@ -12,7 +12,7 @@ Considering these challenges, the concept of self-correction and self-learning h
 
 To answer this question, we begin with a systematic examination of AlphaGo, identifying three critical aspects for its success: ( <span class="upright"></span> ) The large volume of data, including self-play data. ( <span class="upright"></span> ) The use of tree search, which facilitates the exploration of potential moves through statistical sampling of the large search space. ( <span class="upright"></span> ) Accurate and unambiguous environment feedback; the direct and accurate feedback (win or loss) provided by the game of Go offers a clear and unequivocal learning signal . The integration of MCTS with LLMs for self-improvement has several challenges: ( <span class="upright"></span> ) Limited Data: High-quality annotated data for LLMs is generally scarce. Furthermore, how to construct of synthetic data for LLMs training, similar to AlphaGo’s self-play data, remains unclear. ( <span class="upright"></span> ) Search Efficiency: The vast number of potential token combinations in natural language tasks results in an exponentially large search space, posing a significant challenge to the efficiency of MCTS . ( <span class="upright"></span> ) Imperfect Feedback: In contrast to the clear win/loss feedback in Go, feedback in natural language tasks is often subjective and nuanced, without a straightforward measure of success.
 
-<figure><embed src="./figures/framework_crop.png" id="fig:framework" style="width:90.0%" /><figcaption aria-hidden="true">Imagination-Searching-Criticizing self-improvement loop: Imagination component synthesizes prompts as new learning examples, with MCTS searching better trajectories guided by signals from critics for policy improving.</figcaption></figure>
+<figure><img src="./figures/framework_crop.png" id="fig:framework" style="width:90.0%" / /><figcaption aria-hidden="true">Imagination-Searching-Criticizing self-improvement loop: Imagination component synthesizes prompts as new learning examples, with MCTS searching better trajectories guided by signals from critics for policy improving.</figcaption></figure>
 
 In this paper, we introduce <span class="smallcaps">AlphaLLM</span>, an imagination-searching-criticizing framework designed for the self-improvement of LLMs . <span class="smallcaps">AlphaLLM</span> consists of three key components, as illustrated in Figure <a href="#fig:framework" data-reference-type="ref" data-reference="fig:framework">1</a>. First, an imagination component is designed to synthesize prompts, alleviating the issues of data scarcity. Second, we propose *η*<span class="smallcaps">Mcts</span> tailored for efficient searching in language tasks. Particularly, it has been show that planning at multiple levels of temporal abstraction is critical for RL problems with a long horizon and large action space . As such, we propose formulating the text generation process as options over a Markov Decision Process (MDP) problem, where each option represents the generation of a collection of tokens for a specific subtask, similar to the concept of chains in chain-of-thought prompting. This formulation improves search efficiency by substantially reducing the search depth. Additionally, we propose the use of state merge and adaptive branching factors to further enhance search efficiency by balancing the trade-off between search width and depth. Lastly, since accurate feedback is crucial to the success of MCTS, we introduce a trio of critic models to guide *η*<span class="smallcaps">Mcts</span>, including a value function for estimating expected rewards, a process reward model for assessing node correctness, and an outcome reward model for evaluating the overall trajectory. For complex tasks with which LLMs struggle assessing such as arithmetic computation and code execution, to ensure the accuracy of feedback, we augment the critics with the capacity to make dynamic decisions on which tools to use, when to use them, and how to use them effectively. After *η*<span class="smallcaps">Mcts</span> stage, we collect the trajectory with the largest reward from the critic models as the training examples to improve LLMs.
 
@@ -54,19 +54,25 @@ Let 𝒟<sup>0</sup> = {(**x**<sub>*i*</sub>, **y**<sub>*i*</sub>) ∣�
 
 ## *η*<span class="smallcaps">Mcts</span>
 
+<figure><img src="./figures/emcts.png" id="fig:emcts" / /><figcaption aria-hidden="true">An overview of the four operations of <span class="math inline"><em>η</em></span><span class="smallcaps">Mcts</span>. A node is selected, expanded, simulated with fast rollout policy until a terminal node is reached, then the signals from value function, <code>PRM</code> and <code>ORM</code> are backpropagated.</figcaption></figure>
+
 ### Option-level MCTS
 
-<div class="tabular">
+<div id="tab:option">
 
-c\|c\|c
+| `Search Node`  |                                                                              `Example`                                                                               |    `Termination`     |
+|:--------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------:|
+|  Token-level   |            *y*<sub>0</sub> → *y*<sub>1</sub> → *y*<sub>2</sub> → *y*<sub>3</sub> → *y*<sub>5</sub> → *y*<sub>6</sub> → *y*<sub>7</sub> → *y*<sub>8</sub>             |        token         |
+| Sentence-level |   *y*<sub>0</sub>*y*<sub>1</sub>*y*<sub>2</sub>  → *y*<sub>4</sub>*y*<sub>5</sub>*y*<sub>6</sub>  → *y*<sub>7</sub>*y*<sub>8</sub>*y*<sub>9</sub>*y*<sub>10</sub>    |       new line       |
+|  Option-level  | *y*<sub>0</sub>  → *y*<sub>1</sub>*y*<sub>2</sub>  → *y*<sub>4</sub>*y*<sub>5</sub>*y*<sub>6</sub> *y*<sub>7</sub>*y*<sub>8</sub>*y*<sub>9</sub>  → *y*<sub>10</sub> | termination function |
 
-`Search Node` & `Example` & `Termination` Token-level & *y*<sub>0</sub> → *y*<sub>1</sub> → *y*<sub>2</sub> → *y*<sub>3</sub> → *y*<sub>5</sub> → *y*<sub>6</sub> → *y*<sub>7</sub> → *y*<sub>8</sub> & token Sentence-level & *y*<sub>0</sub>*y*<sub>1</sub>*y*<sub>2</sub>  → *y*<sub>4</sub>*y*<sub>5</sub>*y*<sub>6</sub>  → *y*<sub>7</sub>*y*<sub>8</sub>*y*<sub>9</sub>*y*<sub>10</sub> & new line Option-level & *y*<sub>0</sub>  → *y*<sub>1</sub>*y*<sub>2</sub>  → *y*<sub>4</sub>*y*<sub>5</sub>*y*<sub>6</sub> *y*<sub>7</sub>*y*<sub>8</sub>*y*<sub>9</sub>  → *y*<sub>10</sub>& termination function
+Comparative illustration of token-level, sentence-level, and option-level MCTS search nodes. *y* denotes a token sampled from the policy model. The arrow → represents the transition from one search node to the subsequent node within the search process.
 
 </div>
 
 When applying MCTS to LLMs, it is natural to perform token-level search, where each token is considered as an action . However, the substantial vocabulary size typical of LLMs presents a significant challenge *i.e.,* conducting a deep search in such a vast space becomes increasingly complex as the search space expands exponentially. To mitigate this, some efforts proposed a sentence-level search, treating each sentence or step as a search node . While this method reduces the search space, it might compromise the flexibility and effectiveness of applying MCTS to LLMs, which is particularly true for tasks where subtle variations in token can dramatically impact the outcome, or where a more comprehensive search beyond a sentence is necessary.
 
-Inspired by , we use the term option as a search node and propose option-level MCTS where each option represents a sequence of tokens, which can range from multiple tokens to several sentences. A comparisons of different levels search is listed in Table <a href="#tab:option" data-reference-type="ref" data-reference="tab:option">[tab:option]</a>. Mathematically, an option *o* = ⟨ℐ, *π*, *β*⟩, where ℐ ⊆ 𝒮 is a set of initial states for the option; *π* : 𝒮 × 𝒜 → \[0, 1\] is a policy to generate actions, which in our case is a LLM; and *β* : 𝒮<sup>+</sup> → \[0, 1\] is the termination function. Starting from a state *s*<sub>*t*</sub>, we can choose all the options for which *s*<sub>*t*</sub> ∈ ℐ. Once an option is chosen, the policy *π* will generate actions for several steps until the option terminates according to the termination function *β*. The option-level MCTS consists of stages including selection, expansion, simulation, and backpropagation. The option-level formulation offers more flexibility compared to the sentence-level, as a new line can be treated as a special case of the termination function, as demonstrated in Table <a href="#tab:option" data-reference-type="ref" data-reference="tab:option">[tab:option]</a>. Additional detailed steps of the option-level MCTS can be found in Appendix <a href="#app:option_level_mcts" data-reference-type="ref" data-reference="app:option_level_mcts">7.2</a>.
+Inspired by , we use the term option as a search node and propose option-level MCTS where each option represents a sequence of tokens, which can range from multiple tokens to several sentences. A comparisons of different levels search is listed in Table <a href="#tab:option" data-reference-type="ref" data-reference="tab:option">1</a>. Mathematically, an option *o* = ⟨ℐ, *π*, *β*⟩, where ℐ ⊆ 𝒮 is a set of initial states for the option; *π* : 𝒮 × 𝒜 → \[0, 1\] is a policy to generate actions, which in our case is a LLM; and *β* : 𝒮<sup>+</sup> → \[0, 1\] is the termination function. Starting from a state *s*<sub>*t*</sub>, we can choose all the options for which *s*<sub>*t*</sub> ∈ ℐ. Once an option is chosen, the policy *π* will generate actions for several steps until the option terminates according to the termination function *β*. The option-level MCTS consists of stages including selection, expansion, simulation, and backpropagation. The option-level formulation offers more flexibility compared to the sentence-level, as a new line can be treated as a special case of the termination function, as demonstrated in Table <a href="#tab:option" data-reference-type="ref" data-reference="tab:option">1</a>. Additional detailed steps of the option-level MCTS can be found in Appendix <a href="#app:option_level_mcts" data-reference-type="ref" data-reference="app:option_level_mcts">7.2</a>.
 
 ### Importance-Based Adaptive Branching
 
@@ -135,46 +141,89 @@ The termination function for options can be either be learned or rule-based. In 
 
 ## Results
 
-<div class="table*">
+<div id="table:main_results">
 
-<div class="tabular">
+| Model                                   |               `Decoding`               | `#Annotation` | `RN` | `FA` | `SYN` | `GSM8K` | `MATH` |
+|:----------------------------------------|:--------------------------------------:|:-------------:|:----:|:----:|:-----:|:-------:|:------:|
+| GPT-3.5                                 |                Sampling                |      \-       |  \-  |  \-  |  \-   |  80.8   |  35.5  |
+| GPT-4                                   |                Sampling                |      \-       |  \-  |  \-  |  \-   |  92.0   |  42.5  |
+| GPT-4 (PAL)                             |                Sampling                |      \-       |  \-  |  \-  |  \-   |  94.2   |  51.8  |
+| Gemini 1.0 Pro                          |                Sampling                |      \-       |  \-  |  \-  |  \-   |  77.9   |  32.6  |
+| Gemini 1.0 Ultra                        |                Sampling                |      \-       |  \-  |  \-  |  \-   |  88.9   |  53.2  |
+| Gemini 1.5 Pro                          |                Sampling                |      \-       |  \-  |  \-  |  \-   |  92.5   |  58.5  |
+| Claude-2                                |                Sampling                |      \-       |  \-  |  \-  |  \-   |  85.2   |  32.5  |
+| PaLM-2 540B                             |                Sampling                |      \-       |  \-  |  \-  |  \-   |  80.7   |  34.3  |
+| Llama-2-70b                             |                 Greedy                 |       0       |  ×   |  ×   |   ×   |  57.8   |   \-   |
+| Llama-2-70b SFT                         |                 Greedy                 |     7.5k      |  ✓   |  ✓   |   ×   |  69.3   |   \-   |
+| WizardMath-70B-V1.0                     |                 Greedy                 |      96k      |  ✓   |  ✓   |   ×   |   \-    |  20.7  |
+| <span class="smallcaps">AlphaLLM</span> |                 Greedy                 |   7.5k/7.5k   |  ×   |  ✓   |   ✓   |  73.7   |  23.6  |
+| <span class="smallcaps">AlphaLLM</span> | *η*<span class="smallcaps">Mcts</span> |   7.5k/7.5k   |  ×   |  ✓   |   ×   |  88.9   |  48.7  |
+| <span class="smallcaps">AlphaLLM</span> | *η*<span class="smallcaps">Mcts</span> |   7.5k/7.5k   |  ×   |  ✓   |   ✓   |  92.0   |  51.0  |
 
-lccccc\|cc Model & `Decoding` & `#Annotation` & `RN` & `FA` & `SYN` & `GSM8K` & `MATH` GPT-3.5  & Sampling & - & - & - & - & 80.8 & 35.5 GPT-4  & Sampling & - & - & - & - & 92.0 & 42.5 GPT-4 (PAL)  & Sampling & - & - & - & - & 94.2 & 51.8 Gemini 1.0 Pro  & Sampling & - & - & - & - & 77.9 & 32.6 Gemini 1.0 Ultra  & Sampling & - & - & - & - & 88.9 & 53.2 Gemini 1.5 Pro  & Sampling & - & - & - & - & 92.5 & 58.5 Claude-2  & Sampling & - & - & - & - & 85.2 & 32.5 PaLM-2 540B  & Sampling & - & - & - & - & 80.7 & 34.3 Llama-2-70b & Greedy & 0 & × & × & × & 57.8 & - Llama-2-70b SFT & Greedy & 7.5k & ✓ & ✓ & × & 69.3 & - WizardMath-70B-V1.0 & Greedy & 96k & ✓ & ✓ & × & - & 20.7 <span class="smallcaps">AlphaLLM</span> & Greedy & 7.5k/7.5k & × & ✓ & ✓ & 73.7 & 23.6 <span class="smallcaps">AlphaLLM</span> & *η*<span class="smallcaps">Mcts</span> & 7.5k/7.5k & × & ✓ & × & 88.9 & 48.7 <span class="smallcaps">AlphaLLM</span> & *η*<span class="smallcaps">Mcts</span> & 7.5k/7.5k & × & ✓ & ✓ & 92.0 & 51.0
+Comparison results of <span class="smallcaps">AlphaLLM</span> on the GSM8K and MATH datasets. `#Annotation` indicates the quantity of labeled data employed for fine-tuning policy or training critic models. The annotation used for training are noted as `RN` for rationales and `FA` for final answers. `SYN` means models trained on synthetic prompts, where trajectories were generated using *η*<span class="smallcaps">Mcts</span>.
 
 </div>
 
-</div>
-
-Table <a href="#table:main_results" data-reference-type="ref" data-reference="table:main_results">[table:main_results]</a> lists the performance comparisons of various methods on the GSM8K and MATH datasets. Our findings reveal that <span class="smallcaps">AlphaLLM</span>, based on Llama-2-70B and WizardMath-70B-V1.0, utilizes only final answer annotations and continues to improve through training on responses from *η*<span class="smallcaps">Mcts</span>. This comparison underscores the efficacy and broad applicability of our imagination-searching-criticizing self-improving framework. Moreover, when our model is augmented with *η*<span class="smallcaps">Mcts</span> decoding strategy, its performance markedly improves, achieving scores of 88.9 and 48.7 on the GSM8K and MATH datasets, respectively. Following two iterations of self-improvement using synthetic prompts, <span class="smallcaps">AlphaLLM</span> demonstrates performance comparable to that of GPT-4. This suggests a viable approach to improving LLMs’ capabilities in complex problem-solving tasks in a self-improving fashion, leveraging a minimal amount of labeled data. We also analyze the performance of various search methods in Appendix <a href="#app:search_comparison" data-reference-type="ref" data-reference="app:search_comparison">7.8</a>.
+Table <a href="#table:main_results" data-reference-type="ref" data-reference="table:main_results">2</a> lists the performance comparisons of various methods on the GSM8K and MATH datasets. Our findings reveal that <span class="smallcaps">AlphaLLM</span>, based on Llama-2-70B and WizardMath-70B-V1.0, utilizes only final answer annotations and continues to improve through training on responses from *η*<span class="smallcaps">Mcts</span>. This comparison underscores the efficacy and broad applicability of our imagination-searching-criticizing self-improving framework. Moreover, when our model is augmented with *η*<span class="smallcaps">Mcts</span> decoding strategy, its performance markedly improves, achieving scores of 88.9 and 48.7 on the GSM8K and MATH datasets, respectively. Following two iterations of self-improvement using synthetic prompts, <span class="smallcaps">AlphaLLM</span> demonstrates performance comparable to that of GPT-4. This suggests a viable approach to improving LLMs’ capabilities in complex problem-solving tasks in a self-improving fashion, leveraging a minimal amount of labeled data. We also analyze the performance of various search methods in Appendix <a href="#app:search_comparison" data-reference-type="ref" data-reference="app:search_comparison">7.8</a>.
 
 ## Ablation Study
 
-<div class="tabular">
+<div id="table:search_comparison">
 
-ccccc\|c `AB` & `PRM` & `FR`-`ORM` & `SM` & `LG-#Rollout` & Acc × & × & × & × & × & 79.5  
-✓ & × & × & × & × & 84.9  
-✓ & ✓ & × & × & × & 85.9  
-✓ & ✓ & ✓ & × & × & 86.5  
-✓ & ✓ & ✓ & ✓ & × & 87.0  
-✓ & ✓ & ✓ & ✓ & ✓ & 88.9  
+|                                        |             |             |            |             |            |
+|:---------------------------------------|:-----------:|:-----------:|:----------:|:-----------:|:----------:|
+| Method                                 | \#Responses |    GSM8K    |            |    MATH     |            |
+|                                        |             | `#Rollouts` | `Accuracy` | `#Rollouts` | `Accuracy` |
+| Greedy                                 |      1      |     4.6     |    57.8    |     9.9     |    20.7    |
+| Self-consistency                       |     10      |     46      |    67.4    |     99      |    22.5    |
+|                                        |     30      |     137     |    74.2    |     299     |    27.3    |
+|                                        |     50      |     229     |    75.4    |     499     |    28.8    |
+| Re-ranking                             |     10      |     46      |    80.8    |     99      |    34.1    |
+|                                        |     30      |     137     |    86.3    |     299     |    39.0    |
+|                                        |     50      |     229     |    87.7    |     499     |    42.0    |
+| *η*<span class="smallcaps">Mcts</span> |     \-      |     55      |    87.0    |     223     |    45.4    |
+|                                        |     \-      |     230     |    88.9    |     341     |    48.7    |
+
+Comparative results of various searching method on GSM8K and MATH.
 
 </div>
 
-<div class="tabular">
+<figure><img src="./figures/mcts_ablation.png" id="fig:search_ablation" style="width:75.0%" alt="Ablation study on the GSM8K test set of various enhancements to the proposed efficient MCTS, including PRM, fastrollout with ORM, state merging, and increasing the number of rollouts." /><figcaption aria-hidden="true">Ablation study on the GSM8K test set of various enhancements to the proposed efficient MCTS, including <code>PRM</code>, fastrollout with <code>ORM</code>, state merging, and increasing the number of rollouts.</figcaption></figure>
 
-cc\|cc `TA`-`ORM` & `Option` & `Acc` & `#Rollout` × & × & 38.8 & 201  
-✓ & × & 44.1 & 198  
-✓ & ✓ & 45.4 & 148  
+<div id="table:ablation">
+
+| `AB` | `PRM` | `FR`-`ORM` | `SM` | `LG-#Rollout` | Acc  |
+|:----:|:-----:|:----------:|:----:|:-------------:|:----:|
+|  ×   |   ×   |     ×      |  ×   |       ×       | 79.5 |
+|  ✓   |   ×   |     ×      |  ×   |       ×       | 84.9 |
+|  ✓   |   ✓   |     ×      |  ×   |       ×       | 85.9 |
+|  ✓   |   ✓   |     ✓      |  ×   |       ×       | 86.5 |
+|  ✓   |   ✓   |     ✓      |  ✓   |       ×       | 87.0 |
+|  ✓   |   ✓   |     ✓      |  ✓   |       ✓       | 88.9 |
+
+**(a)**: Ablation studies on the GSM8K test set of various components of *η*<span class="smallcaps">Mcts</span>, including adaptive branching, `PRM`, fast-rollout with `ORM`, state merge, and large number of rollouts. **(b)**: Ablation studies of the impacts of tool-augmented `ORM` and option-level formulation on MATH.
 
 </div>
 
-We assess the effectiveness of each component in <span class="smallcaps">AlphaLLM</span> and report the results on GSM8K in Table <a href="#table:ablation" data-reference-type="ref" data-reference="table:ablation">[table:ablation]</a>(a). Vanilla MCTS, configured with only the value function and a fixed number of children per node, achieves an accuracy of 79.5%. This serves as a reference point for evaluating the incremental benefits introduced by each additional component. The use of adaptive branching increae the accuracy to 84.9%. The addition of `PRM` improves the accuracy modestly to 85.9%, showing the effectivenss of process supervision for searching. A more significant improvement is observed with the introduction of `ORM` with fast rollout, which boosts the accuracy to 86.5%. Integrating state merging results in a further increase in accuracy, reaching 87.0%. Finally the combined of increasing the number of rollouts with the other components yields the best performance on this task.
+<div id="table:ablation">
 
-Table <a href="#table:ablation" data-reference-type="ref" data-reference="table:ablation">[table:ablation]</a>(b) presents the ablation study of option formulation and the tool-augmented critic on the MATH dataset. Our proposed *η*<span class="smallcaps">Mcts</span> achieves an accuracy of 45.4 with 148 rollouts. When options are excluded, reverting to essentially sentence-level MCTS, the performance decreases to 44.1 with a noticeable increase in the number of rollouts to 198. This demonstrates that option formulation introduces enhanced flexibility to MCTS, enabling better performance with fewer search efforts. Furthermore, the most significant decrease in performance is observed when only intrinsic knowledge is utilized for `ORM`, which drops to an accuracy of 38.8. This suggests that the absence of an external tool critically impedes the `ORM`’s capability to effectively assess challenging math problems.
+| `TA`-`ORM` | `Option` | `Acc` | `#Rollout` |
+|:----------:|:--------:|:-----:|:----------:|
+|     ×      |    ×     | 38.8  |    201     |
+|     ✓      |    ×     | 44.1  |    198     |
+|     ✓      |    ✓     | 45.4  |    148     |
+
+**(a)**: Ablation studies on the GSM8K test set of various components of *η*<span class="smallcaps">Mcts</span>, including adaptive branching, `PRM`, fast-rollout with `ORM`, state merge, and large number of rollouts. **(b)**: Ablation studies of the impacts of tool-augmented `ORM` and option-level formulation on MATH.
+
+</div>
+
+We assess the effectiveness of each component in <span class="smallcaps">AlphaLLM</span> and report the results on GSM8K in Table <a href="#table:ablation" data-reference-type="ref" data-reference="table:ablation">5</a>(a). Vanilla MCTS, configured with only the value function and a fixed number of children per node, achieves an accuracy of 79.5%. This serves as a reference point for evaluating the incremental benefits introduced by each additional component. The use of adaptive branching increae the accuracy to 84.9%. The addition of `PRM` improves the accuracy modestly to 85.9%, showing the effectivenss of process supervision for searching. A more significant improvement is observed with the introduction of `ORM` with fast rollout, which boosts the accuracy to 86.5%. Integrating state merging results in a further increase in accuracy, reaching 87.0%. Finally the combined of increasing the number of rollouts with the other components yields the best performance on this task.
+
+Table <a href="#table:ablation" data-reference-type="ref" data-reference="table:ablation">5</a>(b) presents the ablation study of option formulation and the tool-augmented critic on the MATH dataset. Our proposed *η*<span class="smallcaps">Mcts</span> achieves an accuracy of 45.4 with 148 rollouts. When options are excluded, reverting to essentially sentence-level MCTS, the performance decreases to 44.1 with a noticeable increase in the number of rollouts to 198. This demonstrates that option formulation introduces enhanced flexibility to MCTS, enabling better performance with fewer search efforts. Furthermore, the most significant decrease in performance is observed when only intrinsic knowledge is utilized for `ORM`, which drops to an accuracy of 38.8. This suggests that the absence of an external tool critically impedes the `ORM`’s capability to effectively assess challenging math problems.
 
 <figure><img src="./figures/model_self_improving_n_rounds_results_v2.png" id="fig:self_improving_ablations" style="width:90.0%" alt="Empirical analysis on GSM8K of different self-improving data collection methods and number of iterations. Models are evaluated with greedy decoding, \etaMcts with small #rollout and large #rollout. " /><figcaption aria-hidden="true">Empirical analysis on GSM8K of different self-improving data collection methods and number of iterations. Models are evaluated with greedy decoding, <span class="math inline"><em>η</em></span><span class="smallcaps">Mcts</span> with small #rollout and large #rollout. </figcaption></figure>
 
-Figure <a href="#fig:self_improving_ablations" data-reference-type="ref" data-reference="fig:self_improving_ablations">2</a> depicts a comparative results on GSM8K of two rounds of self-improving trained on trajectories collected using reranking and *η*<span class="smallcaps">Mcts</span>. We report the performance of greedy decoding, *η*<span class="smallcaps">Mcts</span> with a relatively small number of rollouts (50-60), and *η*<span class="smallcaps">Mcts</span> with a larger number of rollouts (200-300) for each model. We observe that 1) Models trained on the trajectories from reranking or *η*<span class="smallcaps">Mcts</span> outperform the initial policy by a significant margin. In addition, the performance can be iteratively improved with training suggesting that self-improving has the potential to achieve continual performance gain. 2) While both reranking and *η*<span class="smallcaps">Mcts</span> can generate high-quality trajectories for self-improving , *η*<span class="smallcaps">Mcts</span> is performant with high efficiency and better accuracy. Models trained on trajectories generated by it not only exceed the performance of those trained on reranked trajectories but also, when decoded with *η*<span class="smallcaps">Mcts</span>, demonstrate on par performance with GPT-4, revealing that <span class="smallcaps">AlphaLLM</span> is an effective self-improving framework.
+Figure <a href="#fig:self_improving_ablations" data-reference-type="ref" data-reference="fig:self_improving_ablations">4</a> depicts a comparative results on GSM8K of two rounds of self-improving trained on trajectories collected using reranking and *η*<span class="smallcaps">Mcts</span>. We report the performance of greedy decoding, *η*<span class="smallcaps">Mcts</span> with a relatively small number of rollouts (50-60), and *η*<span class="smallcaps">Mcts</span> with a larger number of rollouts (200-300) for each model. We observe that 1) Models trained on the trajectories from reranking or *η*<span class="smallcaps">Mcts</span> outperform the initial policy by a significant margin. In addition, the performance can be iteratively improved with training suggesting that self-improving has the potential to achieve continual performance gain. 2) While both reranking and *η*<span class="smallcaps">Mcts</span> can generate high-quality trajectories for self-improving , *η*<span class="smallcaps">Mcts</span> is performant with high efficiency and better accuracy. Models trained on trajectories generated by it not only exceed the performance of those trained on reranked trajectories but also, when decoded with *η*<span class="smallcaps">Mcts</span>, demonstrate on par performance with GPT-4, revealing that <span class="smallcaps">AlphaLLM</span> is an effective self-improving framework.
 
 <div id="table:ablation_sm">
 
@@ -201,7 +250,9 @@ Figure <a href="#fig:self_improving_ablations" data-reference-type="ref" data-r
 
 </div>
 
-We further analyze the impact of different hyperparameters and design choices for each component. Table <a href="#table:ablation_sm" data-reference-type="ref" data-reference="table:ablation_sm">2</a>(a) shows that varying heuristic functions (with hyperparameters) for state merge has limited impact on performance. Table <a href="#table:ablation_sm" data-reference-type="ref" data-reference="table:ablation_sm">2</a>(b) shows that, as the number of fast-rollouts increases, there is a corresponding improvement in performance. This is due to the reduction in the variance of the estimates. We used *n* = 4 in our experiments for better trade-off between performance and efficiency. Additional ablations on the choice of fast-rollout models, are provided in Appendix <a href="#app:add_ablations" data-reference-type="ref" data-reference="app:add_ablations">7.7</a>.
+We further analyze the impact of different hyperparameters and design choices for each component. Table <a href="#table:ablation_sm" data-reference-type="ref" data-reference="table:ablation_sm">7</a>(a) shows that varying heuristic functions (with hyperparameters) for state merge has limited impact on performance. Table <a href="#table:ablation_sm" data-reference-type="ref" data-reference="table:ablation_sm">7</a>(b) shows that, as the number of fast-rollouts increases, there is a corresponding improvement in performance. This is due to the reduction in the variance of the estimates. We used *n* = 4 in our experiments for better trade-off between performance and efficiency. Additional ablations on the choice of fast-rollout models, are provided in Appendix <a href="#app:add_ablations" data-reference-type="ref" data-reference="app:add_ablations">7.7</a>.
+
+Despite the promising results demonstrated by <span class="smallcaps">AlphaLLM</span> in this study, there are several limitations that requires further exploration. ( <span class="upright"></span> ) Our current implementation employs relatively simple methods for generating synthetic prompts. Future iterations of <span class="smallcaps">AlphaLLM</span> should explore advanced techniques, such as Self-Instruct, to create both diverse and model capability-awared prompts. ( <span class="upright"></span> ) Although <span class="smallcaps">AlphaLLM</span> demonstrates improvements over base models, its performance in greedy sampling is substantially inferior to that observed when decoded with *η*<span class="smallcaps">Mcts</span>. This indicates that the full potential of MCTS for self-improvement in LLMs has not yet been fully realized. Two potential factors contributing to this issue have been identified: a) the self-improvement loop may not be leveraging sufficient data; and b) the base model may be limited in its capacity for rapid learning. Addressing these concerns could lead to more significant improvemens. ( <span class="upright"></span> ) In our existing framework, the critic models remain static. We will explore mechanisms to continually update critic models to adapt to new policy models. This will help ensure the discriminator-generator gap and improve the overall training dynamics. ( <span class="upright"></span> ) The evaluation of <span class="smallcaps">AlphaLLM</span> has been limited to mathematical reasoning tasks. To verify the generalizability and broader applicability of the framework, future research will need to extend its application to other domains.
 
 # Conclusion
 
@@ -361,9 +412,7 @@ The algorithm is shown in Algorithm <a href="#algo:self_improving" data-referen
 
 ## Option-level MCTS
 
-<figure><embed src="./figures/emcts.png" id="fig:emcts" /><figcaption aria-hidden="true">An overview of the four operations of <span class="math inline"><em>η</em></span><span class="smallcaps">Mcts</span>. A node is selected, expanded, simulated with fast rollout policy until a terminal node is reached, then the signals from value function, <code>PRM</code> and <code>ORM</code> are backpropagated.</figcaption></figure>
-
-As illustrated in Figure <a href="#fig:emcts" data-reference-type="ref" data-reference="fig:emcts">3</a>, option-level MCTS consists of the following operations:
+As illustrated in Figure <a href="#fig:emcts" data-reference-type="ref" data-reference="fig:emcts">2</a>, option-level MCTS consists of the following operations:
 
 -   **Selection** Starting from the root node, we iteratively select the child node based on Equation <a href="#eqs:ucb" data-reference-type="ref" data-reference="eqs:ucb">[eqs:ucb]</a>.
 
@@ -497,24 +546,22 @@ A chat between a curious user and an artificial intelligence assistant.n The ass
 
 ## MCTS Details
 
-We set the MCTS parameters in Table <a href="#tab:search_param" data-reference-type="ref" data-reference="tab:search_param">[tab:search_param]</a>.
+We set the MCTS parameters in Table <a href="#tab:search_param" data-reference-type="ref" data-reference="tab:search_param">8</a>.
 
-<div class="table*">
+<div id="tab:search_param">
 
-<div class="tabular">
+|                                         |     |         |         |         |         |
+|:----------------------------------------|:---:|:-------:|:-------:|:-------:|:-------:|
+| Method                                  |     |  GSM8K  |         |  MATH   |         |
+|                                         |     | `Small` | `Large` | `Small` | `Large` |
+| *c*                                     |     |   1.0   |   1.5   |   1.0   |   1.0   |
+| *α*                                     |     |   1.0   |   1.0   |   1.0   |   1.0   |
+| *c*<sub>max</sub>(0)                    |     |   60    |   60    |   60    |   60    |
+| *c*<sub>max</sub>(*t*) where *t* &gt; 0 |     |   10    |   10    |   10    |   10    |
+| *c*<sub>min</sub>(0)                    |     |   10    |   40    |   10    |   20    |
+| *c*<sub>min</sub>(*t*) where *t* &gt; 0 |     |    2    |    2    |    3    |    3    |
 
-lc\|cc\|cc && & (lr)3-4 (lr)5-6
-
-& & `Small` & `Large` & `Small` & `Large`
-
-*c* && 1.0 & 1.5 & 1.0 & 1.0  
-*α* && 1.0 & 1.0 & 1.0 & 1.0  
-*c*<sub>max</sub>(0) && 60 & 60 & 60 & 60  
-*c*<sub>max</sub>(*t*) where *t* &gt; 0 && 10 & 10 & 10 & 10  
-*c*<sub>min</sub>(0) && 10 & 40 & 10 & 20  
-*c*<sub>min</sub>(*t*) where *t* &gt; 0 && 2 & 2 & 3 & 3  
-
-</div>
+Parameters for MCTS. The Small/Large means small \#rollout and small \#rollout
 
 </div>
 
@@ -522,7 +569,7 @@ lc\|cc\|cc && & (lr)3-4 (lr)5-6
 
 #### Fast-rollout model
 
-Using Llama-2-70b instead of Abel-7B-002 improves performance by reducing bias from a smaller model, but Abel-002-7B is faster with similar computational resources due to higher concurrency and quicker processing. The details can be found in Table <a href="#table:ablation_fr" data-reference-type="ref" data-reference="table:ablation_fr">3</a>.
+Using Llama-2-70b instead of Abel-7B-002 improves performance by reducing bias from a smaller model, but Abel-002-7B is faster with similar computational resources due to higher concurrency and quicker processing. The details can be found in Table <a href="#table:ablation_fr" data-reference-type="ref" data-reference="table:ablation_fr">9</a>.
 
 <div id="table:ablation_fr">
 
@@ -537,29 +584,7 @@ Ablation study over different fast-rollout models on GSM8K.
 
 ## Search Comparison
 
-<div class="table*">
-
-<div class="tabular">
-
-lc\|cc\|cc & & & (lr)3-4 (lr)5-6
-
-& & `#Rollouts` & `Accuracy` & `#Rollouts` & `Accuracy`
-
-Greedy & 1 & 4.6 & 57.8 & 9.9 & 20.7  
-& 10 & 46 & 67.4 & 99 & 22.5  
-& 30 & 137 & 74.2 & 299 & 27.3  
-& 50 & 229 & 75.4 & 499 & 28.8  
-& 10 & 46 & 80.8 & 99 & 34.1  
-& 30 & 137 & 86.3 & 299 & 39.0  
-& 50 & 229 & 87.7 & 499 & 42.0  
-& - & 55 & 87.0 & 223 & 45.4  
-& - & 230 & 88.9 & 341 & 48.7  
-
-</div>
-
-</div>
-
-Table <a href="#table:search_comparison" data-reference-type="ref" data-reference="table:search_comparison">[table:search_comparison]</a> presents the performance of various methods applied to different number of responses, from 10 to 50. Our analysis confirms several key findings: 1) Reranking utilizing `ORM` consistently outperforms self-consistency techniques, indicating that `ORM` is capable of generating meaningful signals for searching. 2) *η*<span class="smallcaps">Mcts</span> demonstrates superior performance while requiring significantly fewer rollouts. For instance, on the MATH dataset, *η*<span class="smallcaps">Mcts</span> achieves better results with only half the number of rollouts compared to reranking. Additionally, we evaluated the performance of BFS on the GSM8K only, where it requires 87.9 rollouts to achieve a score of 80.6. These results suggest that our design of an efficient MCTS in <span class="smallcaps">AlphaLLM</span> can serve as an effective policy improvement operation, enabling the search for high-quality trajectories with reduced computational cost.
+Table <a href="#table:search_comparison" data-reference-type="ref" data-reference="table:search_comparison">3</a> presents the performance of various methods applied to different number of responses, from 10 to 50. Our analysis confirms several key findings: 1) Reranking utilizing `ORM` consistently outperforms self-consistency techniques, indicating that `ORM` is capable of generating meaningful signals for searching. 2) *η*<span class="smallcaps">Mcts</span> demonstrates superior performance while requiring significantly fewer rollouts. For instance, on the MATH dataset, *η*<span class="smallcaps">Mcts</span> achieves better results with only half the number of rollouts compared to reranking. Additionally, we evaluated the performance of BFS on the GSM8K only, where it requires 87.9 rollouts to achieve a score of 80.6. These results suggest that our design of an efficient MCTS in <span class="smallcaps">AlphaLLM</span> can serve as an effective policy improvement operation, enabling the search for high-quality trajectories with reduced computational cost.
 
 ## Rollout Example
 
@@ -597,7 +622,7 @@ The sum of Sandy’s age now and 2 years is 36. The sum of Kim’s age now and t
 
 ## Critic Performance
 
-We evaluated the performance of the value function and `PRM` on the GSM8K test set. Table <a href="#table:ablation_critic" data-reference-type="ref" data-reference="table:ablation_critic">4</a> presents a comparison of these models in terms of precision, recall, and Expected Calibration Error (ECE). Results indicate that the value function achieves higher precision and better calibration, while `PRM` demonstrates a superior recall.
+We evaluated the performance of the value function and `PRM` on the GSM8K test set. Table <a href="#table:ablation_critic" data-reference-type="ref" data-reference="table:ablation_critic">10</a> presents a comparison of these models in terms of precision, recall, and Expected Calibration Error (ECE). Results indicate that the value function achieves higher precision and better calibration, while `PRM` demonstrates a superior recall.
 
 <div id="table:ablation_critic">
 
@@ -615,8 +640,6 @@ Performance comparison of the Value Function model and `PRM` on the GSM8K test s
 Our experiments were conducted using NVIDIA A100 40GB GPUs. Serving models based on Llama-2-70B or WizardMath-70B required 4 GPUs, while serving Llama-2-7B and Abel-002-7B was possible on a single GPU. Training the 70B models required 64 GPUs.
 
 ## Limitations and Future Work
-
-Despite the promising results demonstrated by <span class="smallcaps">AlphaLLM</span> in this study, there are several limitations that requires further exploration. ( <span class="upright"></span> ) Our current implementation employs relatively simple methods for generating synthetic prompts. Future iterations of <span class="smallcaps">AlphaLLM</span> should explore advanced techniques, such as Self-Instruct, to create both diverse and model capability-awared prompts. ( <span class="upright"></span> ) Although <span class="smallcaps">AlphaLLM</span> demonstrates improvements over base models, its performance in greedy sampling is substantially inferior to that observed when decoded with *η*<span class="smallcaps">Mcts</span>. This indicates that the full potential of MCTS for self-improvement in LLMs has not yet been fully realized. Two potential factors contributing to this issue have been identified: a) the self-improvement loop may not be leveraging sufficient data; and b) the base model may be limited in its capacity for rapid learning. Addressing these concerns could lead to more significant improvemens. ( <span class="upright"></span> ) In our existing framework, the critic models remain static. We will explore mechanisms to continually update critic models to adapt to new policy models. This will help ensure the discriminator-generator gap and improve the overall training dynamics. ( <span class="upright"></span> ) The evaluation of <span class="smallcaps">AlphaLLM</span> has been limited to mathematical reasoning tasks. To verify the generalizability and broader applicability of the framework, future research will need to extend its application to other domains.
 
 # NeurIPS Paper Checklist
 

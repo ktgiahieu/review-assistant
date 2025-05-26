@@ -66,6 +66,65 @@ Performance comparison of the Value Function model and on the GSM8K test set.
 
 </div>
 
+<div id="table:ablation">
+
+| `AB` |     | `FR`- | `SM` | `LG-#Rollout` | Acc  |
+|:----:|:---:|:-----:|:----:|:-------------:|:----:|
+|  ×   |  ×  |   ×   |  ×   |       ×       | 79.5 |
+|  ✓   |  ×  |   ×   |  ×   |       ×       | 84.9 |
+|  ✓   |  ✓  |   ×   |  ×   |       ×       | 85.9 |
+|  ✓   |  ✓  |   ✓   |  ×   |       ×       | 86.5 |
+|  ✓   |  ✓  |   ✓   |  ✓   |       ×       | 87.0 |
+|  ✓   |  ✓  |   ✓   |  ✓   |       ✓       | 88.9 |
+
+**(a)**: Ablation studies on the GSM8K test set of various components of , including adaptive branching, , fast-rollout with , state merge, and large number of rollouts. **(b)**: Ablation studies of the impacts of tool-augmented and option-level formulation on MATH.
+
+</div>
+
+<div id="table:ablation">
+
+| `TA`- | `Option` | `Acc` | `#Rollout` |
+|:-----:|:--------:|:-----:|:----------:|
+|   ×   |    ×     | 38.8  |    201     |
+|   ✓   |    ×     | 44.1  |    198     |
+|   ✓   |    ✓     | 45.4  |    148     |
+
+**(a)**: Ablation studies on the GSM8K test set of various components of , including adaptive branching, , fast-rollout with , state merge, and large number of rollouts. **(b)**: Ablation studies of the impacts of tool-augmented and option-level formulation on MATH.
+
+</div>
+
+<div id="table:ablation_sm">
+
+| `Method` |                   | `Threshold` | `Acc` |
+|:--------:|:------------------|:-----------:|:-----:|
+|          | Edit distance     |     20      | 86.8  |
+|          | Edit distance     |     50      | 87.0  |
+|          | Cosine Similarity |     0.7     | 86.3  |
+|          | Model-based       |     N/A     | 86.7  |
+
+**(a)**: Ablation studies on the choice of heuristic/model-based functions in state merge on GSM8K with base Llama2-70b. The model used in the model-based state merge is Llama-2-70b-chat. **(b)**: Ablation studies of the number of rollout trajectories in fast-rollout estimation on GSM8K with base Llama2-70b.
+
+</div>
+
+<div id="table:ablation_sm">
+
+| `#Trajetory` |     | `Acc` |
+|:------------:|:----|:-----:|
+|              | 1   | 85.9  |
+|              | 4   | 86.5  |
+|              | 8   | 86.7  |
+
+**(a)**: Ablation studies on the choice of heuristic/model-based functions in state merge on GSM8K with base Llama2-70b. The model used in the model-based state merge is Llama-2-70b-chat. **(b)**: Ablation studies of the number of rollout trajectories in fast-rollout estimation on GSM8K with base Llama2-70b.
+
+</div>
+
+| `Method` |                   | `Threshold` | `Acc` |
+|:--------:|:------------------|:-----------:|:-----:|
+|          | Edit distance     |     20      | 86.8  |
+|          | Edit distance     |     50      | 87.0  |
+|          | Cosine Similarity |     0.7     | 86.3  |
+|          | Model-based       |     N/A     | 86.7  |
+
 # References
 
 <div class="thebibliography">
