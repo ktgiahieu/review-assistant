@@ -152,6 +152,84 @@ Despite the impressive capabilities of Large Language Models (LLMs) on various t
 \label{sec:intro}
 Hello
 
+\subsection{Some Section}
+Some text before the wrapped table.
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam convallis libero in consequat.
+
+\begin{table}[htb]
+\label{tab:option_critic_example}
+\centering % Often good to center the table content
+\begin{tabular}{lcc}
+\toprule
+Method & \texttt{Acc} & \texttt{\#Rollout} \\
+\midrule
+emcts & 45.4 & 148 \\
+w/o option & 44.1 & 198 \\
+orm w/o tool  & 38.8 & 201 \\
+\bottomrule
+\end{tabular}
+\caption{Comparison results of options formulation on MATH (example).}
+\end{table}
+
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{lllll}
+    \toprule
+         Task & $\pi^\text{strong}_\text{base}$ & $\pi^\text{weak}_\text{base}$ & $\pi^\text{strong}$ & High-quality demonstrations \\
+         \midrule
+         Code  & Deepseek-7B-Coder & Pythia-1B & $\pi^\text{strong}_\text{base}$, SFT on GPT-4 T=1 & GPT-4 T=0 \\
+         MATH & Deepseek-7B-Math & Pythia-1B & $\pi^\text{strong}_\text{base}$ & GPT-4 T=0 \\
+         Critique & Deepseek-7B-Coder & Pythia-1B & $\pi^\text{strong}_\text{base}$, SFT + Iterated DPO & Reference critiques \\
+         MMLU & Mistral-7B & Pythia-7B & Ground-truth labels & Ground-truth labels \\ \bottomrule
+    \end{tabular}
+    \vspace{2mm}
+    \caption{
+        Summary of the models and policies used for each task. We
+        study the sensitivity of the results to these choices in Appendix~\ref{sec:invariance}. 
+        We rely on pre-trained models from the Deepseek~\citep{bi2024deepseek, shao2024deepseekmath} and Pythia~\citep{biderman2023pythia} families, as well as Mistral-7B \citep{jiang2023mistral} and GPT-4 \citep{openai2023gpt}.
+    }
+    \label{tab:demos}
+\end{table}
+
+\begin{table}[!htb]
+\footnotesize
+    \centering
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{c|c|c}
+
+    \toprule
+    \texttt{Search Node} & \texttt{Example} & \texttt{Termination}  \\
+    \midrule
+    Token-level & $y_0 \rightarrow y_1 \rightarrow y_2 \rightarrow y_3 \rightarrow y_5 \rightarrow y_6 \rightarrow y_7 \rightarrow y_8$ &  token\\
+    \midrule
+    Sentence-level & $y_0 y_1 y_2$ \enterkey{}  $\rightarrow y_4 y_5 y_6$ \enterkey{} $\rightarrow y_7 y_8 y_9 y_{10}$ & new line\\
+    \midrule
+    Option-level & $y_0$  $\rightarrow y_1 y_2$ \enterkey{} $\rightarrow y_4 y_5 y_6$ \enterkey{} $y_7 y_8 y_9$ \enterkey{} $\rightarrow y_{10}$& termination function\\
+    \bottomrule
+    \end{tabular}
+    \vspace{2mm}
+    \caption{Comparative illustration of token-level, sentence-level, and option-level MCTS search nodes. $y$ denotes a token sampled from the policy model. The arrow $\rightarrow$ represents the transition from one search node to the subsequent node within the search process.}
+    \label{tab:option}
+\end{table}
+
+
+Some text after the wrapped table. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+
+\subsection{Another Section with a standard table}
+\begin{table}[!htb]
+    \centering
+    \begin{tabular}{l|c|c|c}
+        Model               & Precision & Recall & ECE \\
+        \hline
+        Value Function      & 0.82      & 0.79   & 0.032 \\
+        prm              & 0.62      & 0.90   & 0.375 \\
+        \hline
+    \end{tabular}
+    \vspace{4mm}
+    \caption{Performance comparison of the Value Function model and \prm{} on the GSM8K test set.}
+    \label{table:ablation_critic_example}
+\end{table}
 % \section{Related Work}
 % \label{sec:related_work}
 % \input{related_work}

@@ -8,13 +8,43 @@ import tempfile # For creating temporary files
 from pathlib import Path
 import argparse
 import sys
-import shutil # For copying files
+import shutil # For copying files and checking for executables (shutil.which)
 import urllib.parse # For decoding URL-encoded paths in Markdown
-import requests # For Semantic Scholar API
-import time     # For politely pausing between API calls
+import requests # For Semantic Scholar & OpenAlex APIs
+import time      # For politely pausing between API calls
+import io        # For PDF processing
+import xml.etree.ElementTree as ET # For Elsevier API
+import json # For Springer API
+
+# Attempt to import PyPDF2
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    PdfReader = None
+
+# Attempt to import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup, Comment
+except ImportError:
+    BeautifulSoup = None
+    Comment = None # Ensure Comment is also None if bs4 is not available
+
+# Attempt to import Pillow (PIL)
+try:
+    from PIL import Image as PILImage
+except ImportError:
+    PILImage = None
+
+# Attempt to import pdf2image
+try:
+    from pdf2image import convert_from_path
+    from pdf2image.exceptions import Pdf2ImageError # Import the specific error
+except ImportError:
+    convert_from_path = None
+    Pdf2ImageError = None # Define as None if import fails
+
 
 # List of common venue style file name patterns (regex)
-# Users can extend this list.
 VENUE_STYLE_PATTERNS = [
     r"neurips_?\d{4}",
     r"icml_?\d{4}",
@@ -32,899 +62,1310 @@ VENUE_STYLE_PATTERNS = [
     r"aaai_?\d{2,4}",
     r"ijcai_?\d{2,4}",
     r"uai_?\d{4}?",
-    # Add more generic conference style names if known
-    # r"conference", # Potentially too broad, use with caution
-    # r"proceeding",
-    r"IEEEtran", 
+    r"IEEEtran",
     r"ieeeconf",
-    r"acmart" 
+    r"acmart"
 ]
 
 
 class LatexToMarkdownConverter:
-    def __init__(self, folder_path_str, verbose=True, template_path=None): 
+    def __init__(self, folder_path_str, verbose=True, template_path=None,
+                 openalex_email="your-email@example.com", elsevier_api_key=None, springer_api_key=None,
+                 poppler_path=None): 
         self.folder_path = Path(folder_path_str).resolve()
         self.main_tex_path = None
         self.original_main_tex_content = ""
         self.verbose = verbose
         self.template_path = template_path
-        self.final_output_folder_path = None # Will be set in convert_to_markdown
+        self.final_output_folder_path = None
+        self.openalex_email = openalex_email
+        self.elsevier_api_key = elsevier_api_key
+        self.springer_api_key = springer_api_key
+        self.PdfReader = PdfReader
+        self.BeautifulSoup = BeautifulSoup
+        self.Comment = Comment
+        self.PILImage = PILImage 
+        self.convert_from_path = convert_from_path 
+        self.Pdf2ImageError = Pdf2ImageError       
+        self.poppler_path = poppler_path           
+
+        if self.PdfReader is None and self.verbose:
+            self._log("PyPDF2 library not found. PDF parsing for abstracts will be disabled. Install with: pip install PyPDF2", "warn")
+        if self.BeautifulSoup is None and self.verbose:
+            self._log("BeautifulSoup4 library not found. HTML parsing for abstracts will be disabled. Install with: pip install beautifulsoup4", "warn")
+        if self.PILImage is None and self.verbose:
+            self._log("Pillow (PIL) library not found. Image conversion to PNG will be disabled. Install with: pip install Pillow", "warn")
+        if self.convert_from_path is None and self.verbose:
+            self._log("pdf2image library not found. PDF to PNG conversion using this library will be disabled. Install with: pip install pdf2image", "warn")
+        if self.poppler_path and self.verbose:
+            self._log(f"Using Poppler path: {self.poppler_path}", "info")
+        elif self.convert_from_path and self.verbose: 
+             self._log("Poppler path not specified. pdf2image will try to find Poppler in system PATH. If PDF conversion fails, try providing --poppler-path.", "info")
+
+
+        if self.openalex_email == "your-email@example.com" and self.verbose:
+            self._log("OpenAlex email is set to default. For responsible API use, please provide your email via --openalex-email.", "warn")
+        if not self.elsevier_api_key and self.verbose:
+            self._log("Elsevier API key not provided. Abstract fetching from linkinghub.elsevier.com via API will be disabled.", "info")
+        if not self.springer_api_key and self.verbose:
+            self._log("Springer API key not provided. Abstract fetching from link.springer.com via API will be disabled.", "info")
+
 
     def _log(self, message, level="info"):
-        """Helper function for conditional printing."""
-        if level == "error":
-            print(f"[-] Error: {message}", file=sys.stderr)
-        elif level == "warn":
-            print(f"[!] Warning: {message}", file=sys.stderr)
+        if level == "error": print(f"[-] Error: {message}", file=sys.stderr)
+        elif level == "warn": print(f"[!] Warning: {message}", file=sys.stderr)
         elif self.verbose:
-            if level == "info":
-                print(f"[*] {message}")
-            elif level == "success":
-                print(f"[+] {message}")
-            elif level == "debug": 
-                print(f"    [*] {message}")
-
+            if level == "info": print(f"[*] {message}")
+            elif level == "success": print(f"[+] {message}")
+            elif level == "debug": print(f"    [*] {message}")
 
     def find_main_tex_file(self):
-        """Finds and stores the main .tex file containing \\begin{document}."""
         self._log("Finding main .tex file...")
         for path in self.folder_path.rglob("*.tex"):
             try:
-                with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-                    if r'\begin{document}' in content:
-                        self.main_tex_path = path
-                        self.original_main_tex_content = content
-                        self._log(f"Main .tex file found: {self.main_tex_path}", "success")
-                        return True
-            except Exception as e:
-                self._log(f"Could not read file {path} due to {e}", "warn")
-                continue
-        self._log(f"No main .tex file with \\begin{document} found in '{self.folder_path}'.", "error")
-        return False
+                with open(path, "r", encoding="utf-8", errors="ignore") as f: content = f.read()
+                if r'\begin{document}' in content:
+                    self.main_tex_path, self.original_main_tex_content = path, content
+                    self._log(f"Main .tex file found: {self.main_tex_path}", "success"); return True
+            except Exception as e: self._log(f"Could not read file {path} due to {e}", "warn")
+        self._log(f"No main .tex file with \\begin{{document}} found in '{self.folder_path}'.", "error"); return False
 
     def _get_project_sty_basenames(self):
-        """Finds all .sty files in the project folder and returns their basenames."""
-        self._log("Searching for all custom .sty files in project folder (for fallback)...", "debug")
         sty_basenames = []
         for sty_path in self.folder_path.rglob("*.sty"):
             if sty_path.stem not in ["article", "report", "book", "amsmath", "graphicx", "geometry", "hyperref", "inputenc", "fontenc", "babel", "xcolor", "listings", "fancyhdr", "enumitem", "parskip", "setspace", "tocbibind", "titling", "titlesec", "etoolbox", "iftex", "xparse", "expl3", "l3keys2e", "natbib", "biblatex", "microtype", "amsfonts", "amssymb", "amsthm", "mathtools", "soul", "url", "booktabs", "float", "caption", "subcaption", "multirow", "multicol", "threeparttable", "xspace", "textcomp", "makecell", "tcolorbox", "wasysym", "colortbl", "algorithmicx", "algorithm", "algpseudocode", "marvosym", "ulem", "trimspaces", "environ", "keyval", "graphics", "trig", "ifvtex"]:
                 sty_basenames.append(sty_path.stem)
-        if sty_basenames:
-            self._log(f"Found potentially project-specific .sty files (basenames): {', '.join(sty_basenames)}", "debug")
-        else:
-            self._log("No unique project-specific .sty files found in the project folder.", "debug")
         return sty_basenames
 
     def _comment_out_style_packages(self, tex_content, mode="venue_only"):
-        """
-        Comments out \\usepackage commands.
-        mode="venue_only": Uses VENUE_STYLE_PATTERNS.
-        mode="all_project": Uses all .sty files found in the project folder (excluding common ones).
-        """
-        self._log(f"Commenting out \\usepackage commands (mode: {mode})...")
         modified_content = tex_content
-        initial_content = tex_content 
-        
+        initial_content = tex_content
         if mode == "venue_only":
-            self._log(f"Targeting venue-specific styles based on patterns.", "debug")
             for style_pattern_re in VENUE_STYLE_PATTERNS:
                 pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{(" + style_pattern_re + r")\}[^\n]*)$"
                 modified_content = re.sub(pattern, r"\1% \2", modified_content, flags=re.MULTILINE | re.IGNORECASE)
-
         elif mode == "all_project":
-            styles_to_comment_out = self._get_project_sty_basenames() 
+            styles_to_comment_out = self._get_project_sty_basenames()
             if not styles_to_comment_out:
-                self._log("No project-specific .sty files to comment out for 'all_project' mode.", "info")
+                self._log("No project-specific .sty files to comment out for 'all_project' mode.", "debug")
                 return tex_content
-            self._log(f"Targeting all project-specific styles: {', '.join(styles_to_comment_out)}", "debug")
             for sty_basename in styles_to_comment_out:
                 pattern = r"^([^\%]*?)(\\usepackage(?:\[[^\]]*\])?\{" + re.escape(sty_basename) + r"\}[^\n]*)$"
                 modified_content = re.sub(pattern, r"\1% \2", modified_content, flags=re.MULTILINE)
-        else:
-            self._log(f"Unknown mode '{mode}' for _comment_out_style_packages.", "warn")
-            return tex_content
-        
-        if modified_content != initial_content:
-            self._log(f"Successfully commented out relevant \\usepackage commands (mode: {mode}).", "success")
-        else:
-            self._log(f"No \\usepackage commands were modified (mode: {mode}).", "info")
+
+        if modified_content != initial_content: self._log(f"Commented out \\usepackage commands (mode: {mode}).", "debug")
+        else: self._log(f"No \\usepackage commands were modified (mode: {mode}).", "debug")
         return modified_content
 
     def _generate_bbl_content(self):
-        if not self.main_tex_path: 
-            self._log("Cannot generate .bbl file: Main .tex file not identified.", "error")
-            return None
-
+        if not self.main_tex_path: self._log("Cannot generate .bbl: Main .tex not identified.", "error"); return None
         main_file_stem = self.main_tex_path.stem
         specific_bbl_path = self.folder_path / f"{main_file_stem}.bbl"
-
-        if specific_bbl_path.exists() and specific_bbl_path.is_file():
-            self._log(f"Found specific .bbl file: {specific_bbl_path}. Using its content.", "info")
+        if specific_bbl_path.exists():
             try:
                 with open(specific_bbl_path, "r", encoding="utf-8", errors="ignore") as f:
+                    self._log(f"Using existing .bbl file: {specific_bbl_path}", "info")
                     return f.read()
-            except Exception as e:
-                self._log(f"Error reading specific .bbl file '{specific_bbl_path}': {e}", "warn")
-        
-        self._log(f"Specific .bbl file '{specific_bbl_path.name}' not found or unreadable. Searching for any .bbl file in project root.", "debug")
-        bbl_files_in_project = list(self.folder_path.glob("*.bbl"))
-        if bbl_files_in_project:
-            fallback_bbl_path = bbl_files_in_project[0] 
-            self._log(f"Found fallback .bbl file: {fallback_bbl_path}. Using its content.", "warn")
-            try:
-                with open(fallback_bbl_path, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read()
-            except Exception as e:
-                self._log(f"Error reading fallback .bbl file '{fallback_bbl_path}': {e}", "warn")
-                self._log(f"Proceeding to attempt .bbl regeneration.", "info")
-        else:
-            self._log(f"No existing .bbl files found in '{self.folder_path}'. Attempting to generate.", "info")
+            except Exception as e: self._log(f"Error reading existing .bbl '{specific_bbl_path}': {e}", "warn")
 
-        self._log("Generating .bbl file content via pdflatex and bibtex...")
-        commands = [
-            ["pdflatex", "-interaction=nonstopmode", "-draftmode", self.main_tex_path.name],
-            ["bibtex", main_file_stem],
-        ]
+        self._log("Attempting to generate .bbl file via LaTeX/BibTeX...", "info")
+        commands = [["pdflatex", "-interaction=nonstopmode", "-draftmode", self.main_tex_path.name], ["bibtex", main_file_stem]]
         original_cwd = Path.cwd()
-        log_file_path = self.folder_path / f"{main_file_stem}.log" 
-        self._log(f"Changing CWD to: {self.folder_path}", "debug")
-        os.chdir(self.folder_path) 
+        os.chdir(self.folder_path)
         try:
             for i, cmd_args in enumerate(commands):
-                command_str = " ".join(str(arg) for arg in cmd_args)
-                self._log(f"Running command: {command_str} (in CWD: {Path.cwd()})", "debug")
-                if cmd_args[0] == "pdflatex" and log_file_path.exists():
-                    try: log_file_path.unlink()
-                    except Exception as e_unlink: self._log(f"Could not delete log file {log_file_path}: {e_unlink}", "warn")
-                elif cmd_args[0] == "bibtex":
-                    blg_file_path = self.folder_path / f"{main_file_stem}.blg"
-                    if blg_file_path.exists():
-                        try: blg_file_path.unlink()
-                        except Exception as e_unlink: self._log(f"Could not delete .blg file {blg_file_path}: {e_unlink}", "warn")
+                self._log(f"Running BBL generation command: {' '.join(cmd_args)}", "debug")
                 process = subprocess.run(cmd_args, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore')
                 if process.returncode != 0:
-                    self._log(f"Error running command: {command_str}", "error")
-                    self._log(f"--- STDOUT --- (Max 1000 chars)\n{process.stdout[:1000]}", "error")
-                    self._log(f"--- STDERR --- (Max 1000 chars)\n{process.stderr[:1000]}", "error")
-                    log_to_check = log_file_path if cmd_args[0] == "pdflatex" else (self.folder_path / f"{main_file_stem}.blg")
-                    self._log(f"Suggestion: Check the full log file for errors: {log_to_check.resolve()}", "warn")
-                    if cmd_args[0] == "bibtex" and ("I found no \\bibdata command" in process.stdout or "I found no \\bibstyle command" in process.stdout):
-                         self._log("BibTeX specific error: No \\bibdata or \\bibstyle command. Ensure original .tex calls \\bibliography and \\bibliographystyle.", "error")
-                    elif cmd_args[0] == "pdflatex" and i == 0:
-                        self._log("Critical: Initial pdflatex run failed. Cannot generate .aux for BibTeX.", "error")
-                        self._log("Common causes: Missing LaTeX packages (.sty files) or class files not found by TeX Live.", "error")
-                        self._log("On Colab/Linux, try installing more TeX Live components, e.g.:\n        !sudo apt-get install texlive-latex-extra texlive-publishers texlive-science texlive-fonts-extra", "error")
-                        return None 
-                else:
-                    self._log(f"Command '{command_str}' executed successfully.", "success")
-            
-            generated_bbl_path = Path(f"{main_file_stem}.bbl") 
+                    self._log(f"Error running {' '.join(cmd_args)}. STDERR: {process.stderr[:500]}", "error")
+                    if i == 0 and "pdflatex" in cmd_args[0]: self._log("Initial pdflatex run failed. Cannot generate .aux for BibTeX.", "error")
+                    return None
+            generated_bbl_path = Path(f"{main_file_stem}.bbl")
             if generated_bbl_path.exists():
-                self._log(f".bbl file generated: {generated_bbl_path.resolve()}", "success")
-                with open(generated_bbl_path, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read()
-            else:
-                self._log(f".bbl file was not generated at '{generated_bbl_path.resolve()}'. Check LaTeX/BibTeX logs.", "error")
-                aux_file = Path(f"{main_file_stem}.aux")
-                if not aux_file.exists():
-                    self._log(f"Auxiliary file '{aux_file.name}' not found. Initial pdflatex run likely failed critically.", "error")
-                else:
-                    with open(aux_file, 'r', encoding='utf-8', errors='ignore') as af:
-                        aux_content = af.read()
-                        if r'\bibdata' not in aux_content:
-                             self._log(r"\bibdata command missing in .aux file. Check \bibliography{...} in original .tex.", "error")
-                        if not (re.search(r'\\citation\{', aux_content) or r'\nocite{*}' in aux_content):
-                             self._log(r"No \citation or \nocite{*} found in .aux file. Bibliography might be empty.", "warn")
-                return None 
-        except FileNotFoundError as e:
-            self._log(f"FileNotFoundError: {e}. Ensure LaTeX (pdflatex, bibtex) is installed and in your system PATH.", "error")
-            return None
-        except Exception as e:
-            self._log(f"An unexpected error occurred during .bbl generation: {e}", "error")
-            return None
-        finally:
-            self._log(f"Changing CWD back to: {original_cwd}", "debug")
-            os.chdir(original_cwd)
-
-    def _latex_escape_abstract(self, text: str) -> str:
-        """Escapes special LaTeX characters in the abstract text."""
-        if not text: return ""
-        # Order matters for backslash
-        text = text.replace('\\', r'\textbackslash{}')
-        text = text.replace('{', r'\{')
-        text = text.replace('}', r'\}')
-        text = text.replace('&', r'\&')
-        text = text.replace('%', r'\%')
-        text = text.replace('$', r'\$')
-        text = text.replace('#', r'\#')
-        text = text.replace('_', r'\_')
-        text = text.replace('~', r'\textasciitilde{}')
-        text = text.replace('^', r'\textasciicircum{}')
-        # Handle newlines: LaTeX typically ignores single newlines in text.
-        # Convert double newlines to \par for paragraph breaks.
-        # text = re.sub(r'\n\s*\n', '\\par ', text) 
-        text = text.replace('\n', ' ') # Convert single newlines to space
-        return text
-
-    def _fetch_abstract_from_semantic_scholar(self, title: str, authors_str: str = ""):
-        """
-        Fetches abstract from Semantic Scholar API based on title and optionally authors.
-        Returns the abstract string or None if not found or an error occurs.
-        """
-        if not title:
-            return None
-        
-        try:
-            query_title = re.sub(r'\s+', ' ', title).strip()
-            # Basic cleaning of title for search (remove common LaTeX formatting)
-            clean_title_for_search = re.sub(r'\{.*?\}', '', query_title) 
-            clean_title_for_search = re.sub(r'\\[a-zA-Z]+', '', clean_title_for_search)
-            clean_title_for_search = clean_title_for_search.strip()
-
-            if not clean_title_for_search:
-                self._log(f"Skipping Semantic Scholar search due to empty title after cleaning: '{title}'", "debug")
-                return None
-
-            search_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={urllib.parse.quote_plus(clean_title_for_search)}&fields=title,authors,abstract&limit=3"
-            
-            self._log(f"Querying Semantic Scholar: {search_url}", "debug")
-            
-            headers = {'User-Agent': 'LatexToMarkdownConverter/1.0 (Python Script)'} 
-            response = requests.get(search_url, headers=headers, timeout=15) # 15s timeout
-            response.raise_for_status() 
-            
-            data = response.json()
-            
-            if data.get("total", 0) > 0 and data.get("data"):
-                for paper_data in data["data"]:
-                    s2_title = paper_data.get("title", "")
-                    s2_title_clean = re.sub(r'[^a-z0-9]', '', s2_title.lower())
-                    query_title_clean_cmp = re.sub(r'[^a-z0-9]', '', clean_title_for_search.lower())
-
-                    if query_title_clean_cmp in s2_title_clean or s2_title_clean in query_title_clean_cmp or \
-                       (len(query_title_clean_cmp) > 10 and len(s2_title_clean) > 10 and \
-                        (query_title_clean_cmp[:10] == s2_title_clean[:10] or query_title_clean_cmp[-10:] == s2_title_clean[-10:])): # Basic similarity
-                        if paper_data.get("abstract"):
-                            self._log(f"Found abstract for '{title}' (Matched S2 title: '{s2_title}')", "debug")
-                            time.sleep(0.5) # Polite delay
-                            return paper_data["abstract"]
-                        else:
-                            self._log(f"Paper '{title}' (S2: '{s2_title}') found but no abstract.", "debug")
-                self._log(f"No suitable match with abstract found for '{title}' among S2 results.", "debug")
-            else:
-                self._log(f"No papers found on Semantic Scholar for title: '{clean_title_for_search}'", "debug")
-                
-        except requests.exceptions.RequestException as e:
-            self._log(f"Semantic Scholar API request failed for '{title}': {e}", "warn")
-        except Exception as e:
-            self._log(f"Error processing Semantic Scholar response for '{title}': {e}", "warn")
-            
-        time.sleep(0.5) # Polite delay even on failure
+                self._log(f".bbl file generated successfully: {generated_bbl_path}", "success")
+                with open(generated_bbl_path, "r", encoding="utf-8", errors="ignore") as f: return f.read()
+            self._log(".bbl file was not generated despite commands succeeding.", "error"); return None
+        except Exception as e: self._log(f"Exception during .bbl generation: {e}", "error"); return None
+        finally: os.chdir(original_cwd)
         return None
 
-    def _inline_bibliography(self, tex_content, bbl_content_original):
-        if not bbl_content_original:
-            self._log("BBL content is empty. Bibliography will not be inlined.", "warn")
-            return tex_content
-        self._log("Inlining .bbl content into .tex content (with abstract fetching)...")
 
-        bbl_content = bbl_content_original # Work on a copy
+    def _latex_escape_abstract(self, text: str) -> str:
+        if not text: return ""
+        text = text.replace('\\', r'\textbackslash{}')
+        text = text.replace('{', r'\{'); text = text.replace('}', r'\}')
+        text = text.replace('&', r'\&'); text = text.replace('%', r'\%')
+        text = text.replace('$', r'\$'); text = text.replace('#', r'\#')
+        text = text.replace('_', r'\_'); text = text.replace('~', r'\textasciitilde{}')
+        text = text.replace('^', r'\textasciicircum{}')
+        text = text.replace('\n', ' ')
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
 
-        # Extract and clean preamble (before \begin{thebibliography})
-        bbl_preamble = ""
-        bibliography_env_start = r"\begin{thebibliography}{}" # Default
+    def _deinvert_abstract_openalex(self, inverted_index):
+        if not inverted_index: return None
+        max_pos = -1
+        for positions in inverted_index.values():
+            if positions: max_pos = max(max_pos, max(positions))
+        if max_pos == -1: return ""
+        length = max_pos + 1; abstract_list = [""] * length
+        for word, positions in inverted_index.items():
+            for pos in positions:
+                if 0 <= pos < length: abstract_list[pos] = word
+        return " ".join(abstract_list).strip()
+
+    def _extract_text_from_pdf_content(self, pdf_content):
+        if not self.PdfReader: return None
+        try:
+            reader = self.PdfReader(io.BytesIO(pdf_content)); text = ""
+            for page in reader.pages: text += page.extract_text() or ""
+            return text
+        except Exception as e: self._log(f"PDF text extraction error: {e}", "warn"); return None
+
+    def _find_abstract_in_pdf_text(self, text, max_chars_abstract=2500):
+        if not text: return None
+        text_lower = text.lower()
+        abstract_match = re.search(r'\b(a\s*b\s*s\s*t\s*r\s*a\s*c\s*t)\b\.?\s*\n?', text_lower, re.IGNORECASE)
+        if abstract_match:
+            start_index = abstract_match.end()
+            end_patterns = [r'\n\s*(keywords|key words|index terms)\b', r'\n\s*(1|I)\.\s*(Introduction|INTRODUCTION)\b', r'\n\s*(Introduction|INTRODUCTION)\b', r'\n\s*\n\s*\n']
+            end_index = len(text)
+            text_after_abstract_keyword = text[start_index:]
+            for pattern in end_patterns:
+                match = re.search(pattern, text_after_abstract_keyword, re.IGNORECASE)
+                if match and match.start() < (end_index - start_index) : end_index = start_index + match.start()
+            potential_abstract = text[start_index:min(end_index, start_index + max_chars_abstract)].strip()
+            potential_abstract = re.sub(r'\s+', ' ', potential_abstract)
+            if len(potential_abstract) > 50: self._log("PDF Abstract: Found abstract.", "debug"); return potential_abstract
+        return None
+
+    def _get_elsevier_abstract_from_linking_url(self, linking_hub_url: str, api_key: str) -> str | None:
+        pii_match = re.search(r'/pii/([^/?]+)', linking_hub_url)
+        if not pii_match:
+            self._log(f"Elsevier API: Could not extract PII from URL: {linking_hub_url}", "warn")
+            return "❌ Error: Could not extract PII from the provided URL."
+        pii = pii_match.group(1)
+        self._log(f"Elsevier API: Extracted PII: {pii} from URL: {linking_hub_url}", "debug")
+        api_url = f"https://api.elsevier.com/content/article/pii/{pii}"
+        headers = {'X-ELS-APIKey': api_key, 'Accept': 'application/xml'}
+        self._log(f"Elsevier API: Constructed API URL: {api_url}", "debug")
+
+        max_retries = 3
+        retry_delay_seconds = 2 # Wait 2 seconds between retries
+        server_error_codes = [500, 502, 503, 504] # Common server-side errors to retry
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(api_url, headers=headers, timeout=30) 
+                response.raise_for_status() # Raises HTTPError for 4xx/5xx status codes
+                
+                # If successful, proceed to parse XML
+                self._log(f"Elsevier API: Request successful (Attempt {attempt + 1}/{max_retries}).", "debug")
+                try:
+                    root = ET.fromstring(response.content)
+                    namespaces = {'svapi': 'http://www.elsevier.com/xml/svapi/article/dtd', 'dc': 'http://purl.org/dc/elements/1.1/'}
+                    coredata = root.find('svapi:coredata', namespaces)
+                    if coredata is not None:
+                        desc = coredata.find('dc:description', namespaces)
+                        if desc is not None and desc.text:
+                            self._log("Elsevier API: Abstract extracted.", "success")
+                            return ' '.join(desc.text.strip().split())
+                    self._log("Elsevier API: Abstract not found in XML.", "debug")
+                    return "❌ Abstract not found in XML." # Return if abstract not found, no need to retry this
+                except Exception as e_xml: 
+                    self._log(f"Elsevier API: XML parsing error: {e_xml}. Resp: {response.text[:200]}...", "warn")
+                    return f"❌ XML parsing error: {e_xml}. Resp: {response.text[:200]}..." # XML error, no retry
+
+            except requests.exceptions.HTTPError as http_err:
+                self._log(f"Elsevier API: HTTP error (Attempt {attempt + 1}/{max_retries}): {http_err} - Status: {http_err.response.status_code}", "warn")
+                if http_err.response.status_code in server_error_codes:
+                    if attempt < max_retries - 1:
+                        self._log(f"Elsevier API: Retrying in {retry_delay_seconds}s...", "info")
+                        time.sleep(retry_delay_seconds)
+                        continue # Go to next attempt
+                    else: # Last attempt failed
+                        self._log("Elsevier API: Max retries reached for server error.", "error")
+                        return f"❌ HTTP error after retries: {http_err} - Status: {http_err.response.status_code}"
+                else: # Client error (4xx) or other HTTPError not in server_error_codes
+                    return f"❌ HTTP error: {http_err} - Status: {http_err.response.status_code} - Resp: {http_err.response.text[:200]}..."
+            
+            except requests.exceptions.RequestException as req_err: # Catches other network errors like timeouts, connection errors
+                self._log(f"Elsevier API: Request error (Attempt {attempt + 1}/{max_retries}): {req_err}", "warn")
+                if attempt < max_retries - 1:
+                    self._log(f"Elsevier API: Retrying in {retry_delay_seconds}s...", "info")
+                    time.sleep(retry_delay_seconds)
+                    continue # Go to next attempt
+                else: # Last attempt failed
+                    self._log("Elsevier API: Max retries reached for request exception.", "error")
+                    return f"❌ Request error after retries: {req_err}"
+            
+            # Should not be reached if successful return or exception occurs and is handled
+            break # Break if no exception was raised (should have returned if successful)
         
-        begin_env_match = re.search(r"(\\begin\{thebibliography\}\{[^}]*\})", bbl_content)
+        # If loop finishes without returning (e.g., unexpected flow, though unlikely with current logic)
+        return "❌ Elsevier API: Failed after all retries or due to unexpected issue."
+
+
+    def _get_springer_abstract_from_url(self, springer_url: str, api_key: str) -> str | None:
+        doi_match = re.search(r'/(?:chapter|article)/(10\.\d{4,9}/[-._;()/:A-Z0-9]+)', springer_url, re.IGNORECASE)
+        if not doi_match:
+            self._log(f"Springer API: Could not extract DOI from URL: {springer_url}", "warn")
+            return "❌ Error: Could not extract DOI from the provided URL."
+        doi = doi_match.group(1)
+        self._log(f"Springer API: Extracted DOI: {doi} from URL: {springer_url}", "debug")
+        api_url = "https://api.springernature.com/meta/v2/json"
+        params = {'q': f'doi:{doi}', 'api_key': api_key}
+        self._log(f"Springer API: Constructed API URL: {api_url} with params: {params}", "debug")
+        try:
+            response = requests.get(api_url, params=params, timeout=20)
+            response.raise_for_status()
+            self._log("Springer API: API request successful.", "debug")
+        except requests.exceptions.HTTPError as http_err:
+            self._log(f"Springer API: HTTP error: {http_err} - Status: {response.status_code} - Resp: {response.text[:200]}...", "warn")
+            return f"❌ HTTP error: {http_err} - Status: {response.status_code} - Resp: {response.text[:200]}..."
+        except requests.exceptions.RequestException as err:
+            self._log(f"Springer API: Request error: {err}", "warn")
+            return f"❌ Request error: {err}"
+        try:
+            data = response.json()
+            if data.get("records") and len(data["records"]) > 0:
+                first_record = data["records"][0]
+                if "abstract" in first_record and first_record["abstract"]:
+                    self._log("Springer API: Abstract extracted.", "success"); return first_record["abstract"].strip()
+            total_results = data.get("result", [{}])[0].get("total", "unknown")
+            if str(total_results) == "0":
+                self._log(f"Springer API: No records found for DOI: {doi}. API returned 0 results.", "debug")
+                return f"❌ No records found for DOI: {doi}. The API returned 0 results."
+            self._log("Springer API: Abstract not found in API response.", "debug")
+            return "❌ Abstract field not found or empty in API response."
+        except Exception as e:
+            self._log(f"Springer API: JSON parsing error: {e}. Resp: {response.text[:200]}...", "warn")
+            return f"❌ JSON parsing error: {e}. Resp: {response.text[:200]}..."
+
+    def _get_arxiv_abstract_from_page(self, arxiv_url: str) -> str | None:
+        if not self.BeautifulSoup:
+            self._log("arXiv Page Fetch: BeautifulSoup library not available. Cannot parse HTML.", "warn")
+            return None
+        original_url_for_logging = arxiv_url
+        if "arxiv.org/pdf/" in arxiv_url:
+            arxiv_url = arxiv_url.replace("/pdf/", "/abs/").replace(".pdf", "")
+            self._log(f"arXiv Page Fetch: Converted PDF URL '{original_url_for_logging}' to abstract URL '{arxiv_url}'.", "debug")
+        elif not arxiv_url.startswith("https://arxiv.org/abs/"):
+            self._log(f"arXiv Page Fetch: URL '{original_url_for_logging}' is not a standard arXiv abstract or PDF URL. Proceeding cautiously.", "warn")
+
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        try:
+            response = requests.get(arxiv_url, headers=headers, timeout=15)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            self._log(f"arXiv Page Fetch: Error fetching URL {arxiv_url}: {e}", "warn")
+            return None
+        try:
+            soup = self.BeautifulSoup(response.content, 'html.parser')
+            meta_abstract = soup.find('meta', attrs={'name': 'citation_abstract'})
+            if meta_abstract and meta_abstract.get('content'):
+                self._log(f"arXiv Page Fetch: Found abstract in 'citation_abstract' meta tag for {arxiv_url}.", "debug")
+                return meta_abstract.get('content').strip()
+            meta_og_description = soup.find('meta', property='og:description')
+            if meta_og_description and meta_og_description.get('content'):
+                self._log(f"arXiv Page Fetch: Found abstract in 'og:description' meta tag for {arxiv_url}.", "debug")
+                return meta_og_description.get('content').strip()
+            blockquote_abstract = soup.find('blockquote', class_='abstract')
+            if blockquote_abstract:
+                abstract_text_content = blockquote_abstract.get_text(separator=' ', strip=True)
+                cleaned_abstract = re.sub(r'^\s*Abstract:?\s*', '', abstract_text_content, flags=re.IGNORECASE).strip()
+                if cleaned_abstract:
+                    self._log(f"arXiv Page Fetch: Found abstract in blockquote.abstract for {arxiv_url}.", "debug")
+                    return cleaned_abstract
+            self._log(f"arXiv Page Fetch: Could not find abstract on page: {arxiv_url} using known meta tags or blockquote.", "debug")
+            return None
+        except Exception as e:
+            self._log(f"arXiv Page Fetch: Error parsing HTML content from {arxiv_url}: {e}", "warn")
+            return None
+
+    def _fetch_and_parse_html_for_abstract(self, url: str):
+        if not self.BeautifulSoup or not self.Comment:
+            self._log("HTML Parsing: BeautifulSoup or Comment not available.", "warn"); return None
+        if not url or not (url.startswith("http://") or url.startswith("https://")):
+            if not url.startswith("file:///"):
+                self._log(f"HTML Parsing: Invalid URL scheme: {url}", "debug"); return None
+
+        self._log(f"HTML Parsing: Attempting to fetch from: {url}", "debug")
+        effective_url = url
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (compatible; LatexToMarkdownConverter/1.3; +http://example.com/bot)'}
+            response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+            effective_url = response.url
+            if url.startswith("file:///"): effective_url = url
+            self._log(f"HTML Parsing: Effective URL after redirects: {effective_url}", "debug")
+            response.raise_for_status()
+
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'text/html' not in content_type:
+                self._log(f"HTML Parsing: Content from {effective_url} not HTML (type: {content_type}).", "debug")
+                return None
+
+            soup = self.BeautifulSoup(response.content, 'html.parser')
+            abstract_text_candidate = None 
+
+            if not abstract_text_candidate:
+                if self.springer_api_key and "link.springer.com/" in effective_url:
+                    api_abstract = self._get_springer_abstract_from_url(effective_url, self.springer_api_key)
+                    if api_abstract and not api_abstract.startswith("❌"):
+                        self._log(f"Springer API: Successfully fetched abstract from {effective_url} after HTML parse failed.", "success")
+                        return api_abstract 
+                    elif api_abstract: self._log(f"Springer API: Attempt after HTML parse fail for {effective_url} also failed: {api_abstract}", "warn")
+                    else: self._log(f"Springer API: Attempt after HTML parse fail for {effective_url} returned None.", "warn")
+
+            if not abstract_text_candidate:
+                self._log(f"HTML Abstract: Trying MHTML-like comment-based extraction for {effective_url}", "debug")
+                abstract_start_comment = soup.find(string=lambda text: isinstance(text, self.Comment) and "Abstract." in text and "<!-- Abstract." in text and not "/ Abstract." in text)
+                if abstract_start_comment:
+                    self._log(f"HTML Abstract: Found '' comment in {effective_url}", "debug")
+                    possible_outer_divs = soup.find_all('div', class_='columns is-centered has-text-centered')
+                    for outer_div in possible_outer_divs:
+                        column_div = outer_div.find('div', class_='column is-four-fifths')
+                        if column_div:
+                            h1_abstract = column_div.find('h1', class_='title is-3', string=re.compile(r'^\s*Abstract\s*$', re.I))
+                            content_div = column_div.find('div', class_='content has-text-justified')
+                            if h1_abstract and content_div and h1_abstract.find_next_sibling('div', class_='content has-text-justified') == content_div:
+                                texts = []
+                                for element in content_div.find_all(['p', 'ul'], recursive=False):
+                                    if element.name == 'p': texts.append(element.get_text(separator=' ', strip=True))
+                                    elif element.name == 'ul':
+                                        for li_item in element.find_all('li', recursive=False): texts.append("- " + li_item.get_text(separator=' ', strip=True))
+                                extracted_abstract = "\n".join(texts)
+                                if extracted_abstract.strip():
+                                    self._log(f"HTML Abstract: Extracted using MHTML-like comment structure from {effective_url}.", "success")
+                                    return extracted_abstract 
+                else:
+                    self._log(f"HTML Abstract: MHTML-like '' comment not found in {effective_url}", "debug")
+
+            if not abstract_text_candidate: 
+                abstract_heading = soup.find(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'div'], string=re.compile(r'^\s*Abstract\s*$', re.I))
+                if abstract_heading:
+                    self._log(f"HTML Abstract: Found heading '{abstract_heading.get_text(strip=True)}'. Looking for content.", "debug")
+                    acl_style_element = None
+                    if "acl-abstract" in " ".join(abstract_heading.get('class', [])): acl_style_element = abstract_heading
+                    elif abstract_heading.parent and "acl-abstract" in " ".join(abstract_heading.parent.get('class', [])): acl_style_element = abstract_heading.parent
+                    elif abstract_heading.parent and abstract_heading.parent.parent and "acl-abstract" in " ".join(abstract_heading.parent.parent.get('class',[])): acl_style_element = abstract_heading.parent.parent
+                    if acl_style_element:
+                        abs_span = acl_style_element.find('span') 
+                        if abs_span:
+                            text = abs_span.get_text(separator=' ', strip=True)
+                            if len(text) > 70: self._log("HTML Abstract: Extracted from ACL-style span.", "debug"); return text 
+                        abs_p = acl_style_element.find('p') 
+                        if abs_p:
+                            text = abs_p.get_text(separator=' ', strip=True)
+                            if len(text) > 70: self._log("HTML Abstract: Extracted from ACL-style p.", "debug"); return text 
+                    next_content_node = abstract_heading.find_next_sibling()
+                    for _ in range(3): 
+                        if not next_content_node: break
+                        if next_content_node.name in ['div', 'section'] and \
+                            ((hasattr(next_content_node, 'attrs') and any(c in " ".join(next_content_node.attrs.get('class',[])) for c in ['content', 'abstract-content', 'entry-content', 'abstract__content'])) or \
+                                not hasattr(next_content_node, 'attrs') or not next_content_node.attrs.get('class', None)):
+                            collected_texts = []
+                            for child_el in next_content_node.find_all(['p', 'ul', 'div'], recursive=True): 
+                                if child_el.find_parent(['table', 'figure', 'figcaption', 'nav', 'header', 'footer']): continue
+                                text = child_el.get_text(separator=' ', strip=True)
+                                if text: collected_texts.append(text)
+                                if sum(len(t) for t in collected_texts) > 2500 : break 
+                            final_abstract_text = " ".join(collected_texts).strip()
+                            if len(final_abstract_text) > 70:
+                                self._log("HTML Abstract: Extracted from div/section after 'Abstract' heading.", "debug"); return final_abstract_text 
+                            break 
+                        next_content_node = next_content_node.find_next_sibling() if hasattr(next_content_node, 'find_next_sibling') else None
+                    collected_general_texts = []
+                    current_sib = abstract_heading.find_next_sibling()
+                    while current_sib:
+                        if current_sib.name in ['h1','h2','h3','h4','h5'] or \
+                            (hasattr(current_sib, 'attrs') and any(val in current_sib.attrs.get(attr, '').lower() for attr in ['id', 'class'] for val in ['reference', 'citation', 'biblio'])):
+                            break 
+                        text = current_sib.get_text(separator=' ', strip=True)
+                        if text: collected_general_texts.append(text)
+                        if sum(len(t) for t in collected_general_texts) > 2500: break
+                        current_sib = current_sib.find_next_sibling()
+                    final_general_text = " ".join(collected_general_texts).strip()
+                    if len(final_general_text) > 70:
+                        self._log("HTML Abstract: Extracted from general siblings after 'Abstract' heading.", "debug"); return final_general_text 
+
+            if not abstract_text_candidate: 
+                self._log(f"HTML Abstract: No explicit 'Abstract' found for {effective_url}. Trying 'Introduction' section.", "debug")
+                introduction_heading_element = None
+                for heading_tag_name in ['h1', 'h2', 'h3']:
+                    headings = soup.find_all(heading_tag_name, string=re.compile(r'^\s*Introduction\s*$', re.I))
+                    if headings:
+                        article_body = soup.find('article', class_='markdown-body')
+                        if article_body:
+                            intro_in_article = article_body.find(heading_tag_name, string=re.compile(r'^\s*Introduction\s*$', re.I))
+                            if intro_in_article: introduction_heading_element = intro_in_article; break 
+                        if not introduction_heading_element: introduction_heading_element = headings[0]; break
+                if introduction_heading_element:
+                    self._log(f"HTML Abstract: Found '{introduction_heading_element.name}' heading for 'Introduction'. Collecting content.", "debug")
+                    start_node = introduction_heading_element.parent if introduction_heading_element.parent.name == 'div' and 'markdown-heading' in introduction_heading_element.parent.get('class', []) else introduction_heading_element
+                    collected_texts, char_count, max_chars_for_intro = [], 0, 2500
+                    for sibling in start_node.find_next_siblings():
+                        if char_count >= max_chars_for_intro: break
+                        if sibling.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] or (sibling.name == 'div' and "markdown-heading" in sibling.get('class', [])): break
+                        current_text = ""
+                        if sibling.name == 'p': current_text = sibling.get_text(separator=' ', strip=True)
+                        elif sibling.name == 'ul': current_text = "\n".join([f"- {li.get_text(separator=' ', strip=True)}" for li in sibling.find_all('li', recursive=False)])
+                        if current_text:
+                            if char_count + len(current_text) > max_chars_for_intro: current_text = current_text[:max_chars_for_intro - char_count] + "..."
+                            collected_texts.append(current_text); char_count += len(current_text)
+                    if collected_texts:
+                        introduction_abstract = "\n\n".join(collected_texts).strip()
+                        if len(introduction_abstract) > 70:
+                            self._log(f"HTML Abstract: Extracted from 'Introduction' section for {effective_url}.", "success"); return introduction_abstract 
+                else: self._log(f"HTML Abstract: 'Introduction' heading not found for {effective_url}.", "debug")
+
+            if not abstract_text_candidate: 
+                self._log("HTML Abstract: Trying general structural selectors as fallback.", "debug")
+                general_selectors = ['div.abstract', 'section.abstract', 'article.abstract', 'div#abstract', 'section#abstract', 'div[class*="abstract-text"]', 'div[itemprop="description"]', 'div[class*="entry-summary"]', 'div.summary', 'article p']
+                for selector in general_selectors:
+                    elements = soup.select(selector)
+                    if elements:
+                        candidate_texts = []
+                        for i, el in enumerate(elements):
+                            text = el.get_text(separator=' ', strip=True)
+                            if text: candidate_texts.append(text)
+                            if selector == 'article p' and i >= 4: break 
+                        full_text = " ".join(candidate_texts).strip()
+                        if len(full_text) > 150: self._log(f"HTML Abstract: Found using general selector '{selector}'.", "debug"); return full_text 
+
+            if not abstract_text_candidate: 
+                self._log(f"HTML Abstract: Structural search failed for {effective_url}. Trying meta tags (last resort).", "debug")
+                for meta_attr_spec in [{'name': 'description'}, {'property': 'og:description'}, {'name': 'twitter:description'}]:
+                    meta_tag = soup.find('meta', attrs=meta_attr_spec)
+                    if meta_tag and meta_tag.get('content'):
+                        abs_text = meta_tag['content'].strip()
+                        if len(abs_text.split(',')) > 5 and len(abs_text) < 300 : self._log(f"HTML Abstract: Meta tag {meta_attr_spec} looks like author list, skipping.", "debug"); continue
+                        if len(abs_text) > 70: self._log(f"HTML Abstract: Found in meta tag {meta_attr_spec} (last resort).", "debug"); return abs_text 
+
+            self._log(f"HTML Parsing: No abstract found in {effective_url} via any heuristic after all attempts.", "debug")
+            return None 
+
+        except requests.exceptions.HTTPError as http_err:
+            log_url_info = f"original URL: {url}" + (f", effective (error) URL: {effective_url}" if url != effective_url else "")
+            self._log(f"HTML Parsing: HTTP error {http_err.response.status_code} for {log_url_info}: {http_err}", "warn")
+            self._log(f"HTML Parsing: Checking API fallback conditions. Status: {http_err.response.status_code}, Effective URL: {effective_url}", "debug")
+
+            if http_err.response.status_code == 403: 
+                if self.elsevier_api_key and "sciencedirect.com/science/article/pii/" in effective_url:
+                    self._log(f"HTML Parsing: Detected 403 on ScienceDirect PII link ({effective_url}). Attempting Elsevier API.", "info")
+                    api_abstract = self._get_elsevier_abstract_from_linking_url(effective_url, self.elsevier_api_key)
+                    if api_abstract and not api_abstract.startswith("❌"):
+                        self._log(f"Elsevier API: Successfully fetched abstract via PII from {effective_url} after 403 on HTML.", "success")
+                        return api_abstract
+                    elif api_abstract: self._log(f"Elsevier API: Attempt after 403 on {effective_url} failed: {api_abstract}", "warn")
+                    else: self._log(f"Elsevier API: Attempt after 403 on {effective_url} returned None.", "warn")
+
+                elif self.springer_api_key and "link.springer.com/" in effective_url:
+                    self._log(f"HTML Parsing: Detected 403 on Springer link ({effective_url}). Attempting Springer API.", "info")
+                    api_abstract = self._get_springer_abstract_from_url(effective_url, self.springer_api_key)
+                    if api_abstract and not api_abstract.startswith("❌"):
+                        self._log(f"Springer API: Successfully fetched abstract from {effective_url} after 403 on HTML.", "success")
+                        return api_abstract
+                    elif api_abstract: self._log(f"Springer API: Attempt after 403 on {effective_url} failed: {api_abstract}", "warn")
+                    else: self._log(f"Springer API: Attempt after 403 on {effective_url} returned None.", "warn")
+                else:
+                    self._log(f"HTML Parsing: 403 error, but no specific API fallback for URL pattern: {effective_url}", "debug")
+            else:
+                self._log(f"HTML Parsing: HTTP error was not 403, or no API key available for this publisher. No API fallback.", "debug")
+            return None
+        except requests.exceptions.RequestException as e:
+            log_url_info = f"original URL: {url}" + (f", effective URL during attempt: {effective_url}" if url != effective_url and effective_url != url else "")
+            self._log(f"HTML Parsing: Request error for {log_url_info}: {e}", "warn")
+            return None
+        return None
+
+
+    def _clean_title_for_search(self, title_str: str, attempt=1) -> str:
+        if not title_str: return ""
+        cleaned = title_str
+        cleaned = re.sub(r'\\(?:emph|textbf|textit|texttt|textsc|mathrm|mathsf|mathcal|mathbf|bm)\s*\{(.*?)\}', r'\1', cleaned)
+        cleaned = cleaned.replace(r"\'e", "e").replace(r'\"u', 'ue').replace(r'\`a', 'a')
+        cleaned = re.sub(r'\{([A-Za-z\d\-:]+)\}', r'\1', cleaned)
+        cleaned = re.sub(r'\\url\{[^\}]+\}', '', cleaned); cleaned = re.sub(r'\\href\{[^\}]+\}\{[^\}]+\}', '', cleaned)
+        cleaned = cleaned.replace(r'\&', '&').replace(r'\%', '%').replace(r'\$', '$').replace(r'\_', '_')
+        cleaned = cleaned.replace('\n', ' ').strip()
+        cleaned = re.sub(r'\{\\natexlab\{[^}]*\}\}', '', cleaned); cleaned = re.sub(r'\{\\noop\{[^}]*\}\}', '', cleaned)
+        cleaned = re.sub(r'^In\s*:\s*(?=[A-Z])', '', cleaned).strip(); cleaned = re.sub(r'^In\s+(?=[A-Z])', '', cleaned).strip()
+        cleaned = re.sub(r'[:?!;]+', ' ', cleaned)
+        cleaned = re.sub(r',', '', cleaned)
+        if attempt == 1:
+            cleaned = re.sub(r'[\s\(]+\d{4}[a-z]?\)?\s*$', '', cleaned).strip()
+            cleaned = re.sub(r'\s+et\s+al\.?\s*$', '', cleaned, flags=re.IGNORECASE).strip()
+        cleaned = cleaned.rstrip('.')
+        cleaned = cleaned.lower()
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        cleaned = re.sub(r"^[^\w\s]+", "", cleaned); cleaned = re.sub(r"[^\w\s]+$", "", cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned.strip()
+
+
+    def _fetch_abstract_from_openalex(self, title_query: str, authors_str: str = ""):
+        if not title_query: return None
+        for attempt in range(1, 3):
+            cleaned_title = self._clean_title_for_search(title_query, attempt=attempt)
+            if not cleaned_title: continue
+            self._log(f"OpenAlex(A{attempt}): Searching:'{cleaned_title}'", "debug")
+            base_url = "https://api.openalex.org/works"; params = {"filter": f"title.search:{re.escape(cleaned_title)}", "mailto": self.openalex_email}
+            headers = {"User-Agent": f"LatexToMarkdownConverter/1.3 (mailto:{self.openalex_email})"}
+            try:
+                response = requests.get(base_url, params=params, headers=headers, timeout=20)
+                response.raise_for_status(); data = response.json(); results = data.get("results", [])
+                if results:
+                    for i, work in enumerate(results):
+                        if i >= 2: break
+                        if work.get("abstract"): self._log("OpenAlex: Direct abstract.", "success"); time.sleep(0.2); return work["abstract"]
+                        if work.get("abstract_inverted_index"):
+                            deinverted = self._deinvert_abstract_openalex(work["abstract_inverted_index"])
+                            if deinverted: self._log("OpenAlex: Deinverted abstract.", "success"); time.sleep(0.2); return deinverted
+                        landing_page_url = work.get("primary_location", {}).get("landing_page_url")
+
+                        if self.elsevier_api_key and landing_page_url and "linkinghub.elsevier.com/retrieve/pii/" in landing_page_url:
+                            elsevier_abs = self._get_elsevier_abstract_from_linking_url(landing_page_url, self.elsevier_api_key)
+                            if elsevier_abs and not elsevier_abs.startswith("❌"):
+                                self._log("OpenAlex (via Elsevier API): Abstract found.", "success"); time.sleep(0.2); return elsevier_abs
+                        elif self.springer_api_key and landing_page_url and "link.springer.com/" in landing_page_url:
+                            springer_abs = self._get_springer_abstract_from_url(landing_page_url, self.springer_api_key)
+                            if springer_abs and not springer_abs.startswith("❌"):
+                                self._log("OpenAlex (via Springer API): Abstract found.", "success"); time.sleep(0.2); return springer_abs
+
+                        if self.BeautifulSoup and landing_page_url and not landing_page_url.lower().endswith(".pdf"):
+                            html_abs = self._fetch_and_parse_html_for_abstract(landing_page_url)
+                            if html_abs: self._log("OpenAlex: HTML abstract from landing page.", "success"); time.sleep(0.2); return html_abs
+
+                        if self.PdfReader:
+                            pdf_url = work.get("primary_location", {}).get("pdf_url") or (landing_page_url if landing_page_url and landing_page_url.lower().endswith(".pdf") else None)
+                            if not pdf_url:
+                                for loc in work.get("locations", []):
+                                    if loc.get("is_oa") and (loc.get("pdf_url") or loc.get("landing_page_url","").lower().endswith(".pdf")):
+                                        pdf_url = loc.get("pdf_url") or loc.get("landing_page_url"); break
+                            if pdf_url:
+                                try:
+                                    pdf_resp = requests.get(pdf_url, timeout=30, headers={'User-Agent': 'Mozilla/5.0'}, allow_redirects=True)
+                                    pdf_resp.raise_for_status()
+                                    if 'application/pdf' in pdf_resp.headers.get('Content-Type','').lower():
+                                        pdf_text = self._extract_text_from_pdf_content(pdf_resp.content)
+                                        if pdf_text:
+                                            pdf_abs_candidate = self._find_abstract_in_pdf_text(pdf_text)
+                                            if pdf_abs_candidate: self._log("OpenAlex: PDF abstract from primary/OA location.", "success"); time.sleep(0.2); return pdf_abs_candidate
+                                except Exception as e_pdf: self._log(f"OpenAlex: PDF error for {pdf_url}: {e_pdf}", "warn")
+                    self._log(f"OpenAlex(A{attempt}): Found papers for '{cleaned_title[:60]}' but no abstract.", "debug"); return None
+            except Exception as e: self._log(f"OpenAlex(A{attempt}): API/Req error for '{cleaned_title[:60]}': {e}", "warn")
+            time.sleep(0.3)
+        return None
+
+    def _fetch_abstract_from_semantic_scholar(self, title: str, authors_str: str = ""):
+        if not title: return None
+        for attempt in range(1, 6):
+            cleaned_title = self._clean_title_for_search(title, attempt=attempt)
+            if not cleaned_title: continue
+            self._log(f"S2(A{attempt}): Searching:'{cleaned_title}'", "debug")
+            try:
+                search_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={urllib.parse.quote_plus(cleaned_title)}&fields=title,abstract,url&limit=2"
+                headers = {'User-Agent': 'LatexToMarkdownConverter/1.3'}
+                response = requests.get(search_url, headers=headers, timeout=15)
+                response.raise_for_status(); data = response.json()
+                if data.get("data"):
+                    for paper_data in data["data"]:
+                        if paper_data.get("abstract"):
+                            self._log(f"S2(A{attempt}): Found abstract for '{cleaned_title}'.", "success"); time.sleep(0.3); return paper_data["abstract"]
+                        s2_url = paper_data.get("url")
+                        if self.elsevier_api_key and s2_url and "linkinghub.elsevier.com/retrieve/pii/" in s2_url:
+                            self._log(f"S2: No direct abstract, found Elsevier URL: {s2_url}. Trying API.", "debug")
+                            elsevier_abs = self._get_elsevier_abstract_from_linking_url(s2_url, self.elsevier_api_key)
+                            if elsevier_abs and not elsevier_abs.startswith("❌"):
+                                self._log("S2 (via Elsevier API): Abstract found.", "success"); time.sleep(0.3); return elsevier_abs
+                        elif self.springer_api_key and s2_url and "link.springer.com/" in s2_url:
+                            self._log(f"S2: No direct abstract, found Springer URL: {s2_url}. Trying API.", "debug")
+                            springer_abs = self._get_springer_abstract_from_url(s2_url, self.springer_api_key)
+                            if springer_abs and not springer_abs.startswith("❌"):
+                                self._log("S2 (via Springer API): Abstract found.", "success"); time.sleep(0.3); return springer_abs
+                        elif self.BeautifulSoup and s2_url and not s2_url.lower().endswith(".pdf"):
+                                self._log(f"S2: No direct abstract, found URL: {s2_url}. Trying HTML parse.", "debug")
+                                html_abs = self._fetch_and_parse_html_for_abstract(s2_url)
+                                if html_abs: self._log("S2 (via HTML parse): Abstract found.", "success"); time.sleep(0.3); return html_abs
+                    self._log(f"S2(A{attempt}): Found papers for '{cleaned_title}' but no abstract (or via fallback URLs).", "debug"); return None
+            except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "warn")
+            time.sleep(0.3)
+        return None
+
+    def _extract_bibitem_components(self, bibitem_text_chunk: str) -> dict:
+        key_match = re.match(r"\\bibitem(?:\[[^\]]*\])?\{([^\}]+)\}", bibitem_text_chunk)
+        key = key_match.group(1) if key_match else ""
+        content_after_key = bibitem_text_chunk[key_match.end():].strip() if key_match else bibitem_text_chunk
+        author_parts = content_after_key.split(r'\newblock', 1)
+        authors_str = author_parts[0].strip().rstrip('.,;')
+        text_after_authors = author_parts[1].strip() if len(author_parts) > 1 else ""
+        title_raw, details_after_title_str, is_url_title_flag, url_if_title_val = "", "", False, None
+        url_patterns = [r"^(?P<url>\\url\{([^}]+)\})(?P<rest>.*)", r"^(?P<url>https?://[^\s]+)(?P<rest>.*)"]
+        for pat_str in url_patterns:
+            url_match = re.match(pat_str, text_after_authors, re.DOTALL)
+            if url_match:
+                potential_url_block, url_content = url_match.group("url").strip(), url_match.group(2) if pat_str.startswith(r"^(?P<url>\\url") else url_match.group("url").strip()
+                rest_content = url_match.group("rest").strip()
+                if not rest_content or re.match(r"^[,\s]*\d{4}\.?$", rest_content) or rest_content.startswith(r"\newblock") or len(rest_content) < 15:
+                    title_raw = potential_url_block
+                    if rest_content and not rest_content.startswith(r"\newblock"): title_raw += " " + rest_content; details_after_title_str = ""
+                    else: details_after_title_str = rest_content
+                    is_url_title_flag, url_if_title_val = True, url_content.strip(); break
+        if not is_url_title_flag:
+            title_block_parts = text_after_authors.split(r'\newblock', 1)
+            current_title_candidate_block = title_block_parts[0].strip()
+            further_details_block = ("\\newblock " + title_block_parts[1].strip()) if len(title_block_parts) > 1 else ""
+            title_end_delimiters = [
+                r"In\s+(?:Proc\.?(?:eedings)?|Workshop|Conference|Journal|Symposium)\b",
+                r"\b(?:[A-Z][a-z]+)\s+(?:Press|Publishers|Verlag)\b",
+                r"Ph\.?D\.?\s+thesis\b",
+                r"Master(?:'s)?\s+thesis\b",
+                r"arXiv preprint arXiv:",
+                r"[,;\s]\(?(?P<year>\d{4})\)?(?=\W|$|\s*\\newblock|\s*notes\b)",
+                r"\.\s+\d{4}\.",
+                r"Article\s+No\.",
+                r"vol\.\s*\d+", r"pp\.\s*\d+", r"no\.\s*\d+",
+                r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b"
+            ]
+            min_delimiter_idx = len(current_title_candidate_block)
+            for pat in title_end_delimiters:
+                match = re.search(pat, current_title_candidate_block, re.IGNORECASE)
+                if match and match.start() < min_delimiter_idx:
+                    if 'year' in match.groupdict() and len(current_title_candidate_block[:match.start()].strip()) < 15 and not re.search(r'[,.;:]$', current_title_candidate_block[:match.start()].strip()): pass
+                    else: min_delimiter_idx = match.start()
+            title_raw = current_title_candidate_block[:min_delimiter_idx].strip().rstrip('.,;/')
+
+
+            details_after_title_str = (current_title_candidate_block[min_delimiter_idx:] + " " + further_details_block).strip()
+
+        title_cleaned_for_api = self._clean_title_for_search(title_raw) if not is_url_title_flag else url_if_title_val
+        return {"key": key, "authors": authors_str, "title_raw": title_raw, "title_cleaned": title_cleaned_for_api, "is_url_title": is_url_title_flag, "url_if_title": url_if_title_val, "details_after_title": details_after_title_str.strip()}
+
+    def _fully_process_bbl(self, raw_bbl_content: str) -> str:
+        self._log("Starting full BBL processing (abstracts, keys)...", "info")
+        if not raw_bbl_content: return ""
+        bbl_preamble = ""; bibliography_env_start = r"\begin{thebibliography}{}"
+        begin_env_match = re.search(r"(\\begin\{thebibliography\}\{[^}]*\})", raw_bbl_content)
         if begin_env_match:
             bibliography_env_start = begin_env_match.group(1)
-            preamble_end_index = begin_env_match.start()
-            bbl_preamble = bbl_content[:preamble_end_index]
-            
-            # Clean the extracted preamble
-            bbl_cleanup_patterns = [
-                re.compile(r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", flags=re.DOTALL),
-                re.compile(r"\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*", flags=re.DOTALL),
-                re.compile(r"\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*", flags=re.DOTALL),
-                re.compile(r"\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*", flags=re.DOTALL),
-            ]
-            for pattern_re in bbl_cleanup_patterns:
-                bbl_preamble = pattern_re.sub("", bbl_preamble)
+            bbl_preamble = raw_bbl_content[:begin_env_match.start()]
+            cleanup_patterns = [r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", r"\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*", r"\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*", r"\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*"]
+            for p in cleanup_patterns: bbl_preamble = re.sub(p, "", bbl_preamble, flags=re.DOTALL)
             bbl_preamble = bbl_preamble.strip()
-        else:
-            self._log("Could not find '\\begin{thebibliography}{...}' in .bbl content. Proceeding with raw content for items.", "warn")
-            bbl_content = re.sub(r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", "", bbl_content, flags=re.DOTALL)
+        items_text_start = raw_bbl_content.find(bibliography_env_start) + len(bibliography_env_start) if begin_env_match else 0
+        items_text_end = raw_bbl_content.rfind(r"\end{thebibliography}") if begin_env_match else len(raw_bbl_content)
+        bbl_items_text = raw_bbl_content[items_text_start:items_text_end].strip()
+        if not bbl_items_text: return raw_bbl_content
+        split_bibitems = re.split(r'(\\bibitem)', bbl_items_text)
+        processed_bibitems_parts = []
+        if split_bibitems and not split_bibitems[0].strip() and len(split_bibitems) > 1: split_bibitems.pop(0)
+        elif split_bibitems and split_bibitems[0].strip() and not split_bibitems[0].startswith("\\bibitem"):
+            processed_bibitems_parts.append(split_bibitems.pop(0).strip())
+        k = 0
+        while k < len(split_bibitems):
+            if split_bibitems[k] == r'\bibitem':
+                if k + 1 < len(split_bibitems): item_chunk = r'\bibitem' + split_bibitems[k+1].strip(); k += 2
+                else: processed_bibitems_parts.append(r'\bibitem'); k+=1; continue
+            else: processed_bibitems_parts.append(split_bibitems[k].strip()); k+=1; continue
 
-        items_text_start_index = bbl_content.find(bibliography_env_start) + len(bibliography_env_start) if begin_env_match else 0
-        items_text_end_index = bbl_content.rfind(r"\end{thebibliography}") if begin_env_match else len(bbl_content)
-        
-        bbl_items_text = bbl_content[items_text_start_index:items_text_end_index].strip()
+            components = self._extract_bibitem_components(item_chunk)
+            reconstructed_item_parts = [f"\\bibitem{{{components['key']}}}", components['authors']]
+            if components['authors'] and components['title_raw']: reconstructed_item_parts.append(r"\newblock")
+            if components['title_raw']: reconstructed_item_parts.append(components['title_raw'])
+            if components['details_after_title'].strip(): reconstructed_item_parts.append(components['details_after_title'])
 
-        if not bbl_items_text:
-            self._log("No bibitem content found to process after isolating.", "warn")
-            final_bbl_content_for_inline = bbl_content_original
-        else:
-            bibitem_starts = [match.start() for match in re.finditer(r'\\bibitem', bbl_items_text)]
-            processed_bibitems_parts = []
+            current_item_reconstructed = " ".join(p.strip() for p in reconstructed_item_parts if p.strip())
+            current_item_reconstructed = re.sub(r'\s*\\newblock\s*', r' \\newblock ', current_item_reconstructed).strip()
+            current_item_reconstructed = re.sub(r'\s+', ' ', current_item_reconstructed)
 
-            if not bibitem_starts:
-                self._log("No \\bibitem entries found within isolated BBL items text.", "warn")
-                processed_bibitems_parts.append(bbl_items_text) 
-            else:
-                if bibitem_starts[0] > 0:
-                    leading_text = bbl_items_text[:bibitem_starts[0]].strip()
-                    if leading_text: processed_bibitems_parts.append(leading_text)
 
-                for i in range(len(bibitem_starts)):
-                    start_idx = bibitem_starts[i]
-                    end_idx = bibitem_starts[i+1] if (i + 1) < len(bibitem_starts) else len(bbl_items_text)
-                    
-                    item_full_text = bbl_items_text[start_idx:end_idx].strip()
-                    if not item_full_text: continue
+            abstract_text = None
+            if 'arxiv' in item_chunk.lower():
+                self._log(f"Bibitem {components['key']}: 'arxiv' keyword found. Attempting extract abstract from Arxiv.", "debug")
+                arxiv_id = None
+                specific_match = re.search(r'arxiv[:\s]*(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk, re.IGNORECASE)
+                if specific_match: arxiv_id = specific_match.group(1)
+                else:
+                    general_match = re.search(r'(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk)
+                    if general_match: arxiv_id = general_match.group(1)
+                if arxiv_id and re.fullmatch(r'\d{4}\.\d{4,5}(v\d+)?', arxiv_id):
+                    self._log(f"Bibitem {components['key']}: Extracted valid arXiv ID: {arxiv_id}", "debug")
+                    arxiv_abs_url = f"https://arxiv.org/abs/{arxiv_id}" # Use /abs/ URL for parsing
+                    self._log(f"Bibitem {components['key']}: Attempting to fetch abstract from arXiv: {arxiv_abs_url}", "debug")
 
-                    bibitem_prefix_match = re.match(r"(\\bibitem(?:\[[^\]]*\])?\{[^\}]+\})", item_full_text)
-                    if not bibitem_prefix_match:
-                        processed_bibitems_parts.append(item_full_text) 
-                        continue
-                    
-                    bibitem_prefix = bibitem_prefix_match.group(1)
-                    details_str = item_full_text[len(bibitem_prefix):].strip()
-                    
-                    parts = details_str.split(r'\newblock')
-                    authors_str = parts[0].strip().rstrip('.') if parts else ""
-                    title_str = parts[1].strip().rstrip('.') if len(parts) > 1 else ""
-                    
-                    current_item_reconstructed_parts = [bibitem_prefix]
-                    if authors_str: current_item_reconstructed_parts.append(authors_str + ".")
-                    
-                    if len(parts) > 1: 
-                        current_item_reconstructed_parts.append(r"\newblock " + title_str + ".")
-                        for j in range(2, len(parts)):
-                            current_item_reconstructed_parts.append(r"\newblock " + parts[j].strip())
-                    
-                    current_item_reconstructed = " ".join(current_item_reconstructed_parts)
-
-                    abstract_text = None
-                    if title_str:
-                        self._log(f"Attempting to fetch abstract for title: '{title_str[:70]}...'", "debug")
-                        abstract_text = self._fetch_abstract_from_semantic_scholar(title_str, authors_str)
-
+                    abstract_text = self._get_arxiv_abstract_from_page(arxiv_abs_url)
                     if abstract_text:
-                        escaped_abstract = self._latex_escape_abstract(abstract_text)
-                        current_item_reconstructed += f" \\newblock \\textbf{{Abstract:}} {escaped_abstract}"
-                        self._log(f"Abstract added for: '{title_str[:70]}...'", "debug")
-                    
-                    processed_bibitems_parts.append(current_item_reconstructed)
-            
-            final_bbl_items_joined = "\n\n".join(p.strip() for p in processed_bibitems_parts if p.strip())
-            final_bbl_content_for_inline = (bbl_preamble + "\n" if bbl_preamble else "") + \
-                                   bibliography_env_start + "\n" + \
-                                   final_bbl_items_joined + "\n" + \
-                                   r"\end{thebibliography}"
-        
-        references_heading_tex = "\n\n\\section*{References}\n\n" 
-        content_to_inline = references_heading_tex + final_bbl_content_for_inline
+                         self._log(f"Bibitem {components['key']}: Abstract successfully extracted from arXiv {arxiv_abs_url}.", "success")
 
+                elif 'arxiv' in item_chunk.lower():
+                    self._log(f"Bibitem {components['key']}: 'arxiv' keyword found but could not extract a valid arXiv ID from chunk: '{item_chunk[:100]}...'", "debug")
+
+            if not abstract_text:
+                title_for_api = components["title_cleaned"]
+                if components["is_url_title"] and components["url_if_title"]:
+                    current_url_to_check = components["url_if_title"]
+                    if "linkinghub.elsevier.com/retrieve/pii/" in current_url_to_check and self.elsevier_api_key:
+                        self._log(f"Elsevier API: Attempting for primary URL '{current_url_to_check}'", "debug")
+                        api_abs = self._get_elsevier_abstract_from_linking_url(current_url_to_check, self.elsevier_api_key)
+                        if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+                    elif "link.springer.com/" in current_url_to_check and self.springer_api_key:
+                        self._log(f"Springer API: Attempting for primary URL '{current_url_to_check}'", "debug")
+                        api_abs = self._get_springer_abstract_from_url(current_url_to_check, self.springer_api_key)
+                        if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+
+                    if not abstract_text and self.BeautifulSoup and not current_url_to_check.lower().endswith(".pdf"):
+                        # Avoid re-fetching arXiv if already tried via _get_arxiv_abstract_from_page
+                        if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
+                            abstract_text = self._fetch_and_parse_html_for_abstract(current_url_to_check)
+
+                if not abstract_text and title_for_api:
+                    abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
+                    if not abstract_text:
+                        abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
+
+                if not abstract_text:
+                    self._log(f"Bibitem {components['key']}: No abstract from APIs/primary URL for '{title_for_api[:60]}...'. Scanning bibitem for other URLs.", "debug")
+                    latex_url_match = re.search(r"\\url\{([^}]+)\}", item_chunk)
+                    http_url_match = re.search(r"\b(https?://[^\s\"'<>()\[\]{},;]+[^\s\"'<>()\[\]{},;\.])", item_chunk)
+                    potential_urls = []
+                    if latex_url_match: potential_urls.append(latex_url_match.group(1).strip())
+                    if http_url_match:
+                        url_candidate = http_url_match.group(1).strip()
+                        if not (latex_url_match and latex_url_match.group(1).strip() == url_candidate):
+                            preceding_char_idx = http_url_match.start(1) - 1
+                            if preceding_char_idx < 0 or item_chunk[preceding_char_idx] not in ['{']:
+                                potential_urls.append(url_candidate)
+
+                    for p_url in potential_urls:
+                        if components["is_url_title"] and components["url_if_title"] == p_url: continue
+                        # Avoid re-fetching arXiv if already tried
+                        if ("arxiv.org/pdf/" in p_url or "arxiv.org/abs/" in p_url) and 'arxiv' in item_chunk.lower(): continue
+
+                        self._log(f"Fallback: Identified URL '{p_url}' in bibitem {components['key']}.", "debug")
+                        if "linkinghub.elsevier.com/retrieve/pii/" in p_url and self.elsevier_api_key:
+                            api_abs = self._get_elsevier_abstract_from_linking_url(p_url, self.elsevier_api_key)
+                            if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+                        elif "link.springer.com/" in p_url and self.springer_api_key:
+                            api_abs = self._get_springer_abstract_from_url(p_url, self.springer_api_key)
+                            if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+
+                        if not abstract_text and self.BeautifulSoup and not p_url.lower().endswith(".pdf"):
+                             if not (("arxiv.org/abs/" in p_url or "arxiv.org/html/" in p_url) and 'arxiv' in item_chunk.lower()):
+                                html_abstract = self._fetch_and_parse_html_for_abstract(p_url)
+                                if html_abstract: abstract_text = html_abstract; self._log(f"Fallback: Abstract from HTML URL '{p_url}'.", "success")
+                        if not abstract_text and self.PdfReader and (p_url.lower().endswith(".pdf") or "arxiv.org/pdf/" in p_url):
+                            try:
+                                pdf_resp = requests.get(p_url, timeout=30, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/pdf, */*'}, allow_redirects=True)
+                                pdf_resp.raise_for_status()
+                                if 'application/pdf' in pdf_resp.headers.get('Content-Type','').lower():
+                                    pdf_txt = self._extract_text_from_pdf_content(pdf_resp.content)
+                                    if pdf_txt:
+                                        pdf_abs_candidate = self._find_abstract_in_pdf_text(pdf_txt)
+                                        if pdf_abs_candidate: abstract_text = pdf_abs_candidate; self._log(f"Fallback: Abstract from PDF URL '{p_url}'.", "success")
+                            except Exception as fb_pdf_err: self._log(f"Fallback: PDF error for {p_url}: {fb_pdf_err}", "warn")
+                        if abstract_text: break
+
+            if abstract_text:
+                escaped_abstract = self._latex_escape_abstract(abstract_text)
+                current_item_reconstructed += f" \\newblock \\textbf{{Abstract:}} {escaped_abstract}"
+
+            escaped_key_for_display = components['key'].replace('_', r'\_')
+            current_item_reconstructed += f" \\newblock (@{escaped_key_for_display})"
+
+
+            processed_bibitems_parts.append(current_item_reconstructed)
+
+        final_bbl_items_joined = "\n\n".join(p for p in processed_bibitems_parts if p)
+        return (bbl_preamble + "\n" if bbl_preamble else "") + bibliography_env_start + "\n" + final_bbl_items_joined + "\n" + r"\end{thebibliography}"
+
+    def _simple_inline_processed_bbl(self, tex_content: str, processed_bbl_string: str) -> str:
+        self._log("Inlining fully processed BBL content into TeX...", "debug")
+        references_heading_tex = "\n\n\\section*{References}\n\n"
+        content_to_inline = references_heading_tex + processed_bbl_string
         modified_tex_content = re.sub(r"^\s*\\bibliographystyle\{[^{}]*\}\s*$", "", tex_content, flags=re.MULTILINE)
         bibliography_command_pattern = r"^\s*\\bibliography\{[^{}]*(?:,[^{}]*)*\}\s*$"
-        
+
         if re.search(bibliography_command_pattern, modified_tex_content, flags=re.MULTILINE):
             modified_tex_content = re.sub(bibliography_command_pattern, lambda m: content_to_inline, modified_tex_content, count=1, flags=re.MULTILINE)
-            self._log("Replaced \\bibliography command with inlined content (with abstracts).", "success")
         else:
-            self._log("\\bibliography{...} command not found. Appending inlined content before \\end{document}.", "warn")
             end_document_match = re.search(r"\\end\{document\}", modified_tex_content)
             if end_document_match:
                 insertion_point = end_document_match.start()
                 modified_tex_content = modified_tex_content[:insertion_point] + content_to_inline + "\n" + modified_tex_content[insertion_point:]
-            else:
-                self._log("\\end{document} not found. Appending inlined content to the end.", "warn")
-                modified_tex_content += "\n" + content_to_inline
-        
-        modified_tex_content = re.sub(bibliography_command_pattern, "", modified_tex_content, flags=re.MULTILINE)
+            else: modified_tex_content += "\n" + content_to_inline
         modified_tex_content = re.sub(r"^\s*\\nobibliography\{[^{}]*(?:,[^{}]*)*\}\s*$", "", modified_tex_content, flags=re.MULTILINE)
-        
         return modified_tex_content
 
     def _find_and_copy_figures_from_markdown(self, markdown_content, output_figure_folder_path):
+        """
+        Finds image paths in markdown, copies them to output_figure_folder_path (which should be a 'figures' subdirectory),
+        and returns a list of dictionaries with details about each copied figure.
+        Note: This function flattens the directory structure of copied images into output_figure_folder_path.
+              e.g., "figures/myimg.pdf" or "another_subfolder/myimg.pdf" from source becomes "myimg.pdf" in output_figure_folder_path.
+        """
+        copied_figure_details = []
         if not markdown_content:
-            self._log("Cannot find figures: Markdown content is empty.", "warn")
-            return
-        self._log(f"Searching for and copying figures (from Markdown) to: {output_figure_folder_path}")
-        markdown_image_pattern = r"!\[[^\]]*\]\(([^)\s]+?)(?:\s+[\"'][^\"']*[\"'])?\)"
-        html_img_pattern = r"<img\s+[^>]*?src\s*=\s*[\"']([^\"']+)[\"'][^>]*?>"
-        html_embed_pattern = r"<embed\s+[^>]*?src\s*=\s*[\"']([^\"']+)[\"'][^>]*?>"
-        html_source_pattern = r"<source\s+[^>]*?srcset\s*=\s*[\"']([^\"'\s]+)(?:\s+\S+)?[\"'][^>]*?>"
-        image_paths_in_md = []
-        for pattern in [markdown_image_pattern, html_img_pattern, html_embed_pattern, html_source_pattern]:
-            for match in re.finditer(pattern, markdown_content, flags=re.IGNORECASE):
-                image_paths_in_md.append(match.group(1))
-        if not image_paths_in_md:
-            self._log("No image references found in the Markdown content.", "info")
-            return
-        self._log(f"Found {len(image_paths_in_md)} potential image references in Markdown.", "debug")
-        common_image_extensions = ['.pdf', '.png', '.jpg', '.jpeg', '.eps', '.tikz', '.svg'] 
-        figures_copied_count = 0
-        copied_files_set = set() 
-        for image_path_in_md_raw in image_paths_in_md:
+            self._log("No markdown content to find figures from.", "debug")
+            return copied_figure_details
+
+        patterns = [
+            r"!\[[^\]]*\]\(([^)\s]+?)(?:\s+[\"'][^\"']*[\"'])?\)", # Standard Markdown: ![alt](path "title")
+            r"<img\s+[^>]*?src\s*=\s*[\"']([^\"']+)[\"'][^>]*?>",   # HTML <img>: <img src="path">
+            r"<figure>.*?<embed\s+[^>]*?src\s*=\s*[\"']([^\"']+)[\"'][^>]*?>.*?</figure>" # HTML <figure><embed src="path"></figure>
+        ]
+        img_paths = []
+        for p in patterns:
+            for match in re.finditer(p, markdown_content, flags=re.IGNORECASE | re.DOTALL): # Added re.DOTALL for multiline figure/embed
+                img_paths.append(match.group(1))
+
+        if not img_paths:
+            self._log("No image paths found in markdown content.", "debug")
+            return copied_figure_details
+
+        self._log(f"Found {len(img_paths)} potential image paths in markdown. Target figure folder: {output_figure_folder_path}", "debug")
+        output_figure_folder_path.mkdir(parents=True, exist_ok=True)
+
+        common_ext = ['.pdf', '.png', '.jpg', '.jpeg', '.eps', '.svg', '.gif', '.bmp', '.tiff']
+        copied_count = 0
+        copied_source_abs_paths_set = set()
+
+        for raw_path in img_paths:
             try:
-                decoded_image_path_str = urllib.parse.unquote(image_path_in_md_raw)
-            except Exception as e_decode:
-                self._log(f"Could not URL-decode image path '{image_path_in_md_raw}': {e_decode}", "warn")
-                decoded_image_path_str = image_path_in_md_raw 
-            if urllib.parse.urlparse(decoded_image_path_str).scheme in ['http', 'https']:
-                self._log(f"Skipping web URL: {decoded_image_path_str}", "debug")
+                decoded_path_str = urllib.parse.unquote(raw_path)
+            except Exception as e_dec:
+                self._log(f"Could not decode path '{raw_path}': {e_dec}. Skipping.", "warn")
                 continue
-            potential_src_image_path = (self.folder_path / decoded_image_path_str).resolve()
-            found_image_file_abs = None
-            if potential_src_image_path.exists() and potential_src_image_path.is_file():
-                found_image_file_abs = potential_src_image_path
-            else:
-                if not Path(decoded_image_path_str).suffix:
-                    for ext in common_image_extensions:
-                        path_with_ext_abs = (self.folder_path / (decoded_image_path_str + ext)).resolve()
-                        if path_with_ext_abs.exists() and path_with_ext_abs.is_file():
-                            found_image_file_abs = path_with_ext_abs
+
+            if urllib.parse.urlparse(decoded_path_str).scheme in ['http', 'https']:
+                self._log(f"Skipping web URL: {decoded_path_str}", "debug")
+                continue
+
+            src_abs_candidate = (self.folder_path / decoded_path_str).resolve()
+            found_abs_path = None
+
+            if src_abs_candidate.is_file():
+                found_abs_path = src_abs_candidate
+            elif not src_abs_candidate.suffix:
+                for ext_ in common_ext:
+                    path_with_ext = (self.folder_path / (decoded_path_str + ext_)).resolve()
+                    if path_with_ext.is_file():
+                        found_abs_path = path_with_ext
+                        self._log(f"Found '{decoded_path_str}' as '{path_with_ext.name}' by adding extension.", "debug")
+                        break
+            
+            if not found_abs_path and self.main_tex_path:
+                src_abs_candidate_rel_main = (self.main_tex_path.parent / decoded_path_str).resolve()
+                if src_abs_candidate_rel_main.is_file():
+                    found_abs_path = src_abs_candidate_rel_main
+                elif not src_abs_candidate_rel_main.suffix:
+                    for ext_ in common_ext:
+                        path_with_ext = (self.main_tex_path.parent / (decoded_path_str + ext_)).resolve()
+                        if path_with_ext.is_file():
+                            found_abs_path = path_with_ext
+                            self._log(f"Found '{decoded_path_str}' as '{path_with_ext.name}' (relative to main .tex) by adding extension.", "debug")
                             break
-            if found_image_file_abs:
-                if found_image_file_abs in copied_files_set:
-                    self._log(f"Skipping already copied file: {found_image_file_abs.name}", "debug")
-                    continue
-                try:
-                    output_figure_folder_path.mkdir(parents=True, exist_ok=True)
-                    relative_dest_path_component = Path(image_path_in_md_raw).name 
-                    if Path(image_path_in_md_raw).parent != Path('.'): 
-                         relative_dest_path_component = Path(image_path_in_md_raw) 
 
-                    destination_path = (output_figure_folder_path / relative_dest_path_component).resolve()
-                    destination_path.parent.mkdir(parents=True, exist_ok=True) 
+            if found_abs_path:
+                dest_filename = found_abs_path.name 
+                dest_abs_path = (output_figure_folder_path / dest_filename).resolve()
 
-                    shutil.copy2(str(found_image_file_abs), str(destination_path))
-                    self._log(f"Copied figure: '{found_image_file_abs.name}' to '{destination_path}'", "success")
-                    copied_files_set.add(found_image_file_abs)
-                    figures_copied_count += 1
-                except Exception as e_copy:
-                    self._log(f"Could not copy figure '{found_image_file_abs}' to '{destination_path}': {e_copy}", "warn")
+                if found_abs_path in copied_source_abs_paths_set and dest_abs_path.exists():
+                    self._log(f"Figure source '{found_abs_path.name}' (from MD path '{raw_path}') already copied to '{dest_abs_path}'. Adding reference.", "debug")
+                else: 
+                    try:
+                        shutil.copy2(str(found_abs_path), str(dest_abs_path))
+                        copied_source_abs_paths_set.add(found_abs_path) 
+                        copied_count +=1
+                        self._log(f"Copied '{found_abs_path.name}' (from MD path '{raw_path}') to '{dest_abs_path}'.", "debug")
+                    except Exception as e_copy:
+                        self._log(f"Figure copy error for '{found_abs_path}' to '{dest_abs_path}': {e_copy}", "warn")
+                        continue 
+
+                details = {
+                    "raw_markdown_path": raw_path,
+                    "original_filename_with_ext": found_abs_path.name,
+                    "source_abs_path": str(found_abs_path),
+                    "copied_dest_abs_path": str(dest_abs_path), 
+                    "original_ext": found_abs_path.suffix.lower()
+                }
+                copied_figure_details.append(details)
             else:
-                self._log(f"Referenced image '{decoded_image_path_str}' (from Markdown) not found in project folder '{self.folder_path}'. Raw path from MD: '{image_path_in_md_raw}'", "warn")
-        if figures_copied_count > 0:
-            self._log(f"Copied {figures_copied_count} unique figure(s) based on Markdown content.", "success")
+                self._log(f"Could not find figure source for markdown path: '{raw_path}' (decoded: '{decoded_path_str}')", "warn")
+
+        if copied_count > 0:
+            self._log(f"Copied {copied_count} unique figure files to '{output_figure_folder_path}'.", "success")
+        elif img_paths:
+            self._log("Found image paths in markdown, but no new files were copied (e.g., all URLs, files not found, or already copied).", "info")
+        return copied_figure_details
+
+    def _convert_and_update_figure_paths_in_markdown(self, markdown_content, figure_details_list, output_base_path):
+        """
+        Converts specified figures to PNG and updates their paths in the markdown content.
+        Figures are expected to be in a 'figures' subdirectory of output_base_path.
+        Markdown paths will be updated to './figures/filename.ext'.
+        """
+        if not figure_details_list:
+            return markdown_content
+
+        updated_markdown_content = markdown_content
+        NO_CONVERSION_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+
+        for fig_info in figure_details_list:
+            original_md_path_in_doc = fig_info["raw_markdown_path"]
+            
+            copied_file_abs_path = Path(fig_info["copied_dest_abs_path"]) 
+            original_ext = fig_info["original_ext"]
+            original_filename_stem = copied_file_abs_path.stem
+
+            target_filename_in_figures_subdir = copied_file_abs_path.name
+            conversion_done = False # Flag to track if any conversion (pdf2image or Pillow) succeeded
+
+            # --- PDF Conversion using pdf2image (Primary for PDFs) ---
+            if self.convert_from_path and original_ext == '.pdf':
+                target_png_filename_stem = f"{original_filename_stem}.png"
+                target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
+                
+                if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                    self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (from PDF) already exists. Using it.", "debug")
+                    conversion_done = True
+                else:
+                    try:
+                        self._log(f"Attempting PDF to PNG conversion for '{copied_file_abs_path.name}' using pdf2image...", "debug")
+                        images = self.convert_from_path(copied_file_abs_path, 
+                                                        poppler_path=self.poppler_path, 
+                                                        first_page=1, last_page=1, fmt='png')
+                        if images:
+                            images[0].save(target_png_abs_path_in_figures_subdir, "PNG")
+                            self._log(f"Successfully converted PDF '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' using pdf2image.", "success")
+                            conversion_done = True
+                        else:
+                            self._log(f"pdf2image returned no images for '{copied_file_abs_path.name}'.", "warn")
+                    except self.Pdf2ImageError as e_pdf2img_specific: 
+                        self._log(f"pdf2image specific error for '{copied_file_abs_path.name}': {e_pdf2img_specific}. Check Poppler path/installation.", "warn")
+                    except Exception as e_pdf2img_generic: 
+                        self._log(f"Generic error during pdf2image conversion for '{copied_file_abs_path.name}': {e_pdf2img_generic}", "warn")
+                
+                if conversion_done:
+                    target_filename_in_figures_subdir = target_png_filename_stem
+                    if copied_file_abs_path.exists() and copied_file_abs_path.suffix == '.pdf' and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                        try:
+                            copied_file_abs_path.unlink()
+                            self._log(f"Deleted original PDF '{copied_file_abs_path.name}' from figures subdir after pdf2image conversion.", "debug")
+                        except Exception as e_del:
+                            self._log(f"Failed to delete original PDF '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
+
+            # --- Pillow Conversion (Fallback for PDFs if pdf2image failed, or for other types) ---
+            if not conversion_done and original_ext not in NO_CONVERSION_EXTENSIONS:
+                target_png_filename_stem = f"{original_filename_stem}.png"
+                target_png_abs_path_in_figures_subdir = copied_file_abs_path.with_name(target_png_filename_stem)
+                
+                pillow_conversion_attempted = False
+                if target_png_abs_path_in_figures_subdir.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                    self._log(f"Converted PNG '{target_png_abs_path_in_figures_subdir.name}' (Pillow fallback) already exists. Using it.", "debug")
+                    conversion_done = True 
+                elif self.PILImage:
+                    pillow_conversion_attempted = True
+                    self._log(f"Attempting conversion to PNG for '{copied_file_abs_path.name}' (in figures subdir) using Pillow...", "debug")
+                    try:
+                        if original_ext in ['.pdf', '.eps'] and not shutil.which("gs"):
+                            self._log(f"Ghostscript (gs) command not found. Pillow may fail to convert '{copied_file_abs_path.name}'. Install Ghostscript for PDF/EPS conversion.", "warn")
+                        if original_ext == '.svg':
+                            self._log(f"Pillow does not directly support SVG conversion. Skipping Pillow conversion for '{copied_file_abs_path.name}'.", "warn")
+                        else:
+                            img = self.PILImage.open(copied_file_abs_path)
+                            if img.mode == 'P' and 'transparency' in img.info: img = img.convert("RGBA")
+                            elif img.mode not in ['RGB', 'RGBA', 'L', 'LA']: img = img.convert("RGBA")
+                            img.save(target_png_abs_path_in_figures_subdir, "PNG")
+                            self._log(f"Successfully converted '{copied_file_abs_path.name}' to '{target_png_abs_path_in_figures_subdir.name}' (in figures subdir) using Pillow.", "debug")
+                            conversion_done = True
+                    except FileNotFoundError: 
+                        self._log(f"Pillow conversion failed for '{copied_file_abs_path.name}': A dependent component (like Ghostscript for PDF/EPS) might be missing or not in PATH.", "warn")
+                    except Exception as e_conv:
+                        self._log(f"Error converting '{copied_file_abs_path.name}' to PNG using Pillow: {e_conv}", "warn")
+                elif not pillow_conversion_attempted: 
+                    self._log("Pillow (PIL) library not found. Cannot convert images using Pillow.", "warn")
+
+                if conversion_done:
+                    target_filename_in_figures_subdir = target_png_filename_stem 
+                    if copied_file_abs_path.exists() and copied_file_abs_path != target_png_abs_path_in_figures_subdir:
+                        try:
+                            copied_file_abs_path.unlink()
+                            self._log(f"Deleted original file '{copied_file_abs_path.name}' from figures subdir after Pillow conversion.", "debug")
+                        except Exception as e_del:
+                            self._log(f"Failed to delete original file '{copied_file_abs_path.name}' from figures subdir: {e_del}", "warn")
+                elif pillow_conversion_attempted: 
+                     self._log(f"Pillow conversion skipped or failed for '{copied_file_abs_path.name}'. Markdown will link to original in figures subdir.", "debug")
+
+
+            # --- Update Markdown Path ---
+            new_md_path_for_doc = f"./figures/{target_filename_in_figures_subdir}"
+            escaped_original_md_path = re.escape(original_md_path_in_doc)
+            
+            md_link_pattern = rf"(!\[(?:[^\]]*)\]\()({escaped_original_md_path})(\))"
+            updated_markdown_content = re.sub(md_link_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
+            
+            img_src_pattern = rf'(<img\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>)'
+            updated_markdown_content = re.sub(img_src_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content)
+
+            figure_embed_pattern = rf'(<figure>.*?<embed\s+[^>]*?src\s*=\s*["\'])({escaped_original_md_path})(["\'][^>]*?>.*?</figure>)'
+            updated_markdown_content = re.sub(figure_embed_pattern, rf"\1{new_md_path_for_doc}\3", updated_markdown_content, flags=re.DOTALL)
+
+            if original_md_path_in_doc != new_md_path_for_doc and original_md_path_in_doc in markdown_content : 
+                 self._log(f"Updated Markdown path for '{original_md_path_in_doc}' to '{new_md_path_for_doc}'.", "debug")
+            elif original_md_path_in_doc == new_md_path_for_doc:
+                 self._log(f"Markdown path '{original_md_path_in_doc}' effectively unchanged to '{new_md_path_for_doc}'.", "debug")
+
+        return updated_markdown_content
+
+    def _preprocess_latex_table_environments(self, latex_content: str) -> str:
+        """
+        Converts specific non-standard LaTeX table environments to standard ones
+        to aid tools like Pandoc.
+        """
+        self._log("Preprocessing LaTeX table environments...", "debug")
+        initial_content = latex_content
+        processed_content = latex_content 
+        
+        # def remove_pipes_from_spec(match):
+        #     tabular_start = match.group(1)
+        #     optional_align = match.group(2) if match.group(2) else ""
+        #     column_specs = match.group(3)
+        #     tabular_end = match.group(4)
+        #     cleaned_specs = column_specs.replace("|", "")
+        #     return f"{tabular_start}{optional_align}{cleaned_specs}{tabular_end}"
+
+        # processed_content = re.sub(
+        #     r"(\\begin{tabular})(\[[^\]]*\])?({[^}]*})([\s\S]*?\\end{tabular})",
+        #     remove_pipes_from_spec,
+        #     processed_content # Apply to already potentially modified content
+        # )
+        
+        processed_content = re.sub(r'\\cr', r'\\\\', processed_content)
+        
+        processed_content = re.sub(
+            r"\\scalebox{[^}]*}{\s*(\\begin{tabular}[\s\S]*?\\end{tabular})\s*}",
+            r"\1",  
+            processed_content
+        )
+
+        processed_content = re.sub(
+            r"\\begin{wraptable}(?:\[[^\]]*\])?\s*\{[^}]*\}\s*\{[^}]*\}",
+            r"\\begin{table}[htb]",
+            processed_content
+        )
+        processed_content = re.sub(
+            r"\\end{wraptable}",
+            r"\\end{table}",
+            processed_content
+        )
+
+        processed_content = re.sub(
+            r"\\begin{table\*}(?:\[[^\]]*\])?",
+            r"\\begin{table}[htb]",
+            processed_content
+        )
+        processed_content = re.sub(
+            r"\\end{table\*}",
+            r"\\end{table}",
+            processed_content
+        )
+            
+        processed_content = re.sub(r"\\begin{tablenotes}\s*(?:\[.*?\])?([\s\S]*?)\\end{tablenotes}", r"\n\1\n", processed_content) 
+        
+        processed_content = re.sub(r"\\begin{threeparttable}(?:\[[^\]]*\])?", "", processed_content)
+        processed_content = re.sub(r"\\end{threeparttable}", "", processed_content)
+        
+        if processed_content != initial_content:
+            self._log("Applied LaTeX table preprocessing (pipes, scalebox, wraptable, table*, threeparttable, tablenotes).", "info")
         else:
-            self._log("No new figures found in Markdown to copy.", "info")
+            self._log("No changes made during LaTeX table preprocessing.", "debug")
+            
+        return processed_content
 
     def _run_pandoc_conversion(self, tex_content_for_pandoc, pandoc_timeout=None):
-        self._log(f"Preparing to run Pandoc (timeout: {pandoc_timeout}s)...", "debug")
-        final_markdown_file_path = self.final_output_folder_path / "paper.md" 
-        tmp_tex_file_path_str = "" 
-        pandoc_local_output_name = "_pandoc_temp_paper.md" 
-        original_cwd = Path.cwd()
-
+        final_md_path = self.final_output_folder_path / "paper.md"; tmp_tex_path_obj = None
+        pandoc_local_out = "_pandoc_temp_paper.md"; original_cwd = Path.cwd()
         try:
-            with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".tex", encoding="utf-8") as tmp_tex_file:
-                tmp_tex_file.write(tex_content_for_pandoc)
-                tmp_tex_file_path_str = tmp_tex_file.name 
-            self._log(f"Temporary processed .tex file created at: {Path(tmp_tex_file_path_str).resolve()}", "debug")
-            
-            cmd_pandoc = [
-                "pandoc", str(Path(tmp_tex_file_path_str).resolve()),
-                "-f", "latex", 
-                "-t", "markdown+raw_tex", 
-                "--strip-comments", 
-                "--template", self.template_path, 
-                "--wrap=none", 
-                "-o", pandoc_local_output_name 
-            ]
-            
-            self._log(f"Pandoc will output locally to: {pandoc_local_output_name} (relative to project folder)", "debug")
-            self._log(f"Running Pandoc command: {' '.join(cmd_pandoc)}", "debug")
-            os.chdir(self.folder_path)
-            
-            process_pandoc = subprocess.run(cmd_pandoc, capture_output=True, text=True, 
-                                            check=False, encoding='utf-8', errors='ignore',
-                                            timeout=pandoc_timeout) 
-            
-            pandoc_created_md_path = self.folder_path / pandoc_local_output_name
+            with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".tex", encoding="utf-8", dir=self.folder_path) as tmp_f:
+                tmp_f.write(tex_content_for_pandoc)
+                tmp_tex_path_obj = Path(tmp_f.name)
 
-            if process_pandoc.returncode == 0:
-                self._log(f"Pandoc successfully created local Markdown: {pandoc_created_md_path}", "success")
-                try:
-                    shutil.move(str(pandoc_created_md_path), str(final_markdown_file_path))
-                    self._log(f"Successfully moved Markdown to final destination: {final_markdown_file_path}", "success")
-                    
-                    if final_markdown_file_path.exists():
-                        post_process_success = self.post_process_markdown(final_markdown_file_path)
-                        if not post_process_success:
-                            self._log("Markdown post-processing failed. Output might contain unconverted tables.", "warn")
-                        
-                        with open(final_markdown_file_path, "r", encoding="utf-8", errors="ignore") as md_file:
-                            markdown_content_for_figures = md_file.read()
-                        self._find_and_copy_figures_from_markdown(markdown_content_for_figures, self.final_output_folder_path)
-                    else:
-                        self._log(f"Final markdown file '{final_markdown_file_path}' not found after supposed move.", "error")
-                        return False 
-                    return True 
-                except Exception as e_move_or_copy:
-                    self._log(f"Error moving Pandoc output, post-processing, or copying figures: {e_move_or_copy}", "error")
-                    if pandoc_created_md_path.exists():
-                        try: pandoc_created_md_path.unlink()
-                        except: pass
-                    return False 
+            cmd = ["pandoc", str(tmp_tex_path_obj.name), "-f", "latex", "-t", "gfm-tex_math_dollars", "--strip-comments", "--wrap=none", "-o", pandoc_local_out]
+            if self.template_path and Path(self.template_path).exists():
+                 cmd.extend(["--template", self.template_path])
             else:
-                self._log(f"Pandoc failed with error code {process_pandoc.returncode}:", "error")
-                self._log(f"--- PANDOC STDOUT ---\n{process_pandoc.stdout}", "error")
-                self._log(f"--- PANDOC STDERR ---\n{process_pandoc.stderr}", "error")
-                if pandoc_created_md_path.exists():
-                    try: pandoc_created_md_path.unlink()
-                    except: pass
+                self._log(f"Pandoc template '{self.template_path}' not found or not specified. Using Pandoc default.", "info")
+
+            os.chdir(self.folder_path)
+            self._log(f"Running Pandoc in '{self.folder_path}': {' '.join(cmd)}", "debug")
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore', timeout=pandoc_timeout)
+            
+            created_md_path_local = self.folder_path / pandoc_local_out
+
+            if proc.returncode == 0 and created_md_path_local.exists():
+                self._log("Pandoc conversion step successful.", "debug")
+                self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(created_md_path_local), str(final_md_path))
+                
+                if final_md_path.exists():
+                    self._log(f"Markdown file generated at: {final_md_path}", "debug")
+
+                    with open(final_md_path, "r", encoding="utf-8", errors="ignore") as md_f:
+                        markdown_content_after_pandoc = md_f.read()
+
+                    output_figures_subdir = self.final_output_folder_path / "figures"
+                    output_figures_subdir.mkdir(parents=True, exist_ok=True)
+
+                    copied_figure_details = self._find_and_copy_figures_from_markdown(
+                        markdown_content_after_pandoc,
+                        output_figures_subdir
+                    )
+
+                    if copied_figure_details:
+                        updated_markdown_content = self._convert_and_update_figure_paths_in_markdown(
+                            markdown_content_after_pandoc,
+                            copied_figure_details,
+                            self.final_output_folder_path
+                        )
+                        with open(final_md_path, "w", encoding="utf-8") as md_f:
+                            md_f.write(updated_markdown_content)
+                        self._log("Markdown figure paths updated and relevant images processed into 'figures' subdirectory.", "success")
+                    else:
+                        self._log("No figures found in Markdown to process.", "debug")
+                    return True
+                else:
+                    self._log(f"Pandoc seemed to succeed but final markdown file '{final_md_path}' not found after move.", "error")
+                    return False
+            else:
+                self._log(f"Pandoc conversion failed. Return code: {proc.returncode}", "error")
+                self._log(f"Pandoc STDOUT: {proc.stdout[:500]}...", "debug" if proc.stdout else "debug")
+                self._log(f"Pandoc STDERR: {proc.stderr[:1000]}...", "error" if proc.stderr else "debug")
+                if created_md_path_local.exists():
+                    try: created_md_path_local.unlink()
+                    except Exception as e_del_tmp: self._log(f"Could not delete temporary pandoc output '{created_md_path_local}': {e_del_tmp}", "warn")
                 return False
         except subprocess.TimeoutExpired:
             self._log(f"Pandoc command timed out after {pandoc_timeout} seconds.", "error")
-            pandoc_created_md_path_on_timeout = self.folder_path / pandoc_local_output_name
-            if pandoc_created_md_path_on_timeout.exists():
-                try: pandoc_created_md_path_on_timeout.unlink()
-                except: pass
-            return False 
-        except FileNotFoundError:
-            self._log("Pandoc command not found. Ensure pandoc is installed and in your system PATH.", "error")
             return False
         except Exception as e:
-            self._log(f"An unexpected error occurred during Pandoc conversion: {e}", "error")
+            self._log(f"An exception occurred during Pandoc conversion: {e}", "error")
             return False
         finally:
             if Path.cwd() != original_cwd:
                 os.chdir(original_cwd)
-            if tmp_tex_file_path_str and Path(tmp_tex_file_path_str).exists():
-                try: Path(tmp_tex_file_path_str).unlink()
-                except Exception: pass
-        return False
-
-    # --- Start: Methods for Post-Processing Markdown (Table Conversion) ---
-    def _process_data_rows_to_markdown(self, table_data_str: str) -> str | None:
-        data_lines = [line for line in table_data_str.strip().split('\n') if line.strip()]
-        if not data_lines:
-            self._log("Table post-processing: No data lines found in table block.", "debug")
-            return None
-        header_line_str = data_lines[0]
-        header_cells_raw = [cell.strip() for cell in header_line_str.split('&')]
-        num_columns = len(header_cells_raw)
-        if num_columns == 0 or (num_columns == 1 and not header_cells_raw[0]):
-            self._log("Table post-processing: Invalid header.", "debug")
-            return None
-        markdown_table_rows = ["| " + " | ".join(header_cells_raw) + " |"]
-        markdown_table_rows.append("| " + " | ".join(["---"] * num_columns) + " |")
-        for i in range(1, len(data_lines)):
-            row_str = data_lines[i].strip()
-            if not row_str: continue
-            row_cells_raw = [cell.strip() for cell in row_str.split('&')]
-            if row_cells_raw and row_cells_raw[-1].endswith('\\\\'):
-                row_cells_raw[-1] = row_cells_raw[-1][:-2].strip()
-            final_row_cells = [''] * num_columns 
-            for j in range(num_columns):
-                if j < len(row_cells_raw): final_row_cells[j] = row_cells_raw[j]
-            markdown_table_rows.append("| " + " | ".join(final_row_cells) + " |")
-        return "\n".join(markdown_table_rows)
-
-    def _convert_tabular_block_to_markdown(self, block_text: str) -> str:
-        """
-        Takes the full text of a `::: {.tabular} ... :::` block,
-        parses it, and returns a Markdown table string.
-        If conversion fails or the block is not a valid target,
-        returns the original block_text.
-        """
-        lines = block_text.strip().split('\n')
-
-        if len(lines) < 3 or not lines[0].strip().startswith("::: {.tabular") or lines[-1].strip() != ":::":
-            self._log("Table post-processing: Block does not match expected ::: {.tabular} ... ::: structure.", "debug")
-            return block_text
-
-        potential_content_lines = lines[1:-1]
-        if not potential_content_lines:
-            self._log("Table post-processing: No content found between ::: {.tabular} markers.", "debug")
-            return block_text
-
-        first_content_line_raw = potential_content_lines[0]
-        remaining_content_lines = potential_content_lines[1:]
-        
-        first_line_stripped = first_content_line_raw.strip()
-        
-        colspec_candidate = "" # For logging, not strictly used beyond parsing
-        header_part_on_first_line = first_line_stripped # Default to whole line being header
-
-        # Case 1: First line does NOT contain an ampersand - it's either all colspec or all header
-        if '&' not in first_line_stripped:
-            # Heuristic check if the entire line is a column specifier
-            # A colspec usually isn't very long unless it has many columns or complex p{} m{} b{} entries.
-            # It should only contain valid colspec characters.
-            # It should contain at least one of 'l', 'c', 'r', or '|'.
-            # It should not contain words of 3+ letters unless part of p{}, m{}, b{}.
-            is_likely_colspec_line = True
-            if len(first_line_stripped) > 40 and not ('{' in first_line_stripped and '}' in first_line_stripped) :
-                 is_likely_colspec_line = False
-            # Check for words that are not p{...}, m{...}, b{...}
-            # Split by space, check individual words if they are not l,c,r,|,etc. or p{...}
-            simple_words = re.findall(r'[a-zA-Z]{3,}', first_line_stripped)
-            pmb_pattern = re.compile(r'(p|m|b)\{[^}]*\}')
-            for word in simple_words:
-                if not pmb_pattern.fullmatch(word): # if it's a word but not a p{arg} type
-                    is_likely_colspec_line = False
-                    break
-            if not re.fullmatch(r'[lcrpmb\s\|\@\{\}\>\<\d\.\*\(\)\-\+\\\!\$\^\_\~\%\'\[\]\#\~]*', first_line_stripped, re.IGNORECASE):
-                 is_likely_colspec_line = False 
-            if not any(c in first_line_stripped.lower() for c in 'lcr|'):
-                 is_likely_colspec_line = False
-
-            if is_likely_colspec_line:
-                self._log(f"Table post-processing: First line '{first_line_stripped}' (no '&') identified as full column specifier.", "debug")
-                colspec_candidate = first_line_stripped
-                header_part_on_first_line = "" # No header on this line
-            else:
-                self._log(f"Table post-processing: First line '{first_line_stripped}' (no '&') treated as header.", "debug")
-                # header_part_on_first_line remains first_line_stripped
-        
-        # Case 2: First line CONTAINS an ampersand - it has header data, might have leading colspec
-        else:
-            tokens = re.split(r'(\s+)', first_line_stripped) # Split by space, keeping space delimiters
-            current_colspec_prefix = ""
-            colspec_ended_at_token_index = -1
-
-            for idx, token_group_part in enumerate(tokens):
-                token = token_group_part.strip()
-                if not token: # It's a space delimiter
-                    current_colspec_prefix += token_group_part
-                    continue
-
-                # Check if the current token is a valid colspec component
-                # Valid: l, c, r, |, p{...}, m{...}, b{...}, @{...}, *{N}c, digits, single special chars
-                # Invalid: most words, or anything with an ampersand itself
-                is_token_colspec_like = bool(token and re.fullmatch(r'[lcrpmb\|\@\{\}\>\<\d\.\*\(\)\-\+\\\!\$\^\_\~\%\'\[\]\#\~]+', token, re.IGNORECASE))
-                
-                # If token contains characters not allowed in colspec, or is a word like 'Model' (more than 2-3 chars, not p{}), it's not colspec
-                if re.search(r'[a-zA-Z]{3,}', token) and not re.fullmatch(r'(p|m|b)\{[^}]*\}', token, re.IGNORECASE):
-                    is_token_colspec_like = False
-                if '&' in token: # ampersand means it's definitely not part of colspec
-                    is_token_colspec_like = False
-
-
-                if is_token_colspec_like:
-                    current_colspec_prefix += token_group_part
-                else:
-                    # This token is not part of the colspec. The colspec (if any) ended before this token.
-                    colspec_ended_at_token_index = idx
-                    break
-            
-            # After iterating tokens, evaluate current_colspec_prefix
-            potential_colspec_str = current_colspec_prefix.strip()
-            if potential_colspec_str and \
-               re.fullmatch(r'[lcrpmb\s\|\@\{\}\>\<\d\.\*\(\)\-\+\\\!\$\^\_\~\%\'\[\]\#\~]*', potential_colspec_str, re.IGNORECASE) and \
-               any(c in potential_colspec_str.lower() for c in 'lcr|'):
-                
-                colspec_candidate = potential_colspec_str
-                # The header starts from where the colspec ended.
-                # Reconstruct the part of the line that is header.
-                if colspec_ended_at_token_index != -1:
-                    # Join tokens from colspec_ended_at_token_index onwards
-                    header_part_on_first_line = "".join(tokens[colspec_ended_at_token_index:]).strip()
-                else: # All tokens looked like colspec, but line had '&'. This is ambiguous.
-                      # Or, colspec_ended_at_token_index was not set because loop finished.
-                      # If loop finished, means all tokens were colspec_like.
-                      # If current_colspec_prefix is the whole line, but it has '&', then it's not a pure colspec.
-                    if current_colspec_prefix == first_line_stripped: # Should not happen if '&' is in first_line_stripped and correctly breaks loop
-                         self._log(f"Table post-processing: Ambiguous first line with '&': '{first_line_stripped}'. Treating as full header.", "debug")
-                         header_part_on_first_line = first_line_stripped
-                    else: # Fallback, something is off, treat as full header.
-                         header_part_on_first_line = first_line_stripped
-
-
-                self._log(f"Table post-processing: Split first line. Colspec: '{colspec_candidate}', Header part: '{header_part_on_first_line}'", "debug")
-            else:
-                # No valid leading colspec found, or prefix was not valid.
-                self._log(f"Table post-processing: No valid leading colspec found on first line '{first_line_stripped}' (contains '&'). Treated as full header.", "debug")
-                header_part_on_first_line = first_line_stripped
-
-
-        actual_data_row_strings_list = []
-        if header_part_on_first_line.strip(): 
-            actual_data_row_strings_list.append(header_part_on_first_line)
-        
-        actual_data_row_strings_list.extend(remaining_content_lines)
-
-        if not actual_data_row_strings_list or not actual_data_row_strings_list[0].strip(): # Check if first line is now empty
-            self._log("Table post-processing: No data rows left or first data row is empty after parsing first line.", "debug")
-            return block_text # or handle as empty table if appropriate
-
-        rejoined_data_rows_str = "\n".join(s for s in actual_data_row_strings_list if s.strip()) # Ensure no empty lines are processed
-        if not rejoined_data_rows_str:
-             self._log("Table post-processing: All data rows are empty after processing.", "debug")
-             return block_text
-
-        markdown_table = self._process_data_rows_to_markdown(rejoined_data_rows_str)
-        
-        if markdown_table:
-            self._log("Table post-processing: Successfully converted a tabular block to Markdown table.", "debug")
-            return markdown_table
-        else:
-            self._log("Table post-processing: Failed to convert tabular data to Markdown table, returning original block.", "debug")
-            return block_text
-
-    def _convert_specific_tables_to_markdown_format(self, text: str) -> str:
-        self._log("Table post-processing: Starting conversion of '::: {.tabular}' formats.", "debug")
-        processed_text = text
-        current_pos, table_blocks_found, table_blocks_converted = 0, 0, 0
-        result_parts = [] 
-        tabular_start_regex = re.compile(r"^::: \{\.tabular\}[^\n]*$", re.MULTILINE)
-        block_end_regex = re.compile(r"^:::$", re.MULTILINE)
-        while current_pos < len(processed_text):
-            match_start = tabular_start_regex.search(processed_text, current_pos)
-            if not match_start: 
-                result_parts.append(processed_text[current_pos:])
-                break
-            table_blocks_found +=1
-            result_parts.append(processed_text[current_pos:match_start.start()])
-            
-            # Determine search start for ":::"
-            search_for_end_from = match_start.end()
-            # Correctly advance past the newline after the ::: {.tabular...} line
-            if search_for_end_from < len(processed_text) and processed_text[search_for_end_from] == '\n':
-                search_for_end_from += 1
-            
-            match_end = block_end_regex.search(processed_text, search_for_end_from)
-
-            if not match_end: 
-                self._log(f"Table post-processing: Unmatched '::: {{.tabular}}' at pos {match_start.start()}. Appending rest of text.", "warn")
-                result_parts.append(processed_text[match_start.start():])
-                break 
-            
-            block_to_process = processed_text[match_start.start():match_end.end()]
-            converted_content = self._convert_tabular_block_to_markdown(block_to_process)
-            result_parts.append(converted_content)
-            
-            if converted_content != block_to_process:
-                table_blocks_converted +=1
-                if not converted_content.endswith('\n'): 
-                    result_parts.append('\n') # Ensure table is followed by newline if conversion happened
-            
-            current_pos = match_end.end()
-            # Consume the newline that might follow the original ':::'
-            if current_pos < len(processed_text) and processed_text[current_pos] == '\n':
-                # If we converted, the added newline (if any) handles spacing.
-                # If we didn't convert, this newline was part of original structure.
-                current_pos += 1 
-        
-        final_text = "".join(result_parts)
-        self._log(f"Table post-processing: Found {table_blocks_found} '::: {{.tabular}}' blocks. Converted {table_blocks_converted}.", "info" if table_blocks_found > 0 else "debug")
-        return final_text
-
-    def post_process_markdown(self, markdown_file_path: Path) -> bool:
-        self._log(f"Starting post-processing for Markdown file: {markdown_file_path}")
-        if not markdown_file_path.exists():
-            self._log(f"Markdown file not found for post-processing: {markdown_file_path}", "error")
-            return False
-        try:
-            with open(markdown_file_path, "r", encoding="utf-8", errors="ignore") as f:
-                original_md_content = f.read()
-            processed_md_content = self._convert_specific_tables_to_markdown_format(original_md_content)
-            if processed_md_content != original_md_content:
-                with open(markdown_file_path, "w", encoding="utf-8") as f:
-                    f.write(processed_md_content)
-                self._log(f"Markdown file post-processed and updated: {markdown_file_path}", "success")
-            else:
-                self._log("No changes made during Markdown post-processing (table conversion).", "info")
-            return True
-        except Exception as e:
-            self._log(f"Error during Markdown post-processing for {markdown_file_path}: {e}", "error")
-            return False
-    # --- End: Methods for Post-Processing Markdown ---
+            if tmp_tex_path_obj and tmp_tex_path_obj.exists():
+                try: tmp_tex_path_obj.unlink()
+                except Exception as e_unlink: self._log(f"Could not delete temporary TeX file '{tmp_tex_path_obj}': {e_unlink}", "warn")
+            pandoc_temp_output_in_src = self.folder_path / pandoc_local_out
+            if pandoc_temp_output_in_src.exists():
+                try: pandoc_temp_output_in_src.unlink()
+                except Exception as e_del_tmp2: self._log(f"Could not delete temp pandoc output '{pandoc_temp_output_in_src}': {e_del_tmp2}", "warn")
 
     def convert_to_markdown(self, output_folder_path_str):
         if not self.find_main_tex_file(): return False
-        self._log("Starting LaTeX to Markdown conversion process...")
         self.final_output_folder_path = Path(output_folder_path_str).resolve()
-        try:
-            self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
-            self._log(f"Final output directory confirmed: {self.final_output_folder_path}", "success")
-        except Exception as e_mkdir:
-            self._log(f"Error creating final output directory {self.final_output_folder_path}: {e_mkdir}", "error")
+        try: self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e: self._log(f"Output dir error: {e}", "error"); return False
+
+        raw_bbl_content = self._generate_bbl_content()
+        if raw_bbl_content is None:
+            self._log("Failed to generate or find BBL content. Cannot proceed with BBL processing.", "error")
             return False
 
-        bbl_file_content = self._generate_bbl_content() 
-        if bbl_file_content is None:
-            self._log("Failed to generate or find .bbl content. Stopping conversion process.", "error") 
-            return False 
-        
-        problematic_macros_neutralization = r"""
-\providecommand{\linebreakand}{\par\noindent\ignorespaces}
-\providecommand{\email}[1]{\texttt{#1}}
-\providecommand{\IEEEauthorblockN}[1]{#1\par}
-\providecommand{\IEEEauthorblockA}[1]{#1\par}
-\providecommand{\and}{\par\noindent\ignorespaces}
-\providecommand{\And}{\par\noindent\ignorespaces} 
-\providecommand{\AND}{\par\noindent\ignorespaces} 
-\providecommand{\IEEEoverridecommandlockouts}{} 
-\providecommand{\CLASSINPUTinnersidemargin}{}
-\providecommand{\CLASSINPUToutersidemargin}{}
-\providecommand{\CLASSINPUTtoptextmargin}{}
-\providecommand{\CLASSINPUTbottomtextmargin}{}
-\providecommand{\CLASSOPTIONcompsoc}{}
-\providecommand{\CLASSOPTIONconference}{}
-\providecommand{\@toptitlebar}{}
-\providecommand{\@bottomtitlebar}{}
-\providecommand{\@thanks}{}
-\providecommand{\@notice}{}
-\providecommand{\@noticestring}{}
-\providecommand{\acksection}{}
-\newenvironment{ack}{\par\textbf{Acknowledgments}\par}{\par}
-\providecommand{\answerYes}[1]{[Yes] ##1}
-\providecommand{\answerNo}[1]{[No] ##1}
-\providecommand{\answerNA}[1]{[NA] ##1}
-\providecommand{\answerTODO}[1]{[TODO] ##1}
-\providecommand{\justificationTODO}[1]{[TODO] ##1}
-\providecommand{\textasciitilde}{~}
-\providecommand{\textasciicircum}{^}
-\providecommand{\textbackslash}{\symbol{92}}
-"""
-        # Attempt 1
-        self._log("Attempt 1: Processing with only venue-specific styles commented out.", "info")
-        tex_content_attempt1 = self._comment_out_style_packages(self.original_main_tex_content, mode="venue_only")
-        final_tex_for_pandoc_attempt1 = self._inline_bibliography(tex_content_attempt1, bbl_file_content)
-        final_tex_for_pandoc_attempt1 = problematic_macros_neutralization + final_tex_for_pandoc_attempt1
-        if self._run_pandoc_conversion(final_tex_for_pandoc_attempt1, pandoc_timeout=20): return True
+        self._log("Processing BBL content for abstracts and keys (once)...", "info")
+        processed_bbl_with_abstracts_and_keys = self._fully_process_bbl(raw_bbl_content)
 
-        # Attempt 2
-        self._log("Attempt 1 failed. Proceeding to Attempt 2: Using original TeX content.", "warn")
-        final_tex_for_pandoc_attempt2 = self._inline_bibliography(self.original_main_tex_content, bbl_file_content)
-        final_tex_for_pandoc_attempt2 = problematic_macros_neutralization + final_tex_for_pandoc_attempt2
-        if self._run_pandoc_conversion(final_tex_for_pandoc_attempt2, pandoc_timeout=20): return True
+        problematic_macros = r"""\providecommand{\linebreakand}{\par\noindent\ignorespaces} \providecommand{\email}[1]{\texttt{#1}} \providecommand{\IEEEauthorblockN}[1]{#1\par} \providecommand{\IEEEauthorblockA}[1]{#1\par} \providecommand{\and}{\par\noindent\ignorespaces} \providecommand{\And}{\par\noindent\ignorespaces} \providecommand{\AND}{\par\noindent\ignorespaces} \providecommand{\IEEEoverridecommandlockouts}{} \providecommand{\CLASSINPUTinnersidemargin}{} \providecommand{\CLASSINPUToutersidemargin}{} \providecommand{\CLASSINPUTtoptextmargin}{} \providecommand{\CLASSINPUTbottomtextmargin}{} \providecommand{\CLASSOPTIONcompsoc}{} \providecommand{\CLASSOPTIONconference}{} \providecommand{\@toptitlebar}{} \providecommand{\@bottomtitlebar}{} \providecommand{\@thanks}{} \providecommand{\@notice}{} \providecommand{\@noticestring}{} \providecommand{\acksection}{} \newenvironment{ack}{\par\textbf{Acknowledgments}\par}{\par} \providecommand{\answerYes}[1]{[Yes] ##1} \providecommand{\answerNo}[1]{[No] ##1} \providecommand{\answerNA}[1]{[NA] ##1} \providecommand{\answerTODO}[1]{[TODO] ##1} \providecommand{\justificationTODO}[1]{[TODO] ##1} \providecommand{\textasciitilde}{~} \providecommand{\textasciicircum}{^} \providecommand{\textbackslash}{\symbol{92}}"""
 
-        # Attempt 3
-        self._log("Attempt 2 failed. Proceeding to Attempt 3: Commenting out all project-specific styles.", "warn")
-        tex_content_attempt3 = self._comment_out_style_packages(self.original_main_tex_content, mode="all_project")
-        final_tex_for_pandoc_attempt3 = self._inline_bibliography(tex_content_attempt3, bbl_file_content)
-        final_tex_for_pandoc_attempt3 = problematic_macros_neutralization + final_tex_for_pandoc_attempt3 
-        return self._run_pandoc_conversion(final_tex_for_pandoc_attempt3, pandoc_timeout=30)
+        pandoc_attempts_config = [
+            {"mode": "venue_only", "desc": "Venue-specific styles commented", "timeout": 30},
+            {"mode": "original", "desc": "Original TeX content (no script style commenting)", "timeout": 30},
+            {"mode": "all_project", "desc": "All project-specific styles commented", "timeout": 45}
+        ]
+
+        for i, attempt_config in enumerate(pandoc_attempts_config):
+            self._log(f"Pandoc Conversion Attempt {i+1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
+
+            current_tex_base = self.original_main_tex_content
+            current_tex_base = self._preprocess_latex_table_environments(current_tex_base)
+
+
+            if attempt_config["mode"] == "venue_only":
+                style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="venue_only")
+            elif attempt_config["mode"] == "all_project":
+                style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="all_project")
+            else: 
+                style_modified_tex = current_tex_base
+
+            tex_with_final_bib = self._simple_inline_processed_bbl(style_modified_tex, processed_bbl_with_abstracts_and_keys)
+            final_tex_for_pandoc = problematic_macros + "\n" + tex_with_final_bib
+
+            if self._run_pandoc_conversion(final_tex_for_pandoc, pandoc_timeout=attempt_config['timeout']):
+                self._log(f"Pandoc conversion successful on attempt {i+1}.", "success")
+                return True
+
+            if i < len(pandoc_attempts_config) - 1:
+                self._log(f"Pandoc attempt {i+1} failed. Trying next strategy.", "warn")
+            else:
+                self._log("All Pandoc conversion attempts failed.", "error")
+
+        return False
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description="Converts a LaTeX project to Markdown. "
-                    "Comments out custom styles, inlines bibliography (fetching abstracts from Semantic Scholar), "
-                    "copies figures, and uses Pandoc. Output is 'paper.md'. Includes post-processing for specific table formats."
-    )
-    parser.add_argument("project_folder", help="Path to the LaTeX project folder.")
-    parser.add_argument("-o", "--output_folder", default=None, help="Path for the output folder. Default: '[project_name]_output'.")
-    parser.add_argument("-q", "--quiet", action="store_false", dest="verbose", default=True, help="Suppress informational messages.")
-    parser.add_argument("--template", default="template.md", help="Path to Pandoc Markdown template. Default: 'template.md'.")
-    
+    parser = argparse.ArgumentParser(description="Converts LaTeX to Markdown with advanced abstract fetching and table processing.")
+    parser.add_argument("project_folder", help="Path to LaTeX project folder.")
+    parser.add_argument("-o", "--output_folder", default=None, help="Output folder. Default: '[project_name]_output'.")
+    parser.add_argument("-q", "--quiet", action="store_false", dest="verbose", default=True, help="Suppress info messages.")
+    parser.add_argument("--template", default="template.md", help="Pandoc Markdown template. Default: 'template.md'.")
+    parser.add_argument("--openalex-email", default=os.environ.get("OPENALEX_EMAIL", "your-email@example.com"), help="Your email for OpenAlex API. Can also be set via OPENALEX_EMAIL environment variable.")
+    parser.add_argument("--elsevier-api-key", default=os.environ.get("ELSEVIER_API_KEY"), help="Your Elsevier API key. Can also be set via ELSEVIER_API_KEY environment variable.")
+    parser.add_argument("--springer-api-key", default=os.environ.get("SPRINGER_API_KEY"), help="Your Springer Nature API key. Can also be set via SPRINGER_API_KEY environment variable.")
+    parser.add_argument("--poppler-path", default=os.environ.get("POPPLER_PATH"), help="Path to Poppler binaries directory for pdf2image. Can also be set via POPPLER_PATH environment variable.")
+
+
     args = parser.parse_args()
     project_path = Path(args.project_folder).resolve()
-    if not project_path.is_dir():
-        print(f"Error: Project folder '{args.project_folder}' not found.", file=sys.stderr)
-        sys.exit(1)
-
+    if not project_path.is_dir(): print(f"Error: Project folder '{args.project_folder}' not found.", file=sys.stderr); sys.exit(1)
     output_folder_path = Path(args.output_folder).resolve() if args.output_folder else project_path.parent / f"{project_path.name}_output"
-    
-    template_file_path_str = args.template
-    template_p = Path(args.template)
-    if not template_p.is_absolute() and not template_p.exists():
-        script_dir_template = Path(__file__).parent.resolve() / args.template
-        if script_dir_template.exists(): template_file_path_str = str(script_dir_template)
-    elif template_p.exists():
-        template_file_path_str = str(template_p.resolve())
 
-    converter = LatexToMarkdownConverter(str(project_path), verbose=args.verbose, template_path=template_file_path_str)
+    template_fpath_resolved = Path(args.template)
+    final_template_path_str = None
+
+    if template_fpath_resolved.is_file():
+        final_template_path_str = str(template_fpath_resolved.resolve())
+    else:
+        script_dir_template = (Path(__file__).parent / args.template).resolve()
+        if script_dir_template.is_file():
+            final_template_path_str = str(script_dir_template)
+            print(f"[*] Info: Template '{args.template}' not found directly, using template from script directory: {final_template_path_str}")
+        else:
+            cwd_template = (Path.cwd() / args.template).resolve()
+            if cwd_template.is_file():
+                final_template_path_str = str(cwd_template)
+                print(f"[*] Info: Template '{args.template}' not found directly or in script dir, using template from CWD: {final_template_path_str}")
+            else:
+                print(f"[!] Warning: Pandoc template '{args.template}' not found in standard locations. Pandoc will use its default.", file=sys.stderr)
+
+    converter = LatexToMarkdownConverter(
+        str(project_path),
+        verbose=args.verbose,
+        template_path=final_template_path_str, 
+        openalex_email=args.openalex_email,
+        elsevier_api_key=args.elsevier_api_key,
+        springer_api_key=args.springer_api_key,
+        poppler_path=args.poppler_path # Pass Poppler path
+    )
     converter._log(f"Processing LaTeX project in: '{project_path}'", "info")
-    converter._log(f"Markdown output will be saved to: '{output_folder_path}'", "info")
-    if Path(converter.template_path).exists():
-        converter._log(f"Using Pandoc template: '{converter.template_path}'", "info")
-    else:
-        converter._log(f"Pandoc template specified: '{converter.template_path}' (Pandoc will try to locate or use default).", "warn")
 
-    success = converter.convert_to_markdown(str(output_folder_path))
-    if success:
-        converter._log(f"Conversion process finished successfully.", "info") 
-        print(f"    Markdown output: '{output_folder_path / 'paper.md'}'") 
-        print(f"    Figures copied to: '{output_folder_path}'")
-    else:
-        converter._log(f"Conversion process failed. Please check logs.", "error") 
-    
-    converter._log(f"Ensure Pandoc, LaTeX (pdflatex, bibtex), and Python 'requests' library are installed.", "info")
+    if converter.convert_to_markdown(str(output_folder_path)):
+        converter._log(f"Conversion successful. Output: '{output_folder_path / 'paper.md'}'", "success")
+    else: converter._log("Conversion failed.", "error")
+
+    converter._log("Dependencies: Pandoc, LaTeX (pdflatex, bibtex), requests.", "info")
+    if converter.PdfReader is None: converter._log("Optional for PDF abstracts: PyPDF2 (pip install PyPDF2)", "info")
+    if converter.BeautifulSoup is None: converter._log("Optional for HTML abstracts: beautifulsoup4 (pip install beautifulsoup4)", "info")
+    if converter.PILImage is None: converter._log("Optional for image conversion: Pillow (pip install Pillow)", "info")
+    if converter.convert_from_path is None: converter._log("Optional for PDF to PNG: pdf2image (pip install pdf2image) and Poppler.", "info")
 
