@@ -745,155 +745,214 @@ class LatexToMarkdownConverter:
     def _fully_process_bbl(self, raw_bbl_content: str) -> str:
         self._log("Starting full BBL processing (abstracts, keys)...", "info")
         if not raw_bbl_content: return ""
-        bbl_preamble = ""; bibliography_env_start = r"\begin{thebibliography}{}"
-        begin_env_match = re.search(r"(\\begin\{thebibliography\}\{[^}]*\})", raw_bbl_content)
-        if begin_env_match:
-            bibliography_env_start = begin_env_match.group(1)
-            bbl_preamble = raw_bbl_content[:begin_env_match.start()]
-            cleanup_patterns = [r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", r"\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*", r"\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*", r"\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*"]
-            for p in cleanup_patterns: bbl_preamble = re.sub(p, "", bbl_preamble, flags=re.DOTALL)
+
+        bbl_preamble = ""
+        begin_thebibliography_match = re.search(r"\\begin{thebibliography}\{[^}]*\}", raw_bbl_content)
+        
+        if begin_thebibliography_match:
+            bbl_preamble = raw_bbl_content[:begin_thebibliography_match.start()]
+            external_cleanup_patterns_str = [
+                r"\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*",
+                r"\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*",
+                r"\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*",
+                r"\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*",
+                r"\\expandafter\\ifx\\csname\s*doi\\endcsname\\relax[\s\S]*?\\fi\s*",
+            ]
+            for p_str in external_cleanup_patterns_str:
+                bbl_preamble = re.sub(p_str, "", bbl_preamble, flags=re.DOTALL)
             bbl_preamble = bbl_preamble.strip()
-        items_text_start = raw_bbl_content.find(bibliography_env_start) + len(bibliography_env_start) if begin_env_match else 0
-        items_text_end = raw_bbl_content.rfind(r"\end{thebibliography}") if begin_env_match else len(raw_bbl_content)
-        bbl_items_text = raw_bbl_content[items_text_start:items_text_end].strip()
-        if not bbl_items_text: return raw_bbl_content
-        split_bibitems = re.split(r'(\\bibitem)', bbl_items_text)
+
+        bibliography_env_start_for_pandoc = r"\begin{thebibliography}{}" # Use empty arg for Pandoc
+        
+        items_text_start_offset = 0
+        if begin_thebibliography_match:
+            items_text_start_offset = begin_thebibliography_match.end()
+        
+        end_thebibliography_match = re.search(r"\\end{thebibliography}", raw_bbl_content)
+        items_text_end_offset = len(raw_bbl_content)
+        if end_thebibliography_match:
+            items_text_end_offset = end_thebibliography_match.start()
+
+        bbl_items_text = raw_bbl_content[items_text_start_offset:items_text_end_offset].strip()
+
+        if bbl_items_text:
+            internal_cleanup_patterns = [
+                re.compile(r"^\s*\\providecommand\{\\natexlab\}\[1\]\{#1\}\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\providecommand\{\\url\}\[1\]\{\\texttt\{#1\}\}\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\providecommand\{\\doi\}\[1\]\{doi:\s*#1\}\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\expandafter\\ifx\\csname\s*urlstyle\\endcsname\\relax[\s\S]*?\\fi\s*", flags=re.MULTILINE | re.DOTALL),
+                re.compile(r"^\s*\\expandafter\\ifx\\csname\s*doi\\endcsname\\relax[\s\S]*?\\fi\s*", flags=re.MULTILINE | re.DOTALL),
+            ]
+            
+            cleaned_any_internal_preamble = False
+            original_bbl_items_text_len_for_log = len(bbl_items_text) # For logging comparison
+            
+            # Iteratively clean the start of bbl_items_text from known preamble commands
+            while True:
+                text_before_cleaning_pass = bbl_items_text
+                for pattern in internal_cleanup_patterns:
+                    bbl_items_text = pattern.sub("", bbl_items_text).strip()
+                if bbl_items_text == text_before_cleaning_pass: 
+                    break 
+                cleaned_any_internal_preamble = True 
+            
+            if cleaned_any_internal_preamble:
+                 self._log(f"Cleaned internal BBL preamble. Remaining item text starts with: '{bbl_items_text[:100]}...'", "debug")
+            elif original_bbl_items_text_len_for_log > 0 and not bbl_items_text.startswith(r"\bibitem") and bbl_items_text: # Check if it's not empty
+                 self._log(f"BBL item text starts with non-bibitem content after internal preamble cleaning attempt: '{bbl_items_text[:100]}...'", "debug")
+
+
         processed_bibitems_parts = []
-        if split_bibitems and not split_bibitems[0].strip() and len(split_bibitems) > 1: split_bibitems.pop(0)
-        elif split_bibitems and split_bibitems[0].strip() and not split_bibitems[0].startswith("\\bibitem"):
-            processed_bibitems_parts.append(split_bibitems.pop(0).strip())
-        k = 0
-        while k < len(split_bibitems):
-            if split_bibitems[k] == r'\bibitem':
-                if k + 1 < len(split_bibitems): item_chunk = r'\bibitem' + split_bibitems[k+1].strip(); k += 2
-                else: processed_bibitems_parts.append(r'\bibitem'); k+=1; continue
-            else: processed_bibitems_parts.append(split_bibitems[k].strip()); k+=1; continue
+        if bbl_items_text: 
+            split_bibitems = re.split(r'(\\bibitem)', bbl_items_text)
+            
+            if split_bibitems and split_bibitems[0].strip() and not split_bibitems[0].startswith("\\bibitem"):
+                self._log(f"Discarding unexpected leading text in bbl_items_text: '{split_bibitems[0].strip()[:100]}...'", "warn")
+                split_bibitems.pop(0)
+            elif split_bibitems and not split_bibitems[0].strip() and len(split_bibitems) > 1 : 
+                 split_bibitems.pop(0)
 
-            components = self._extract_bibitem_components(item_chunk)
-            reconstructed_item_parts = [f"\\bibitem{{{components['key']}}}", components['authors']]
-            if components['authors'] and components['title_raw']: reconstructed_item_parts.append(r"\newblock")
-            if components['title_raw']: reconstructed_item_parts.append(components['title_raw'])
-            if components['details_after_title'].strip(): reconstructed_item_parts.append(components['details_after_title'])
-
-            current_item_reconstructed = " ".join(p.strip() for p in reconstructed_item_parts if p.strip())
-            current_item_reconstructed = re.sub(r'\s*\\newblock\s*', r' \\newblock ', current_item_reconstructed).strip()
-            current_item_reconstructed = re.sub(r'\s+', ' ', current_item_reconstructed)
-
-
-            abstract_text = None
-            if 'arxiv' in item_chunk.lower():
-                self._log(f"Bibitem {components['key']}: 'arxiv' keyword found. Attempting extract abstract from Arxiv.", "debug")
-                arxiv_id = None
-                specific_match = re.search(r'arxiv[:\s]*(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk, re.IGNORECASE)
-                if specific_match: arxiv_id = specific_match.group(1)
-                else:
-                    general_match = re.search(r'(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk)
-                    if general_match: arxiv_id = general_match.group(1)
-                if arxiv_id and re.fullmatch(r'\d{4}\.\d{4,5}(v\d+)?', arxiv_id):
-                    self._log(f"Bibitem {components['key']}: Extracted valid arXiv ID: {arxiv_id}", "debug")
-                    arxiv_abs_url = f"https://arxiv.org/abs/{arxiv_id}" # Use /abs/ URL for parsing
-                    self._log(f"Bibitem {components['key']}: Attempting to fetch abstract from arXiv: {arxiv_abs_url}", "debug")
-
-                    abstract_text = self._get_arxiv_abstract_from_page(arxiv_abs_url)
-                    if abstract_text:
-                         self._log(f"Bibitem {components['key']}: Abstract successfully extracted from arXiv {arxiv_abs_url}.", "success")
-
-                elif 'arxiv' in item_chunk.lower():
-                    self._log(f"Bibitem {components['key']}: 'arxiv' keyword found but could not extract a valid arXiv ID from chunk: '{item_chunk[:100]}...'", "debug")
-
-            if not abstract_text:
-                title_for_api = components["title_cleaned"]
-                if components["is_url_title"] and components["url_if_title"]:
-                    current_url_to_check = components["url_if_title"]
-                    if "linkinghub.elsevier.com/retrieve/pii/" in current_url_to_check and self.elsevier_api_key:
-                        self._log(f"Elsevier API: Attempting for primary URL '{current_url_to_check}'", "debug")
-                        api_abs = self._get_elsevier_abstract_from_linking_url(current_url_to_check, self.elsevier_api_key)
-                        if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
-                    elif "link.springer.com/" in current_url_to_check and self.springer_api_key:
-                        self._log(f"Springer API: Attempting for primary URL '{current_url_to_check}'", "debug")
-                        api_abs = self._get_springer_abstract_from_url(current_url_to_check, self.springer_api_key)
-                        if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
-
-                    if not abstract_text and self.BeautifulSoup and not current_url_to_check.lower().endswith(".pdf"):
-                        # Avoid re-fetching arXiv if already tried via _get_arxiv_abstract_from_page
-                        if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
-                            abstract_text = self._fetch_and_parse_html_for_abstract(current_url_to_check)
-
-                if not abstract_text and title_for_api:
-                    abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
-                    if not abstract_text:
-                        abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
-
+            k = 0
+            while k < len(split_bibitems):
+                if split_bibitems[k] == r'\bibitem':
+                    if k + 1 < len(split_bibitems):
+                        item_chunk = r'\bibitem' + split_bibitems[k+1].strip()
+                        k += 2
+                    else: 
+                        self._log("Warning: Dangling \\bibitem in BBL processing.", "warn")
+                        processed_bibitems_parts.append(r'\bibitem')
+                        k += 1
+                        continue
+                else: 
+                    self._log(f"Warning: Unexpected chunk in BBL processing, expected \\bibitem: '{split_bibitems[k][:50]}...'", "warn")
+                    k += 1
+                    continue
+                
+                components = self._extract_bibitem_components(item_chunk)
+                reconstructed_item_parts = [f"\\bibitem{{{components['key']}}}", components['authors']]
+                if components['authors'] and components['title_raw']: reconstructed_item_parts.append(r"\newblock")
+                if components['title_raw']: reconstructed_item_parts.append(components['title_raw'])
+                if components['details_after_title'].strip(): reconstructed_item_parts.append(components['details_after_title'])
+                current_item_reconstructed = " ".join(p.strip() for p in reconstructed_item_parts if p.strip())
+                current_item_reconstructed = re.sub(r'\s*\\newblock\s*', r' \\newblock ', current_item_reconstructed).strip()
+                current_item_reconstructed = re.sub(r'\s+', ' ', current_item_reconstructed)
+                
+                abstract_text = None 
+                if 'arxiv' in item_chunk.lower():
+                    self._log(f"Bibitem {components['key']}: 'arxiv' keyword found. Attempting extract abstract from Arxiv.", "debug")
+                    arxiv_id_local = None 
+                    specific_match = re.search(r'arxiv[:\s]*(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk, re.IGNORECASE)
+                    if specific_match: arxiv_id_local = specific_match.group(1)
+                    else:
+                        general_match = re.search(r'(\d{4}\.\d{4,5}(?:v\d+)?)', item_chunk)
+                        if general_match: arxiv_id_local = general_match.group(1)
+                    if arxiv_id_local and re.fullmatch(r'\d{4}\.\d{4,5}(v\d+)?', arxiv_id_local):
+                        self._log(f"Bibitem {components['key']}: Extracted valid arXiv ID: {arxiv_id_local}", "debug")
+                        arxiv_abs_url = f"https://arxiv.org/abs/{arxiv_id_local}"
+                        self._log(f"Bibitem {components['key']}: Attempting to fetch abstract from arXiv: {arxiv_abs_url}", "debug")
+                        abstract_text = self._get_arxiv_abstract_from_page(arxiv_abs_url)
+                        if abstract_text: self._log(f"Bibitem {components['key']}: Abstract successfully extracted from arXiv {arxiv_abs_url}.", "success")
+                    elif 'arxiv' in item_chunk.lower():
+                        self._log(f"Bibitem {components['key']}: 'arxiv' keyword found but could not extract a valid arXiv ID from chunk: '{item_chunk[:100]}...'", "debug")
                 if not abstract_text:
-                    self._log(f"Bibitem {components['key']}: No abstract from APIs/primary URL for '{title_for_api[:60]}...'. Scanning bibitem for other URLs.", "debug")
-                    latex_url_match = re.search(r"\\url\{([^}]+)\}", item_chunk)
-                    http_url_match = re.search(r"\b(https?://[^\s\"'<>()\[\]{},;]+[^\s\"'<>()\[\]{},;\.])", item_chunk)
-                    potential_urls = []
-                    if latex_url_match: potential_urls.append(latex_url_match.group(1).strip())
-                    if http_url_match:
-                        url_candidate = http_url_match.group(1).strip()
-                        if not (latex_url_match and latex_url_match.group(1).strip() == url_candidate):
-                            preceding_char_idx = http_url_match.start(1) - 1
-                            if preceding_char_idx < 0 or item_chunk[preceding_char_idx] not in ['{']:
-                                potential_urls.append(url_candidate)
-
-                    for p_url in potential_urls:
-                        if components["is_url_title"] and components["url_if_title"] == p_url: continue
-                        # Avoid re-fetching arXiv if already tried
-                        if ("arxiv.org/pdf/" in p_url or "arxiv.org/abs/" in p_url) and 'arxiv' in item_chunk.lower(): continue
-
-                        self._log(f"Fallback: Identified URL '{p_url}' in bibitem {components['key']}.", "debug")
-                        if "linkinghub.elsevier.com/retrieve/pii/" in p_url and self.elsevier_api_key:
-                            api_abs = self._get_elsevier_abstract_from_linking_url(p_url, self.elsevier_api_key)
+                    title_for_api = components["title_cleaned"]
+                    if components["is_url_title"] and components["url_if_title"]:
+                        current_url_to_check = components["url_if_title"]
+                        if "linkinghub.elsevier.com/retrieve/pii/" in current_url_to_check and self.elsevier_api_key:
+                            api_abs = self._get_elsevier_abstract_from_linking_url(current_url_to_check, self.elsevier_api_key)
                             if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
-                        elif "link.springer.com/" in p_url and self.springer_api_key:
-                            api_abs = self._get_springer_abstract_from_url(p_url, self.springer_api_key)
+                        elif "link.springer.com/" in current_url_to_check and self.springer_api_key:
+                            api_abs = self._get_springer_abstract_from_url(current_url_to_check, self.springer_api_key)
                             if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
-
-                        if not abstract_text and self.BeautifulSoup and not p_url.lower().endswith(".pdf"):
-                             if not (("arxiv.org/abs/" in p_url or "arxiv.org/html/" in p_url) and 'arxiv' in item_chunk.lower()):
-                                html_abstract = self._fetch_and_parse_html_for_abstract(p_url)
-                                if html_abstract: abstract_text = html_abstract; self._log(f"Fallback: Abstract from HTML URL '{p_url}'.", "success")
-                        if not abstract_text and self.PdfReader and (p_url.lower().endswith(".pdf") or "arxiv.org/pdf/" in p_url):
-                            try:
-                                pdf_resp = requests.get(p_url, timeout=30, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/pdf, */*'}, allow_redirects=True)
-                                pdf_resp.raise_for_status()
-                                if 'application/pdf' in pdf_resp.headers.get('Content-Type','').lower():
-                                    pdf_txt = self._extract_text_from_pdf_content(pdf_resp.content)
-                                    if pdf_txt:
-                                        pdf_abs_candidate = self._find_abstract_in_pdf_text(pdf_txt)
-                                        if pdf_abs_candidate: abstract_text = pdf_abs_candidate; self._log(f"Fallback: Abstract from PDF URL '{p_url}'.", "success")
-                            except Exception as fb_pdf_err: self._log(f"Fallback: PDF error for {p_url}: {fb_pdf_err}", "warn")
-                        if abstract_text: break
-
-            if abstract_text:
-                escaped_abstract = self._latex_escape_abstract(abstract_text)
-                current_item_reconstructed += f" \\newblock \\textbf{{Abstract:}} {escaped_abstract}"
-
-            escaped_key_for_display = components['key'].replace('_', r'\_')
-            current_item_reconstructed += f" \\newblock (@{escaped_key_for_display})"
-
-
-            processed_bibitems_parts.append(current_item_reconstructed)
-
+                        if not abstract_text and self.BeautifulSoup and not current_url_to_check.lower().endswith(".pdf"):
+                            if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
+                                abstract_text = self._fetch_and_parse_html_for_abstract(current_url_to_check)
+                    if not abstract_text and title_for_api:
+                        abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
+                        if not abstract_text:
+                            abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
+                    if not abstract_text:
+                        latex_url_match = re.search(r"\\url\{([^}]+)\}", item_chunk)
+                        http_url_match = re.search(r"\b(https?://[^\s\"'<>()\[\]{},;]+[^\s\"'<>()\[\]{},;\.])", item_chunk)
+                        potential_urls = []
+                        if latex_url_match: potential_urls.append(latex_url_match.group(1).strip())
+                        if http_url_match:
+                            url_candidate = http_url_match.group(1).strip()
+                            if not (latex_url_match and latex_url_match.group(1).strip() == url_candidate):
+                                preceding_char_idx = http_url_match.start(1) - 1
+                                if preceding_char_idx < 0 or item_chunk[preceding_char_idx] not in ['{']: potential_urls.append(url_candidate)
+                        for p_url in potential_urls:
+                            if components["is_url_title"] and components["url_if_title"] == p_url: continue
+                            if ("arxiv.org/pdf/" in p_url or "arxiv.org/abs/" in p_url) and 'arxiv' in item_chunk.lower(): continue
+                            if "linkinghub.elsevier.com/retrieve/pii/" in p_url and self.elsevier_api_key:
+                                api_abs = self._get_elsevier_abstract_from_linking_url(p_url, self.elsevier_api_key)
+                                if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+                            elif "link.springer.com/" in p_url and self.springer_api_key:
+                                api_abs = self._get_springer_abstract_from_url(p_url, self.springer_api_key)
+                                if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
+                            if not abstract_text and self.BeautifulSoup and not p_url.lower().endswith(".pdf"):
+                                 if not (("arxiv.org/abs/" in p_url or "arxiv.org/html/" in p_url) and 'arxiv' in item_chunk.lower()):
+                                    html_abstract = self._fetch_and_parse_html_for_abstract(p_url)
+                                    if html_abstract: abstract_text = html_abstract; self._log(f"Fallback: Abstract from HTML URL '{p_url}'.", "success")
+                            if not abstract_text and self.PdfReader and (p_url.lower().endswith(".pdf") or "arxiv.org/pdf/" in p_url):
+                                try:
+                                    pdf_resp = requests.get(p_url, timeout=30, headers={'User-Agent': 'Mozilla/5.0', 'Accept': 'application/pdf, */*'}, allow_redirects=True)
+                                    pdf_resp.raise_for_status()
+                                    if 'application/pdf' in pdf_resp.headers.get('Content-Type','').lower():
+                                        pdf_txt = self._extract_text_from_pdf_content(pdf_resp.content)
+                                        if pdf_txt:
+                                            pdf_abs_candidate = self._find_abstract_in_pdf_text(pdf_txt)
+                                            if pdf_abs_candidate: abstract_text = pdf_abs_candidate; self._log(f"Fallback: Abstract from PDF URL '{p_url}'.", "success")
+                                except Exception as fb_pdf_err: self._log(f"Fallback: PDF error for {p_url}: {fb_pdf_err}", "warn")
+                            if abstract_text: break
+                if abstract_text:
+                    escaped_abstract = self._latex_escape_abstract(abstract_text)
+                    current_item_reconstructed += f" \\newblock \\textbf{{Abstract:}} {escaped_abstract}"
+                escaped_key_for_display = components['key'].replace('_', r'\_')
+                current_item_reconstructed += f" \\newblock (@{escaped_key_for_display})"
+                
+                processed_bibitems_parts.append(current_item_reconstructed)
+        
         final_bbl_items_joined = "\n\n".join(p for p in processed_bibitems_parts if p)
-        return (bbl_preamble + "\n" if bbl_preamble else "") + bibliography_env_start + "\n" + final_bbl_items_joined + "\n" + r"\end{thebibliography}"
+
+        final_bbl_string = ""
+        if bbl_preamble: 
+            final_bbl_string += bbl_preamble + "\n"
+        
+        if final_bbl_items_joined or begin_thebibliography_match: # Ensure env is added if it was originally there
+            final_bbl_string += bibliography_env_start_for_pandoc + "\n"
+            if final_bbl_items_joined:
+                final_bbl_string += final_bbl_items_joined + "\n"
+            final_bbl_string += r"\end{thebibliography}"
+        elif not begin_thebibliography_match and final_bbl_items_joined : 
+            self._log("Warning: Bibitems found but no \\begin{thebibliography} was detected. Outputting items directly.", "warn")
+            final_bbl_string += final_bbl_items_joined 
+        
+        return final_bbl_string.strip()
 
     def _simple_inline_processed_bbl(self, tex_content: str, processed_bbl_string: str) -> str:
         self._log("Inlining fully processed BBL content into TeX...", "debug")
         references_heading_tex = "\n\n\\section*{References}\n\n"
-        content_to_inline = references_heading_tex + processed_bbl_string
+        # Only add references heading if there's actual bbl content to inline
+        content_to_inline = (references_heading_tex + processed_bbl_string) if processed_bbl_string.strip() else ""
+
         modified_tex_content = re.sub(r"^\s*\\bibliographystyle\{[^{}]*\}\s*$", "", tex_content, flags=re.MULTILINE)
         bibliography_command_pattern = r"^\s*\\bibliography\{[^{}]*(?:,[^{}]*)*\}\s*$"
 
-        if re.search(bibliography_command_pattern, modified_tex_content, flags=re.MULTILINE):
-            modified_tex_content = re.sub(bibliography_command_pattern, lambda m: content_to_inline, modified_tex_content, count=1, flags=re.MULTILINE)
-        else:
-            end_document_match = re.search(r"\\end\{document\}", modified_tex_content)
-            if end_document_match:
-                insertion_point = end_document_match.start()
-                modified_tex_content = modified_tex_content[:insertion_point] + content_to_inline + "\n" + modified_tex_content[insertion_point:]
-            else: modified_tex_content += "\n" + content_to_inline
+        if content_to_inline: # Only try to inline if there's content
+            if re.search(bibliography_command_pattern, modified_tex_content, flags=re.MULTILINE):
+                modified_tex_content = re.sub(bibliography_command_pattern, lambda m: content_to_inline, modified_tex_content, count=1, flags=re.MULTILINE)
+            else:
+                end_document_match = re.search(r"\\end\{document\}", modified_tex_content)
+                if end_document_match:
+                    insertion_point = end_document_match.start()
+                    modified_tex_content = modified_tex_content[:insertion_point] + content_to_inline + "\n" + modified_tex_content[insertion_point:]
+                else: # Append if \end{document} not found (less ideal)
+                    modified_tex_content += "\n" + content_to_inline
+        else: # No BBL content, just remove the bibliography command
+            modified_tex_content = re.sub(bibliography_command_pattern, "", modified_tex_content, flags=re.MULTILINE)
+
+
         modified_tex_content = re.sub(r"^\s*\\nobibliography\{[^{}]*(?:,[^{}]*)*\}\s*$", "", modified_tex_content, flags=re.MULTILINE)
         return modified_tex_content
 
@@ -1117,7 +1176,9 @@ class LatexToMarkdownConverter:
                      self._log(f"Markdown path '{original_md_path_in_doc}' effectively unchanged to '{new_md_path_for_doc}'.", "debug")
         
         # After all path updates, convert any remaining <embed> to <img> within <figure>
-        final_markdown_content = re.sub(r"(<figure>.*?)<embed(\s+[^>]*?src\s*=\s*[\"'][^\"']+[\"'][^>]*?)>(.*?</figure>)", 
+        # This regex specifically targets <embed ...> and replaces it with <img ... />
+        # while keeping the attributes and the surrounding <figure>...</figure> tags.
+        final_markdown_content = re.sub(r"(<figure>.*?)<embed(\s+[^>]*?)>(.*?</figure>)", 
                                         r"\1<img\2 />\3", 
                                         updated_markdown_content, flags=re.DOTALL | re.IGNORECASE)
         if final_markdown_content != updated_markdown_content: # Check if any embed->img replacement actually happened
@@ -1415,20 +1476,13 @@ class LatexToMarkdownConverter:
             {"mode": "all_project", "desc": "All project-specific styles commented", "timeout": 45}
         ]
 
-        # Preprocess table environments on the original main content (which will then be expanded)
-        # This initial_main_tex_content will be passed to _preprocess_latex_table_environments
-        # which now handles the recursive expansion internally.
         initial_main_tex_content_for_processing = self.original_main_tex_content
-        
-        # The _preprocess_latex_table_environments method now handles the expansion
-        # and then applies table regexes.
         expanded_and_table_processed_tex = self._preprocess_latex_table_environments(initial_main_tex_content_for_processing)
 
 
         for i, attempt_config in enumerate(pandoc_attempts_config):
             self._log(f"Pandoc Conversion Attempt {i+1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
 
-            # Start with the fully expanded and table-preprocessed content for each attempt
             current_tex_base = expanded_and_table_processed_tex
 
             if attempt_config["mode"] == "venue_only":
