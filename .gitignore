@@ -5,3 +5,9 @@ __*
 ExtractLatex/arXiv-2404.12253v2
 ExtractLatex/output*
 ExtractLatex/arxiv_latex_zzOOqD6R1b_v1
+
+ReproduceCycleReviewer/LLM_Responses/
+ReproduceCycleReviewer/LLM_Responses_Parsed/
+ReproduceCycleReviewer/review-5k-dataset/
+ReproduceCycleReviewer/keys.py
+ReproduceCycleReviewer/300_sampled_paper_ids.txt
