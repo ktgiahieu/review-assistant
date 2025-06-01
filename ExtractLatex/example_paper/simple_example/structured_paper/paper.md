@@ -8,21 +8,93 @@ Despite the impressive capabilities of Large Language Models (LLMs) on various t
 
 Hello
 
-<div id="tab:length_repdiv_LLaMA2_NEFT">
+<div class="minipage">
 
-|                             |               | Alpaca (*α* = 5) | Evol-Instruct (*α* = 5) | ShareGPT (*α* = 10) | OpenPlatypus (*α* = 15) |
-|:----------------------------|:--------------|:----------------:|:-----------------------:|:-------------------:|:-----------------------:|
-| **Character** **Lengths**   | Training data |      270.31      |         1356.43         |       1276.76       |         649.39          |
-|                             | -2 7B         |      375.22      |         864.06          |       1011.28       |         1100.98         |
-|                             | \+            |     1061.89      |         1403.59         |       1496.86       |         1694.26         |
-| **Whitespace** **Lengths**  | -2 7B         |       60.5       |         138.99          |       161.04        |         170.41          |
-|                             | \+            |      169.36      |         225.56          |       234.99        |         264.12          |
-| **2-Gram** **Repetition %** | -2 7B         |       1.49       |          3.87           |        4.82         |          2.73           |
-|                             | \+            |       1.72       |          3.79           |        4.58         |          3.21           |
-| **Log-Diversity**           | -2 7B         |      15.97       |          10.65          |        8.40         |          9.96           |
-|                             | \+            |      16.41       |          10.77          |        8.60         |          9.64           |
+<div class="center">
 
-(**Row 1**) Avg. Character lengths of `AlpacaEval` responses from -2 models finetuned on different datasets. We also report average output length for each dataset (though we trained with max sequence length of 512). increases average length. (**Row 2**) Whitespace-tokenized lengths of generations. (**Row 3**) 2-Gram repetition rates. (**Row 4**) Log-Diversity measures.
+<table>
+<tbody>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td colspan="4" style="text-align: center;">Accuracies (%)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Method</td>
+<td style="text-align: center;">FLOPs (G)</td>
+<td style="text-align: center;">Joint</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">Avg</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"><span>0.68</span></td>
+<td style="text-align: center;"><span>48.2</span></td>
+<td style="text-align: center;"><span>97.0</span></td>
+<td style="text-align: center;"><span>45.1</span></td>
+<td style="text-align: center;"><span>71.0</span></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"><span>0.68</span></td>
+<td style="text-align: center;"><span>48.4</span></td>
+<td style="text-align: center;"><span>49.1</span></td>
+<td style="text-align: center;"><span>96.1</span></td>
+<td style="text-align: center;"><span>72.6</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">W. Avg <span>(Eq. <a href="#eq:wavg" data-reference-type="ref" data-reference="eq:wavg">[eq:wavg]</a>)</span></td>
+<td style="text-align: center;">0.68</td>
+<td style="text-align: center;"><span>43.0</span></td>
+<td style="text-align: center;"><span>54.1</span></td>
+<td style="text-align: center;"><span>67.5</span></td>
+<td style="text-align: center;"><span>60.8</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Git Re-Basin<span class="math inline"><sup>‡</sup></span></td>
+<td style="text-align: center;">0.68</td>
+<td style="text-align: center;"><span>46.2</span></td>
+<td style="text-align: center;"><span>76.8</span></td>
+<td style="text-align: center;"><span>82.7</span></td>
+<td style="text-align: center;"><span>79.8</span></td>
+</tr>
+<tr>
+<td style="text-align: left;">Permute <span>(Eq. <a href="#eq:rebasin" data-reference-type="ref" data-reference="eq:rebasin">[eq:rebasin]</a>)</span></td>
+<td style="text-align: center;">0.68</td>
+<td style="text-align: center;"><span>58.4</span></td>
+<td style="text-align: center;"><span>86.6</span></td>
+<td style="text-align: center;"><span>87.4</span></td>
+<td style="text-align: center;"><span>87.4</span></td>
+</tr>
+<tr>
+<td style="text-align: left;"><span><strong>ZipIt!</strong></span><span class="math inline"><sub>20/20</sub></span></td>
+<td style="text-align: center;">0.68</td>
+<td style="text-align: center;"><strong>79.1</strong></td>
+<td style="text-align: center;"><strong>92.9</strong></td>
+<td style="text-align: center;"><strong>91.2</strong></td>
+<td style="text-align: center;"><strong>92.1</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><span><strong>ZipIt!</strong></span><span class="math inline"><sub>13/20</sub></span></td>
+<td style="text-align: center;">0.91</td>
+<td style="text-align: center;"><strong>83.8</strong></td>
+<td style="text-align: center;"><strong>95.1</strong></td>
+<td style="text-align: center;"><strong>94.1</strong></td>
+<td style="text-align: center;"><strong>94.6</strong></td>
+</tr>
+</tbody>
+</table>
+
+</div>
 
 </div>
 
@@ -34,4 +106,4 @@ David Abel, Dilip Arumugam, Lucas Lehnert, and Michael Littman State abstraction
 
 </div>
 
-[1] Equal Contribution; Corresponding Author
+[^1]: Equal Contribution; †Corresponding Author

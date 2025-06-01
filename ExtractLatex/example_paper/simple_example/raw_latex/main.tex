@@ -1,6 +1,8 @@
 \documentclass{article}
 
-
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{algorithmic}
+\usepackage{algorithm}
 % % if you need to pass options to natbib, use, e.g.:
 %     \PassOptionsToPackage{numbers, compress}{natbib}
 % % before loading neurips_2023
@@ -130,8 +132,8 @@
   % Address \\
   % \texttt{email} \\
 % }
-
-
+\newcommand{\default}[1]{\cellcolor{defaultcolor}{#1}}
+\def\name{ZipIt!}
 \begin{document}
 % \footnotetext{*Equal Contribution; \textsuperscript{\textdagger}Corresponding Author}
 
@@ -151,26 +153,29 @@ Despite the impressive capabilities of Large Language Models (LLMs) on various t
 \section{Introduction}
 \label{sec:intro}
 Hello
-\begin{table}[h]
-\centering
-\caption{(\textbf{Row 1}) Avg. Character lengths of \texttt{AlpacaEval} responses from \llama{}-2 models finetuned on different datasets. We also report average output length for each dataset (though we trained with max sequence length of 512). \neft{} increases average length. (\textbf{Row 2}) Whitespace-tokenized lengths of generations. (\textbf{Row 3}) 2-Gram repetition rates. (\textbf{Row 4}) Log-Diversity measures.
+
+\begin{minipage}{0.47\linewidth}{
+\begin{center}
+\resizebox{\textwidth}{!}{
+    \tablestyle{5pt}{1.1}
+    \begin{tabular}{y{53}x{40}|x{30}x{30}x{30}x{30}}
+        & & \multicolumn{4}{c}{Accuracies (\%)}\\
+        Method & FLOPs (G) & Joint & \modela{Task A} & \modelb{Task B} & Avg \\
+        \shline
+        \modela{Model A} & {0.68} & {48.2\conf{1.0}} & {97.0\conf{0.6}} & {45.1\conf{8.6}} & {71.0\conf{4.4}} \\
+        \modelb{Model B} & {0.68} & {48.4\conf{3.8}} & {49.1\conf{9.3}} & {96.1\conf{1.1}} & {72.6\conf{4.9}} \\
+        \hline
+        W. Avg \tiny{(Eq.~\ref{eq:wavg})} & 0.68 & {43.0\conf{1.6}} & {54.1\conf{1.4}} & {67.5\conf{1.2}} & {60.8\conf{4.5}} \\
+        % Git Re-Basin \cite{ainsworth2022git}  & 0.68 & {46.2\conf{0.8}} & {76.8\conf{8.9}} & {82.7\conf{5.1}} & {79.8\conf{6.5}} \\
+        Git Re-Basin$^{\ddag}$  & 0.68 & {46.2\conf{0.8}} & {76.8\conf{8.9}} & {82.7\conf{5.1}} & {79.8\conf{6.5}} \\
+        Permute \tiny{(Eq.~\ref{eq:rebasin})} & 0.68 & {58.4\conf{6.8}} & {86.6\conf{2.1}} & {87.4\conf{1.1}} & {87.4\conf{1.4}} \\
+        \default{{\bf \name{}}$_\text{20/20}$} & 0.68 & \textbf{79.1\conf{1.1}} & \textbf{92.9\conf{1.1}} & \textbf{91.2\conf{1.4}} & \textbf{92.1\conf{1.0}} \\
+        \hline
+        \gc{Ensemble} & \gc{1.37} & \gc{87.4\conf{2.6}} & \gc{97.0\conf{0.6}} & \gc{96.1\conf{1.1}} & \gc{96.6\conf{0.4}} \\
+        \default{{\bf \name{}}$_\text{13/20}$} & 0.91 & \textbf{83.8\conf{3.1}} & \textbf{95.1\conf{0.7}} & \textbf{94.1\conf{1.5}} & \textbf{94.6\conf{0.6}} \\
+    \end{tabular}
 }
-\label{tab:length_repdiv_LLaMA2_NEFT}
-\begin{tabular}{llcccc}
-\toprule
-&  & \shortstack{Alpaca\\($\alpha=5$)}      & \shortstack{Evol-Instruct\\($\alpha=5$)} & \shortstack{ShareGPT\\($\alpha=10$)}  & \shortstack{OpenPlatypus\\($\alpha=15$)} \\ \midrule
-\multirow{3}{*}{\shortstack{\textbf{Character}\\\textbf{Lengths}}} & Training data     & 270.31     & 1356.43            & 1276.76   & 649.39 \\\cmidrule{2-6}
-& \llama{}-2 7B     & 375.22     & 864.06            & 1011.28   & 1100.98 \\ 
-& +\neft{} & 1061.89    & 1403.59           & 1496.86   & 1694.26 \\ \midrule
-\multirow{2}{*}{\shortstack{\textbf{Whitespace}\\\textbf{Lengths}}} & \llama{}-2 7B     & 60.5       & 138.99            & 161.04    & 170.41 \\ 
-& +\neft{} & 169.36     & 225.56            & 234.99    & 264.12 \\ \midrule
-\multirow{2}{*}{\shortstack{\textbf{2-Gram}\\\textbf{Repetition $\%$}}} & \llama{}-2 7B    & 1.49 & 3.87 & 4.82 & 2.73 \\ 
-& +\neft{} & 1.72 & 3.79 & 4.58 & 3.21 \\ \midrule
-\multirow{2}{*}{\shortstack{\textbf{Log-Diversity}}} & \llama{}-2 7B     & 15.97 & 10.65 & 8.40 & 9.96 \\ 
-& +\neft{} & 16.41 & 10.77 & 8.60 & 9.64 \\ \bottomrule
-
-\end{tabular}
-\end{table}
-
+\end{center}
+}\end{minipage}
 
 \end{document}
