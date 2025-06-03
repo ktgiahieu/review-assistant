@@ -18,7 +18,7 @@ python3 latex.py folder_with_latex_source -o output_folder
 Prerequisites:
 
 - pdflatex
-- pandoc 2.12 (conda-forge)
+- pandoc 3.7.0.2
 - pdf2image
 - Pillow
 - reportlab

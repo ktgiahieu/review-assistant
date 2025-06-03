@@ -11,23 +11,10 @@ import sys
 import shutil # For copying files and checking for executables (shutil.which)
 import urllib.parse # For decoding URL-encoded paths in Markdown
 import requests # For Semantic Scholar & OpenAlex APIs
-import time     # For politely pausing between API calls and for MAX_OVERALL_PROCESSING_TIME
-import io       # For PDF processing
+import time      # For politely pausing between API calls
+import io        # For PDF processing
 import xml.etree.ElementTree as ET # For Elsevier API
 import json # For Springer API
-import signal # For global timeout
-
-# --- Global Timeout Configuration ---
-MAX_OVERALL_PROCESSING_TIME = 300  # 5 minutes in seconds
-
-class TimeoutException(Exception):
-    """Custom exception for global timeout."""
-    pass
-
-def timeout_handler(signum, frame):
-    """Signal handler for SIGALRM."""
-    # pylint: disable=unused-argument
-    raise TimeoutException(f"Global processing limit of {MAX_OVERALL_PROCESSING_TIME} seconds exceeded.")
 
 # Attempt to import PyPDF2
 try:
@@ -70,7 +57,7 @@ MAX_PANDOC_COMMENT_RETRIES = 10 # Max attempts to fix by commenting within a sin
 class LatexToMarkdownConverter:
     def __init__(self, folder_path_str, verbose=True, template_path=None,
                  openalex_email="your-email@example.com", elsevier_api_key=None, springer_api_key=None, semantic_scholar_api_key=None,
-                 poppler_path=None, output_debug_tex=False): # Added output_debug_tex
+                 poppler_path=None, output_debug_tex=False, log_project_name=None): # Added log_project_name
         self.folder_path = Path(folder_path_str).resolve()
         self.main_tex_path = None
         self.original_main_tex_content = ""
@@ -88,6 +75,7 @@ class LatexToMarkdownConverter:
         self.semantic_scholar_api_key = semantic_scholar_api_key
         self.poppler_path = poppler_path
         self.output_debug_tex = output_debug_tex # Store the flag
+        self.log_project_name = log_project_name # Store for logging context
 
         # Dependency checks and logs
         if self.PdfReader is None and self.verbose:
@@ -111,13 +99,17 @@ class LatexToMarkdownConverter:
             self._log("Springer API key not provided. Abstract fetching from link.springer.com via API will be disabled.", "info")
 
     def _log(self, message, level="info"):
-        # (Log method remains the same)
-        if level == "error": print(f"[-] Error: {message}", file=sys.stderr)
-        elif level == "warn": print(f"[!] Warning: {message}", file=sys.stderr)
+        prefix_str = f"[{self.log_project_name}] " if self.log_project_name else ""
+        if level == "error": print(f"{prefix_str}[-] Error: {message}", file=sys.stderr)
+        elif level == "warn": print(f"{prefix_str}[!] Warning: {message}", file=sys.stderr)
         elif self.verbose:
-            if level == "info": print(f"[*] {message}")
-            elif level == "success": print(f"[+] {message}")
-            elif level == "debug": print(f"    [*] {message}")
+            # Maintain original debug indentation if present, apply prefix
+            if level == "debug" and message.startswith("    [*]"):
+                 print(f"{prefix_str}{message}")
+            elif level == "debug":
+                 print(f"{prefix_str}    [*] {message}")
+            elif level == "info": print(f"{prefix_str}[*] {message}")
+            elif level == "success": print(f"{prefix_str}[+] {message}")
 
     def _write_debug_tex_if_needed(self, tex_content, base_filename="l2m_debug.tex"):
         # Writes debug TeX file if self.output_debug_tex is True.
@@ -170,6 +162,19 @@ class LatexToMarkdownConverter:
                     except Exception as e_del:
                         self._log(f"Could not delete debug file {f_path}: {e_del}", "warn")
     
+    # def _parse_pandoc_error_line_number(self, stderr_output: str) -> int | None:
+    #     # Parses Pandoc's stderr for "Error at "source" (line X, ...)"
+    #     # Returns the 1-indexed line number if found, otherwise None.
+    #     match = re.search(r'Error at "source" \(line (\d+),', stderr_output)
+    #     if match:
+    #         try:
+    #             line_num = int(match.group(1))
+    #             self._log(f"Parsed Pandoc error: problem at line {line_num}.", "debug")
+    #             return line_num
+    #         except ValueError:
+    #             self._log(f"Could not parse line number from Pandoc error string: '{match.group(1)}'", "warn")
+    #     return None
+    
     def _parse_pandoc_error_line_number(self, stderr_output: str) -> int | None:
         # Tries to parse Pandoc's stderr for error line numbers.
         # Iterates through a list of patterns, from most critical/specific to informational.
@@ -193,7 +198,7 @@ class LatexToMarkdownConverter:
             },
             {
                 'name': 'PandocIncludeInfoError', # e.g., [INFO] Could not load include file ... at tmpXYZ.tex line L column C
-                                                 # or [INFO] Could not load include file ... at source line L column C
+                                                  # or [INFO] Could not load include file ... at source line L column C
                 'regex': r'\[INFO\] Could not load include file .*? at (?P<filename>[^ ]+\.tex|source) line (?P<line_num>\d+) column \d+',
                 'log_message': "Parsed Pandoc info: problem loading include at line {line_num} in '{filename}'."
             }
@@ -219,7 +224,7 @@ class LatexToMarkdownConverter:
         self._log(f"Could not find any known error line pattern in Pandoc stderr for line number extraction.", "debug")
         return None
 
-    # --- (All other helper methods like find_main_tex_file, _comment_out_style_packages, _generate_bbl_content, etc. should be here) ---
+    # --- (All other helper methods like find_main_tex_file, _comment_out_style_packages, _generate_bbl_content, etc. remain here) ---
     # --- (Make sure they are complete and correct as in the original provided script) ---
     def find_main_tex_file(self):
         self._log("Finding main .tex file...")
@@ -314,6 +319,7 @@ class LatexToMarkdownConverter:
         main_file_stem = self.main_tex_path.stem
         specific_bbl_path = self.folder_path / f"{main_file_stem}.bbl"
         raw_bbl_content_to_process = None
+
         if specific_bbl_path.exists():
             self._log(f"Found existing specific .bbl file: {specific_bbl_path}", "debug")
             try:
@@ -327,9 +333,9 @@ class LatexToMarkdownConverter:
             except Exception as e:
                 self._log(f"Error reading existing specific .bbl file '{specific_bbl_path}': {e}. Will attempt generation/fallback.", "warn")
                 raw_bbl_content_to_process = None
-        if raw_bbl_content_to_process is None:
+        
+        if raw_bbl_content_to_process is None: # BBL not found or not cached or error reading cache
             self._log(f"Attempting to generate specific .bbl file: {specific_bbl_path.name}...", "info")
-            original_cwd = Path.cwd(); os.chdir(self.folder_path)
             bibtex_run_successful = False
             try:
                 commands = [
@@ -337,43 +343,71 @@ class LatexToMarkdownConverter:
                     ["bibtex", main_file_stem]
                 ]
                 for i, cmd_args in enumerate(commands):
-                    self._log(f"Running BBL generation command: {' '.join(cmd_args)}", "debug")
-                    process = subprocess.run(cmd_args, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore') # No timeout here, global timeout will catch
+                    self._log(f"Running BBL generation command: {' '.join(cmd_args)} in {self.folder_path}", "debug")
+                    # Use cwd parameter instead of os.chdir
+                    process = subprocess.run(cmd_args, capture_output=True, text=True, check=False, 
+                                             encoding='utf-8', errors='ignore', cwd=self.folder_path)
                     if process.returncode != 0:
-                        self._log(f"Error running {' '.join(cmd_args)}. STDERR: {process.stderr[:500]}", "error")
-                        if i == 0 and "pdflatex" in cmd_args[0]: self._log("Initial pdflatex run failed for BBL generation.", "error")
+                        self._log(f"Error running {' '.join(cmd_args)}. STDERR: {process.stderr[:500]} STDOUT: {process.stdout[:500]}", "error")
+                        if i == 0 and "pdflatex" in cmd_args[0]: 
+                            self._log("Initial pdflatex run failed for BBL generation.", "error")
                         bibtex_run_successful = False
-                        if specific_bbl_path.exists():
+                        if specific_bbl_path.exists(): # Attempt to clean up potentially corrupt BBL
                             try: specific_bbl_path.unlink()
                             except Exception as e_unlink: self._log(f"Could not remove BBL file {specific_bbl_path} after error: {e_unlink}", "warn")
-                        break
-                else: bibtex_run_successful = True # else for 'for' loop: runs if loop completed without break
+                        break 
+                else: # No break means all commands in loop succeeded (or at least didn't error out in a way we catch here)
+                    bibtex_run_successful = True # Assume success if loop completes
+
                 if bibtex_run_successful and specific_bbl_path.exists():
                     self._log(f"Specific .bbl file generated successfully: {specific_bbl_path}", "debug")
                     raw_bbl_content_to_process = specific_bbl_path.read_text(encoding="utf-8", errors="ignore")
-                elif bibtex_run_successful: self._log(f"BibTeX ran but did not create '{specific_bbl_path.name}'.", "warn")
-            except Exception as e: self._log(f"Exception during .bbl generation: {e}", "error")
-            finally: os.chdir(original_cwd)
+                elif bibtex_run_successful: # BibTeX ran but no BBL, maybe no citations
+                    self._log(f"BibTeX ran but did not create '{specific_bbl_path.name}'. This might be normal if there are no citations.", "info")
+                    raw_bbl_content_to_process = "" # Treat as empty BBL
+                else: # BibTeX run failed or pdflatex before it failed
+                    self._log(f"BibTeX run did not complete successfully for '{specific_bbl_path.name}'.", "warn")
+                    raw_bbl_content_to_process = None
+
+
+            except Exception as e:
+                self._log(f"Exception during .bbl generation: {e}", "error")
+                raw_bbl_content_to_process = None # Ensure it's None on exception
+        
+        # Fallback to any .bbl if specific one is still not available
         if raw_bbl_content_to_process is None:
             self._log(f"Specific .bbl file '{specific_bbl_path.name}' not found or generated. Searching for any .bbl file in '{self.folder_path}'...", "info")
             bbl_files_in_folder = list(self.folder_path.glob("*.bbl"))
             if bbl_files_in_folder:
                 alternative_bbl_path = bbl_files_in_folder[0]
+                # Prefer the one matching main_tex_stem if it exists among them, even if generation failed
+                # (This part is already covered by specific_bbl_path logic if it exists)
+                # For truly alternative, just pick the first one found.
                 self._log(f"Found alternative .bbl file: '{alternative_bbl_path.name}'. Using its raw content.", "info")
-                try: raw_bbl_content_to_process = alternative_bbl_path.read_text(encoding="utf-8", errors="ignore")
-                except Exception as e: self._log(f"Error reading alternative .bbl file '{alternative_bbl_path.name}': {e}", "warn")
-            else: self._log("No .bbl files (specific or alternative) found in the project folder.", "warn")
-        if raw_bbl_content_to_process is not None:
+                try:
+                    raw_bbl_content_to_process = alternative_bbl_path.read_text(encoding="utf-8", errors="ignore")
+                except Exception as e:
+                    self._log(f"Error reading alternative .bbl file '{alternative_bbl_path.name}': {e}", "warn")
+                    raw_bbl_content_to_process = None # Set to None if read fails
+            else:
+                self._log("No .bbl files (specific or alternative) found in the project folder. Proceeding without bibliography.", "warn")
+                raw_bbl_content_to_process = "" # Treat as empty BBL if none found at all
+
+        if raw_bbl_content_to_process is not None: # This means we have some BBL content (even if empty string)
             self._log("Starting full BBL processing (abstracts, keys) for caching...", "info")
             processed_bbl_string = self._fully_process_bbl(raw_bbl_content_to_process)
             try:
+                # Cache even if raw_bbl_content_to_process was empty, to mark it as "processed"
                 with open(specific_bbl_path, "w", encoding="utf-8") as f:
-                    f.write(PROCESSED_BBL_MARKER + "\n"); f.write(processed_bbl_string)
+                    f.write(PROCESSED_BBL_MARKER + "\n")
+                    f.write(processed_bbl_string)
                 self._log(f"Successfully wrote processed BBL content to '{specific_bbl_path}' (cached).", "success")
-            except Exception as e_write: self._log(f"Error writing processed BBL to cache file '{specific_bbl_path}': {e_write}", "warn")
+            except Exception as e_write:
+                self._log(f"Error writing processed BBL to cache file '{specific_bbl_path}': {e_write}", "warn")
             return processed_bbl_string
-        self._log("Failed to obtain BBL content through any method.", "error"); return None
-
+        
+        self._log("Failed to obtain BBL content through any method.", "error")
+        return None # Explicitly return None if all attempts fail
     def _latex_escape_abstract(self, text: str) -> str:
         if not text: return ""
         text = text.replace('\\', r'\textbackslash{}')
@@ -465,7 +499,7 @@ class LatexToMarkdownConverter:
                 if attempt < max_retries - 1:
                     self._log(f"Elsevier API: Retrying in {retry_delay_seconds}s...", "info"); time.sleep(retry_delay_seconds); continue
                 else: self._log("Elsevier API: Max retries reached for request exception.", "error"); return f"❌ Request error after retries: {req_err}"
-            break # Should not be reached if retrying
+            break
         return "❌ Elsevier API: Failed after all retries or due to unexpected issue."
 
     def _get_springer_abstract_from_url(self, springer_url: str, api_key: str) -> str | None:
@@ -637,18 +671,20 @@ class LatexToMarkdownConverter:
                     # Fallback to general siblings if specific div/section not found
                     collected_general_texts = []
                     current_sib = abstract_heading.find_next_sibling()
-                    while current_sib:
-                        if current_sib.name in ['h1','h2','h3','h4','h5'] or \
-                           (hasattr(current_sib, 'attrs') and any(val in current_sib.attrs.get(attr, '').lower() for attr in ['id', 'class'] for val in ['reference', 'citation', 'biblio'])):
-                            break 
-                        text = current_sib.get_text(separator=' ', strip=True)
-                        if text: collected_general_texts.append(text)
-                        if sum(len(t) for t in collected_general_texts) > 2500: break
-                        current_sib = current_sib.find_next_sibling()
-                    final_general_text = " ".join(collected_general_texts).strip()
-                    if len(final_general_text) > 70:
-                        self._log("HTML Abstract: Extracted from general siblings after 'Abstract' heading.", "debug"); return final_general_text
-            
+                    try:
+                        while current_sib:
+                            if current_sib.name in ['h1','h2','h3','h4','h5'] or \
+                            (hasattr(current_sib, 'attrs') and any(val in current_sib.attrs.get(attr, '').lower() for attr in ['id', 'class'] for val in ['reference', 'citation', 'biblio'])):
+                                break 
+                            text = current_sib.get_text(separator=' ', strip=True)
+                            if text: collected_general_texts.append(text)
+                            if sum(len(t) for t in collected_general_texts) > 2500: break
+                            current_sib = current_sib.find_next_sibling()
+                        final_general_text = " ".join(collected_general_texts).strip()
+                        if len(final_general_text) > 70:
+                            self._log("HTML Abstract: Extracted from general siblings after 'Abstract' heading.", "debug"); return final_general_text
+                    except Exception:
+                        pass
             # "Introduction" section search
             if not abstract_text_candidate:
                 # (As in original)
@@ -778,9 +814,9 @@ class LatexToMarkdownConverter:
                             if springer_abs and not springer_abs.startswith("❌"):
                                 self._log("OpenAlex (via Springer API): Abstract found.", "success"); time.sleep(0.2); return springer_abs
                         # HTML parse fallback
-                        if self.BeautifulSoup and isinstance(landing_page_url_val, str) and landing_page_url_val and not landing_page_url_val.lower().endswith(".pdf"):
-                            html_abs = self._fetch_and_parse_html_for_abstract(landing_page_url_val)
-                            if html_abs: self._log("OpenAlex: HTML abstract from landing page.", "success"); time.sleep(0.2); return html_abs
+                        # if self.BeautifulSoup and isinstance(landing_page_url_val, str) and landing_page_url_val and not landing_page_url_val.lower().endswith(".pdf"):
+                        #     html_abs = self._fetch_and_parse_html_for_abstract(landing_page_url_val)
+                        #     if html_abs: self._log("OpenAlex: HTML abstract from landing page.", "success"); time.sleep(0.2); return html_abs
                         # PDF parse fallback
                         pdf_url_candidate_from_landing = None
                         if isinstance(landing_page_url_val, str) and landing_page_url_val and landing_page_url_val.lower().endswith(".pdf"):
@@ -806,7 +842,7 @@ class LatexToMarkdownConverter:
                             except Exception as e_pdf: self._log(f"OpenAlex: PDF error for {pdf_url}: {e_pdf}", "warn")
                     self._log(f"OpenAlex(A{attempt}): Found papers for '{cleaned_title[:60]}' but no abstract.", "debug"); return None # No abstract found in top results for this title variant
             except Exception as e: self._log(f"OpenAlex(A{attempt}): API/Req error for '{cleaned_title[:60]}': {e}", "warn")
-            time.sleep(0.3) # Polite delay
+            time.sleep(1) # Polite delay
         return None # All title cleaning attempts failed
 
     def _fetch_abstract_from_semantic_scholar(self, title: str, authors_str: str = ""):
@@ -843,8 +879,8 @@ class LatexToMarkdownConverter:
                                 html_abs = self._fetch_and_parse_html_for_abstract(s2_url)
                                 if html_abs: self._log("S2 (via HTML parse): Abstract found.", "success"); time.sleep(0.3); return html_abs
                     self._log(f"S2(A{attempt}): Found papers for '{cleaned_title}' but no abstract (or via fallback URLs).", "debug"); return None
-            except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "debug")
-            if self.semantic_scholar_api_key: time.sleep(1) # Rate limit for keyed access
+            except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "warn")
+            if self.semantic_scholar_api_key: time.sleep(1.1) # Rate limit for keyed access
             else: time.sleep(0.3) # Polite delay
         return None
 
@@ -966,12 +1002,12 @@ class LatexToMarkdownConverter:
                             api_abs = self._get_springer_abstract_from_url(current_url_to_check, self.springer_api_key)
                             if api_abs and not api_abs.startswith("❌"): abstract_text = api_abs
                         if not abstract_text and self.BeautifulSoup and not current_url_to_check.lower().endswith(".pdf"):
-                            if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
+                             if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
                                 abstract_text = self._fetch_and_parse_html_for_abstract(current_url_to_check)
                     if not abstract_text and title_for_api:
-                        abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
-                        if not abstract_text:
-                            abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
+                        abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
+                        # if not abstract_text:
+                        #     abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
                     # (Fallback to general URL parsing from bibitem as in original)
                     if not abstract_text:
                         latex_url_match = re.search(r"\\url\{([^}]+)\}", item_chunk)
@@ -1203,7 +1239,7 @@ class LatexToMarkdownConverter:
                 if original_md_path_in_doc != new_md_path_for_doc and original_md_path_in_doc in markdown_content: # A basic check if replacement likely happened
                     self._log(f"Updated Markdown path for '{original_md_path_in_doc}' to '{new_md_path_for_doc}'.", "debug")
                 elif original_md_path_in_doc == new_md_path_for_doc and original_md_path_in_doc in updated_markdown_content: # No effective path change but check content
-                    pass # Path was already correct, no log needed unless it's verbose
+                     pass # Path was already correct, no log needed unless it's verbose
                 # Consider logging if a path was expected to be updated but wasn't found in the content.
         
         # Convert any remaining <embed> tags within <figure> to <img> tags
@@ -1285,7 +1321,7 @@ class LatexToMarkdownConverter:
         expanded_content = self._recursively_expand_tex_includes(self.main_tex_path, initial_main_tex_content, visited_files)
         self._log(f"LaTeX content expanded to ~{len(expanded_content)//1024} KB before table conversion.", "debug")
         initial_table_content_for_log = expanded_content; processed_table_content = expanded_content
-
+        
         # processed_table_content = re.sub(r"\\begin\{table\}.*?(\\begin\{tabular\}.*?\\end\{tabular\}).*?\\end\{table\}", r"\1", processed_table_content, flags=re.DOTALL)
         def replace_table_with_tabular(latex_string):
             """
@@ -1477,12 +1513,16 @@ class LatexToMarkdownConverter:
                     # The original text for this segment will be picked up by the next iteration's
                     # output_parts.append(latex_string[last_processed_end:next_match_start])
                     # or by the final append.
-                    self._log(f"Warning: Could not parse resizebox at index {resizebox_start_index}: {e}. Leaving it as is.", "warn")
+                    print(f"Warning: Could not parse resizebox at index {resizebox_start_index}: {e}. Leaving it as is.")
                     # To ensure the failed \resizebox is included, we set last_processed_end
                     # to resizebox_start_index. The segment from last_processed_end (before this match)
                     # to resizebox_start_index has been added. The current \resizebox will be part of
                     # the segment from `last_processed_end` (which is now effectively `resizebox_start_index`
                     # in terms of what's *not yet added from original string*) to the start of the next match.
+                    # This means if parsing fails, `last_processed_end` remains where it was before this match was attempted.
+                    # The text from `last_processed_end` (value from previous iteration) to `resizebox_start_index` (current match) is added.
+                    # The current `\resizebox` (from `resizebox_start_index` onwards) is then part of the next segment
+                    # that will be appended if no more `\resizebox` commands are found or before the next one.
                     # This logic correctly leaves unparsable \resizebox commands in the output.
                     pass # last_processed_end is not updated, so original text will be kept
 
@@ -1519,7 +1559,7 @@ class LatexToMarkdownConverter:
                 "Require", "Ensure", 
                 "Return",
                 "Print",
-                "Call",   
+                "Call",    
                 "Procedure", "EndProcedure"
             ]
 
@@ -1551,20 +1591,20 @@ class LatexToMarkdownConverter:
                 
                 modified_inner_content = re.sub(
                     r"\\State\s*({[^}]*})",  # Matches \State whitespace? {group1}
-                    r"\\\\\1",               # \1 refers to the captured group ({[^}]*})
+                    r"\\\\\1",             # \1 refers to the captured group ({[^}]*})
                     modified_inner_content
                 )
                 # 2. Handle remaining plain \State -> State
                 #    This will catch any \State that wasn't followed by {...}
                 modified_inner_content = re.sub(
-                    r"\\State",              # Matches any remaining \State
-                    r"\\\\",                 # Replaces with "State"
+                    r"\\State",             # Matches any remaining \State
+                    r"\\\\",               # Replaces with "State"
                     modified_inner_content
                 )
                 
                 modified_inner_content = re.sub(
                     r"\\Comment\s*({[^}]*})",  # Matches \State whitespace? {group1}
-                    r" \# comment: \1",               # \1 refers to the captured group ({[^}]*})
+                    r" \# comment: \1",             # \1 refers to the captured group ({[^}]*})
                     modified_inner_content
                 )
 
@@ -1624,7 +1664,7 @@ class LatexToMarkdownConverter:
             output_parts = []
             last_processed_end = 0
 
-            for match in re.finditer(r"\\begin\{tabular\}\s*(\[[^\]]*\])?", latex_string):
+            for match in re.finditer(r"\\begin\{tabular\}\s*\*?\\?(\[[^\]]*\])?(\[[^\]]*\])?", latex_string):
                 begin_tabular_start_index = match.start()
                 
                 # Append text before the current \begin{tabular}
@@ -1650,16 +1690,22 @@ class LatexToMarkdownConverter:
                     raise ValueError(f"Expected non-escaped '{char_to_find}' not found after index {start_ptr}. Found '{text[p] if p < len(text) else 'EOF'}' at {p}.")
 
                 # Find the opening brace for column specifiers
-                open_spec_idx = advance_to_char(latex_string, '{', current_parse_ptr)
+                try:
+                    open_spec_idx = advance_to_char(latex_string, '{', current_parse_ptr)
+                except:
+                    self._log("[!] Skipping conversion y{53}x{40}|x{30}x{30}x{30}x{30} for this paper", "warn")
+                    output_parts.append(latex_string[last_processed_end:begin_tabular_start_index])
+                    last_processed_end = begin_tabular_start_index + 1
+                    continue # Move to the next \begin{tabular}
                 close_spec_idx = find_matching_closing_brace(latex_string, open_spec_idx)
                 
-                # original_specifiers_with_braces = latex_string[open_spec_idx : close_spec_idx + 1] # Not used directly
+                original_specifiers_with_braces = latex_string[open_spec_idx : close_spec_idx + 1]
                 specifiers_content = latex_string[open_spec_idx + 1 : close_spec_idx]
 
                 # Process the specifiers_content
                 modified_specifiers = re.sub(r"y\{[^{}]*\}", "l", specifiers_content)
                 modified_specifiers = re.sub(r"x\{[^{}]*\}", "c", modified_specifiers)
-                # modified_specifiers = modified_specifiers.replace("|", "") # Keep pipes for Pandoc
+                # modified_specifiers = modified_specifiers.replace("|", "")
                 modified_specifiers = "".join(modified_specifiers.split())
                 
                 
@@ -1670,7 +1716,7 @@ class LatexToMarkdownConverter:
                 output_parts.append("}") # Add the closing brace for specifiers
                 
                 last_processed_end = close_spec_idx + 1
-                        
+                    
                 # except ValueError as e:
                 #     # Parsing failed for this \begin{tabular}{...} specifier block
                 #     print(f"Warning: Could not parse tabular specifiers starting near index {begin_tabular_start_index}: {e}. Leaving original segment.")
@@ -1705,7 +1751,7 @@ class LatexToMarkdownConverter:
                     return p # Found non-escaped char_to_find
                 else:
                     # Found a non-whitespace character that is NOT char_to_find
-                    raise ValueError(f"Expected non-escaped '{char_to_find}' after whitespace, but found '{text[p]}' at index {p} (start_ptr was {start_ptr}).")
+                    raise ValueError(f"Expected non-escaped '{char_to_find}' after whitespace, but found '{text[p]}' at index {p} (start_ptr was {start_ptr}, at {text[start_ptr:start_ptr+200]}")
             raise ValueError(f"Expected non-escaped '{char_to_find}' not found after index {start_ptr} (end of string reached).")
 
         def preprocess_latex_for_pandoc(latex_string: str) -> str:
@@ -1721,7 +1767,8 @@ class LatexToMarkdownConverter:
             last_processed_end_newcommand_simplifier = 0
             
             # Iterate over all occurrences of "\newcommand"
-            for match_newcommand_token in re.finditer(r"\\newcommand(?![a-zA-Z])", processed_string):
+            for match_newcommand_token in re.finditer(r"\\newcommand\s*\*?(\[[^\]]*\])", processed_string):
+                self._log(str(match_newcommand_token) + f". Position starts after {latex_string[match_newcommand_token.start(): match_newcommand_token.end()+200]}", 'debug')
                 newcommand_start_idx = match_newcommand_token.start()
                 # Append text before the current \newcommand
                 output_parts_newcommand_simplifier.append(
@@ -1729,72 +1776,63 @@ class LatexToMarkdownConverter:
                 )
                 current_parse_ptr = match_newcommand_token.end() # Position right after "\newcommand" token
                 
-                try:
-                    # 1. Parse command name: {\cmdname}
-                    open_cmd_name_idx = _advance_to_char_for_parser(processed_string, '{', current_parse_ptr)
-                    close_cmd_name_idx = find_matching_closing_brace(processed_string, open_cmd_name_idx)
-                    # cmd_name_with_braces = processed_string[open_cmd_name_idx : close_cmd_name_idx + 1] # e.g. {\mycmd}
-                    current_parse_ptr = close_cmd_name_idx + 1
+                # 1. Parse command name: {\cmdname}
+                open_cmd_name_idx = _advance_to_char_for_parser(processed_string, '{', current_parse_ptr)
+                close_cmd_name_idx = find_matching_closing_brace(processed_string, open_cmd_name_idx)
+                # cmd_name_with_braces = processed_string[open_cmd_name_idx : close_cmd_name_idx + 1] # e.g. {\mycmd}
+                current_parse_ptr = close_cmd_name_idx + 1
 
-                    # 2. Parse number of arguments: looking for [1]
-                    # Skip whitespace before potential argument specifier
-                    temp_ptr = current_parse_ptr
-                    while temp_ptr < len(processed_string) and processed_string[temp_ptr].isspace():
-                        temp_ptr += 1
-                    
-                    is_one_arg_cmd = False
-                    num_args_part_end_ptr = temp_ptr # End of the [1] part, or temp_ptr if no [1]
-
-                    if temp_ptr < len(processed_string) and processed_string[temp_ptr] == '[':
-                        # Try to match exactly "[1]" with optional spaces
-                        num_args_match = re.match(r"\[\s*1\s*\]", processed_string[temp_ptr:])
-                        if num_args_match:
-                            is_one_arg_cmd = True
-                            num_args_part_end_ptr = temp_ptr + len(num_args_match.group(0))
-                    
-                    if not is_one_arg_cmd:
-                        # This \newcommand is not of the form \newcommand{\cmd}[1]{...}
-                        # Append the original \newcommand and its name part, and whatever was parsed as args (or lack thereof)
-                        output_parts_newcommand_simplifier.append(
-                            processed_string[newcommand_start_idx : num_args_part_end_ptr]
-                        )
-                        last_processed_end_newcommand_simplifier = num_args_part_end_ptr
-                        continue # Move to the next \newcommand token
-
-                    current_parse_ptr = num_args_part_end_ptr # Position after [1]
-
-                    # 3. Parse definition body: {definition_body}
-                    open_def_body_idx = _advance_to_char_for_parser(processed_string, '{', current_parse_ptr)
-                    close_def_body_idx = find_matching_closing_brace(processed_string, open_def_body_idx)
-                    definition_body = processed_string[open_def_body_idx + 1 : close_def_body_idx]
-
-                    # Check if it's a candidate for simplification
-                    if "#1" in definition_body and definition_body.strip() != "#1":
-                        # It's a single-argument command, its definition uses #1, and it's not already just {#1}
-                        # Construct the simplified definition: \newcommand{\cmdname}[1]{#1}
-                        
-                        # Append the part from \newcommand up to and including the opening brace of the definition body
-                        output_parts_newcommand_simplifier.append(
-                            processed_string[newcommand_start_idx : open_def_body_idx + 1]
-                        )
-                        output_parts_newcommand_simplifier.append("#1") # The new, simplified body
-                        output_parts_newcommand_simplifier.append("}")   # The closing brace for the new body
-                        last_processed_end_newcommand_simplifier = close_def_body_idx + 1
-                    else:
-                        # Not a candidate (e.g., no #1, or already just {#1}, or not a [1] arg command)
-                        # Append the original, full \newcommand definition segment
-                        output_parts_newcommand_simplifier.append(
-                            processed_string[newcommand_start_idx : close_def_body_idx + 1]
-                        )
-                        last_processed_end_newcommand_simplifier = close_def_body_idx + 1
+                # 2. Parse number of arguments: looking for [1]
+                # Skip whitespace before potential argument specifier
+                temp_ptr = current_parse_ptr
+                while temp_ptr < len(processed_string) and processed_string[temp_ptr].isspace():
+                    temp_ptr += 1
                 
-                except ValueError as e:
-                    # Parsing failed for this \newcommand definition.
-                    self._log(f"Warning: Could not fully parse \\newcommand definition starting near index {newcommand_start_idx}: {e}. Leaving original segment.", "warn")
-                    # If parsing fails, the `last_processed_end_newcommand_simplifier` is not updated from its value *before* this iteration.
-                    # The current (failed) \newcommand command will be included in the segment appended
-                    # in the next iteration or at the end of the loop.
-                    pass # Let the main loop structure handle appending the unprocessed part.
+                is_one_arg_cmd = False
+                num_args_part_end_ptr = temp_ptr # End of the [1] part, or temp_ptr if no [1]
+
+                if temp_ptr < len(processed_string) and processed_string[temp_ptr] == '[':
+                    # Try to match exactly "[1]" with optional spaces
+                    num_args_match = re.match(r"\[\s*1\s*\]", processed_string[temp_ptr:])
+                    if num_args_match:
+                        is_one_arg_cmd = True
+                        num_args_part_end_ptr = temp_ptr + len(num_args_match.group(0))
+                
+                if not is_one_arg_cmd:
+                    # This \newcommand is not of the form \newcommand{\cmd}[1]{...}
+                    # Append the original \newcommand and its name part, and whatever was parsed as args (or lack thereof)
+                    output_parts_newcommand_simplifier.append(
+                        processed_string[newcommand_start_idx : num_args_part_end_ptr]
+                    )
+                    last_processed_end_newcommand_simplifier = num_args_part_end_ptr
+                    continue # Move to the next \newcommand token
+
+                current_parse_ptr = num_args_part_end_ptr # Position after [1]
+
+                # 3. Parse definition body: {definition_body}
+                open_def_body_idx = _advance_to_char_for_parser(processed_string, '{', current_parse_ptr)
+                close_def_body_idx = find_matching_closing_brace(processed_string, open_def_body_idx)
+                definition_body = processed_string[open_def_body_idx + 1 : close_def_body_idx]
+
+                # Check if it's a candidate for simplification
+                if "#1" in definition_body and definition_body.strip() != "#1":
+                    # It's a single-argument command, its definition uses #1, and it's not already just {#1}
+                    # Construct the simplified definition: \newcommand{\cmdname}[1]{#1}
+                    
+                    # Append the part from \newcommand up to and including the opening brace of the definition body
+                    output_parts_newcommand_simplifier.append(
+                        processed_string[newcommand_start_idx : open_def_body_idx + 1]
+                    )
+                    output_parts_newcommand_simplifier.append("#1") # The new, simplified body
+                    output_parts_newcommand_simplifier.append("}")   # The closing brace for the new body
+                    last_processed_end_newcommand_simplifier = close_def_body_idx + 1
+                else:
+                    # Not a candidate (e.g., no #1, or already just {#1}, or not a [1] arg command)
+                    # Append the original, full \newcommand definition segment
+                    output_parts_newcommand_simplifier.append(
+                        processed_string[newcommand_start_idx : close_def_body_idx + 1]
+                    )
+                    last_processed_end_newcommand_simplifier = close_def_body_idx + 1
 
             # Append the rest of the string after the last processed \newcommand
             output_parts_newcommand_simplifier.append(processed_string[last_processed_end_newcommand_simplifier:])
@@ -1802,11 +1840,11 @@ class LatexToMarkdownConverter:
             
             # Other simplification steps (like simple \def replacement or two-arg unwraps) are removed
             # as per the request to focus only on \newcommand[1]{...#1...} -> \newcommand[1]{#1}.
-                    
+                
             return processed_string
         
         processed_table_content = preprocess_latex_for_pandoc(processed_table_content)
-        
+        return processed_table_content
         
         def remove_pipes_from_multicolumn_spec(match):
             multicolumn_command = match.group(1); align_spec_with_braces = match.group(2); content = match.group(3)
@@ -1958,54 +1996,52 @@ class LatexToMarkdownConverter:
         return fixed_text
 
     def _execute_single_pandoc_run(self, tex_content, pandoc_timeout, strategy_idx, retry_attempt_idx):
-        # Executes a single Pandoc command and returns success status, stdout, stderr.
-        # Handles temporary file creation for Pandoc input.
-        
         debug_filename = f"l2m_debug_strategy_{strategy_idx}_initial.tex"
-        if retry_attempt_idx > 0 : # This means it's a retry *within* the commenting loop
-             debug_filename = f"l2m_debug_strategy_{strategy_idx}_retry_{retry_attempt_idx}.tex"
+        if retry_attempt_idx > 0:
+            debug_filename = f"l2m_debug_strategy_{strategy_idx}_retry_{retry_attempt_idx}.tex"
         self._write_debug_tex_if_needed(tex_content, debug_filename)
 
-        final_md_path = self.final_output_folder_path / "paper.md" # Target for final successful MD
-        pandoc_local_out = "_l2m_pandoc_temp_paper.md" # Temp output in source dir
+        final_md_path = self.final_output_folder_path / "paper.md"
+        pandoc_local_out_basename = "_l2m_pandoc_temp_paper.md" # Basename for temp output
         
         tmp_tex_path_obj = None
-        original_cwd = Path.cwd()
         
         try:
-            # Create a temporary .tex file in the project's root folder for Pandoc
-            # Pandoc often works better with relative paths if run from the project root.
+            # Create temp .tex file in the project's root for Pandoc
             with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".tex", encoding="utf-8", dir=self.folder_path) as tmp_f:
                 tmp_f.write(tex_content)
                 tmp_tex_path_obj = Path(tmp_f.name)
 
-            cmd = ["pandoc", tmp_tex_path_obj.name, "-f", "latex", "-t", "gfm-tex_math_dollars", "--verbose", "--wrap=none", "-o", pandoc_local_out]
+            # Command uses relative paths for input/output, cwd will handle context
+            cmd = ["pandoc", tmp_tex_path_obj.name, "-f", "latex", "-t", "gfm-tex_math_dollars", "--verbose", "--wrap=none", "-o", pandoc_local_out_basename]
             if self.template_path and Path(self.template_path).exists():
-                cmd.extend(["--template", str(self.template_path)]) # Ensure template path is absolute or resolvable by Pandoc
+                cmd.extend(["--template", str(self.template_path)]) # Template path should be absolute or resolvable by Pandoc from cwd
             else:
-                self._log(f"Pandoc template '{self.template_path}' not found or not specified. Using Pandoc default.", "info")
+                if self.template_path: # Only log if a template was specified but not found
+                    self._log(f"Pandoc template '{self.template_path}' not found. Using Pandoc default.", "info")
 
-            os.chdir(self.folder_path) # Run Pandoc from the project's directory
+
             self._log(f"Running Pandoc (Strategy {strategy_idx}, Retry {retry_attempt_idx}) in '{self.folder_path}': {' '.join(cmd)}", "debug")
             
-            proc = subprocess.run(cmd, capture_output=True, text=True, check=False, encoding='utf-8', errors='ignore', timeout=pandoc_timeout)
+            # Execute Pandoc with cwd set to the project folder
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False, 
+                                  encoding='utf-8', errors='ignore', timeout=pandoc_timeout, 
+                                  cwd=self.folder_path) # Key change: use cwd
             
-            created_md_path_local = self.folder_path / pandoc_local_out # Path to temp MD output
+            created_md_path_local = self.folder_path / pandoc_local_out_basename # Path to temp MD output in project folder
 
             if proc.returncode == 0 and created_md_path_local.exists():
                 self._log("Pandoc conversion successful for this attempt.", "debug")
-                # Move the successfully created MD file to the final output folder
                 self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(created_md_path_local), str(final_md_path))
+                shutil.move(str(created_md_path_local), str(final_md_path)) # Move to final output
                 
                 if final_md_path.exists():
                     self._log(f"Markdown file generated at: {final_md_path}", "debug")
-                    # Post-process figures in the final Markdown file
                     with open(final_md_path, "r", encoding="utf-8", errors="ignore") as md_f:
                         markdown_content_after_pandoc = md_f.read()
                     
                     output_figures_subdir = self.final_output_folder_path / "figures"
-                    output_figures_subdir.mkdir(parents=True, exist_ok=True) # Ensure figures subdir exists
+                    # output_figures_subdir.mkdir(parents=True, exist_ok=True) # Already done when moving MD
                     
                     copied_figure_details = self._find_and_copy_figures_from_markdown(
                         markdown_content_after_pandoc, output_figures_subdir
@@ -2016,36 +2052,31 @@ class LatexToMarkdownConverter:
                     with open(final_md_path, "w", encoding="utf-8") as md_f:
                         md_f.write(updated_markdown_content)
                     
-                    if copied_figure_details:
-                        self._log("Markdown figure paths updated and relevant images processed.", "success")
-                    else:
-                        self._log("No local figures found in Markdown to process for copy/conversion.", "debug")
-                    return True, proc.stdout, proc.stderr # Success
+                    if copied_figure_details: self._log("Markdown figure paths updated and relevant images processed.", "success")
+                    else: self._log("No local figures found in Markdown to process.", "debug")
+                    return True, proc.stdout, proc.stderr
                 else:
                     self._log(f"Pandoc seemed to succeed but final markdown file '{final_md_path}' not found after move.", "error")
-                    return False, proc.stdout, proc.stderr # Failure
-            else: # Pandoc failed
-                self._log(f"Pandoc conversion failed for this attempt. Return code: {proc.returncode}. Full error: {proc.stderr}", "error")
-                # Clean up temp MD file if it was created despite error
-                if created_md_path_local.exists():
+                    return False, proc.stdout, proc.stderr
+            else:
+                self._log(f"Pandoc conversion failed. RC: {proc.returncode}.", "error")
+                if created_md_path_local.exists(): # Clean up temp MD if created despite error
                     try: created_md_path_local.unlink()
-                    except Exception as e_del_tmp: self._log(f"Could not delete temporary pandoc output '{created_md_path_local}': {e_del_tmp}", "warn")
-                return False, proc.stdout, proc.stderr # Failure
+                    except Exception as e_del_tmp: self._log(f"Could not delete temp pandoc output '{created_md_path_local}': {e_del_tmp}", "warn")
+                return False, proc.stdout, proc.stderr
 
         except subprocess.TimeoutExpired:
             self._log(f"Pandoc command timed out after {pandoc_timeout} seconds.", "error")
-            return False, "", "Pandoc command timed out." # Failure
+            return False, "", "Pandoc command timed out."
         except Exception as e:
             self._log(f"An exception occurred during this Pandoc run: {e}", "error")
-            return False, "", str(e) # Failure
+            return False, "", str(e)
         finally:
-            if Path.cwd() != original_cwd: # Change back to original CWD
-                os.chdir(original_cwd)
-            if tmp_tex_path_obj and tmp_tex_path_obj.exists(): # Clean up temp .tex input file
+            if tmp_tex_path_obj and tmp_tex_path_obj.exists():
                 try: tmp_tex_path_obj.unlink()
                 except Exception as e_unlink: self._log(f"Could not delete temporary TeX file '{tmp_tex_path_obj}': {e_unlink}", "warn")
-            # Ensure the temp MD output in source dir is cleaned if it wasn't moved
-            pandoc_temp_output_in_src = self.folder_path / pandoc_local_out
+            # Ensure temp MD in source dir is cleaned if it wasn't moved (e.g. on error before move)
+            pandoc_temp_output_in_src = self.folder_path / pandoc_local_out_basename
             if pandoc_temp_output_in_src.exists():
                 try: pandoc_temp_output_in_src.unlink()
                 except Exception as e_del_tmp2: self._log(f"Could not delete temp pandoc output '{pandoc_temp_output_in_src}' from source folder: {e_del_tmp2}", "warn")
@@ -2103,110 +2134,95 @@ class LatexToMarkdownConverter:
         return False # Should be reached if all retries fail
 
     def convert_to_markdown(self, output_folder_path_str):
-        # Setup signal-based timeout
-        # Note: SIGALRM is not available on Windows.
-        original_handler = None
-        if os.name != 'nt':
-            try:
-                original_handler = signal.getsignal(signal.SIGALRM)
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(MAX_OVERALL_PROCESSING_TIME)
-                self._log(f"Global timeout alarm set for {MAX_OVERALL_PROCESSING_TIME} seconds.", "info")
-            except AttributeError: # E.g. if signal module is not fully available in some restricted envs
-                 self._log("Signal module not fully available. Proceeding without global timeout signal.", "warn")
-                 original_handler = None # Ensure it's None
-            except ValueError: # Can happen if not in main thread
-                 self._log("Cannot set SIGALRM handler (not in main thread or other issue). Proceeding without global timeout signal.", "warn")
-                 original_handler = None
-        else:
-            self._log("Signal-based timeout (SIGALRM) is not supported on Windows. Proceeding without global timeout signal.", "warn")
+        overall_start_time = time.time()
+        MAX_OVERALL_PROCESSING_TIME = 600  # 10 minutes
 
+        def check_overall_timeout(stage_name=""):
+            if (time.time() - overall_start_time) > MAX_OVERALL_PROCESSING_TIME:
+                self._log(f"Overall processing timed out after {MAX_OVERALL_PROCESSING_TIME} seconds (during {stage_name}).", "error")
+                return True
+            return False
+
+        if check_overall_timeout("initialization"): return False
+        if not self.find_main_tex_file(): return False
+        if check_overall_timeout("find_main_tex_file"): return False
+        
+        self.final_output_folder_path = Path(output_folder_path_str).resolve()
         try:
-            if not self.find_main_tex_file():
-                self._cleanup_debug_files()
-                return False
+            self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            self._log(f"Output dir error: {e}", "error"); return False
+        if check_overall_timeout("output_folder_setup"): return False
+
+        processed_bbl_with_abstracts_and_keys = self._generate_bbl_content()
+        if check_overall_timeout("_generate_bbl_content"): return False
+        if processed_bbl_with_abstracts_and_keys is None:
+            self._log("Failed to generate or process BBL content. This might be due to an earlier timeout or other errors.", "error")
+            self._cleanup_debug_files(); return False # Cleanup and exit
+
+        # problematic_macros = r"""\providecommand{\linebreakand}{\par\noindent\ignorespaces} \providecommand{\email}[1]{\texttt{#1}} \providecommand{\IEEEauthorblockN}[1]{#1\par} \providecommand{\IEEEauthorblockA}[1]{#1\par} \providecommand{\and}{\par\noindent\ignorespaces} \providecommand{\And}{\par\noindent\ignorespaces} \providecommand{\AND}{\par\noindent\ignorespaces} \providecommand{\IEEEoverridecommandlockouts}{} \providecommand{\CLASSINPUTinnersidemargin}{} \providecommand{\CLASSINPUToutersidemargin}{} \providecommand{\CLASSINPUTtoptextmargin}{} \providecommand{\CLASSINPUTbottomtextmargin}{} \providecommand{\CLASSOPTIONcompsoc}{} \providecommand{\CLASSOPTIONconference}{} \providecommand{\@toptitlebar}{} \providecommand{\@bottomtitlebar}{} \providecommand{\@thanks}{} \providecommand{\@notice}{} \providecommand{\@noticestring}{} \providecommand{\acksection}{} \newenvironment{ack}{\par\textbf{Acknowledgments}\par}{\par} \providecommand{\answerYes}[1]{[Yes] ##1} \providecommand{\answerNo}[1]{[No] ##1} \providecommand{\answerNA}[1]{[NA] ##1} \providecommand{\answerTODO}[1]{[TODO] ##1} \providecommand{\justificationTODO}[1]{[TODO] ##1} \providecommand{\textasciitilde}{~} \providecommand{\textasciicircum}{^} \providecommand{\textbackslash}{\symbol{92}}"""
+        problematic_macros = ""
+        pandoc_attempts_config = [
+            {"mode": "venue_only", "desc": "Venue-specific styles commented", "timeout_factor": 1.0}, # Base timeout
+            # {"mode": "original", "desc": "Original TeX content (no script style commenting)", "timeout_factor": 1.0}, # Can be re-enabled
+            {"mode": "all_project", "desc": "All project-specific styles commented", "timeout_factor": 1.2} # Slightly more time for potentially larger file
+        ]
+        
+        initial_main_tex_content_for_processing = self.original_main_tex_content
+        expanded_and_table_processed_tex = self._preprocess_latex_table_environments(initial_main_tex_content_for_processing)
+        if check_overall_timeout("_preprocess_latex_table_environments"): self._cleanup_debug_files(); return False
+        
+        fully_preprocessed_tex = self._preprocess_checklist_enumerations(expanded_and_table_processed_tex)
+        if check_overall_timeout("_preprocess_checklist_enumerations"): self._cleanup_debug_files(); return False
+
+        base_pandoc_timeout_per_strategy = 60 # seconds for one strategy before iterative commenting kicks in
+
+        for strategy_idx, attempt_config in enumerate(pandoc_attempts_config):
+            if check_overall_timeout(f"before Pandoc strategy {strategy_idx}"): self._cleanup_debug_files(); return False
             
-            self.final_output_folder_path = Path(output_folder_path_str).resolve()
-            try:
-                self.final_output_folder_path.mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                self._log(f"Output directory creation error: {e}", "error")
-                self._cleanup_debug_files()
-                return False
-
-            processed_bbl_with_abstracts_and_keys = self._generate_bbl_content()
-            if processed_bbl_with_abstracts_and_keys is None:
-                # Error already logged by _generate_bbl_content if it failed
-                self._log("BBL content generation/processing failed. Conversion cannot proceed.", "error")
-                self._cleanup_debug_files()
-                return False
-
-            problematic_macros = "" # self.problematic_macros_definitions (if defined)
-            pandoc_attempts_config = [
-                {"mode": "venue_only", "desc": "Venue-specific styles commented", "timeout_factor": 1.0},
-                {"mode": "all_project", "desc": "All project-specific styles commented", "timeout_factor": 1.2}
-            ]
+            self._log(f"Pandoc Conversion Strategy {strategy_idx + 1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
             
-            initial_main_tex_content_for_processing = self.original_main_tex_content
-            expanded_and_table_processed_tex = self._preprocess_latex_table_environments(initial_main_tex_content_for_processing)
+            current_tex_base = fully_preprocessed_tex # Start with the fully preprocessed TeX for each strategy
+            if attempt_config["mode"] == "venue_only":
+                style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="venue_only")
+            elif attempt_config["mode"] == "all_project":
+                style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="all_project")
+            else: # "original" or other modes
+                style_modified_tex = current_tex_base
+            if check_overall_timeout(f"style_commenting_for_strategy_{strategy_idx}"): self._cleanup_debug_files(); return False
+
+            tex_with_final_bib = self._simple_inline_processed_bbl(style_modified_tex, processed_bbl_with_abstracts_and_keys)
+            if check_overall_timeout(f"bbl_inlining_for_strategy_{strategy_idx}"): self._cleanup_debug_files(); return False
             
-            fully_preprocessed_tex = self._preprocess_checklist_enumerations(expanded_and_table_processed_tex)
+            final_tex_for_pandoc = problematic_macros + "\n" + tex_with_final_bib
 
-            base_pandoc_timeout_per_strategy = 60 # seconds for one Pandoc subprocess run
-
-            for strategy_idx, attempt_config in enumerate(pandoc_attempts_config):
-                self._log(f"Pandoc Conversion Strategy {strategy_idx + 1}/{len(pandoc_attempts_config)} ({attempt_config['desc']})...", "info")
-                
-                current_tex_base = fully_preprocessed_tex
-                if attempt_config["mode"] == "venue_only":
-                    style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="venue_only")
-                elif attempt_config["mode"] == "all_project":
-                    style_modified_tex = self._comment_out_style_packages(current_tex_base, mode="all_project")
-                else: # "original" or other modes
-                    style_modified_tex = current_tex_base
-
-                tex_with_final_bib = self._simple_inline_processed_bbl(style_modified_tex, processed_bbl_with_abstracts_and_keys)
-                
-                final_tex_for_pandoc = problematic_macros + "\n" + tex_with_final_bib
-
-                effective_pandoc_run_timeout = base_pandoc_timeout_per_strategy * attempt_config.get("timeout_factor", 1.0)
-                self._log(f"Running Pandoc strategy {strategy_idx + 1} with per-run subprocess timeout: {effective_pandoc_run_timeout:.2f}s", "debug")
-
-                if self._run_pandoc_strategy_with_retries(final_tex_for_pandoc, effective_pandoc_run_timeout, strategy_idx):
-                    self._log(f"Pandoc conversion successful with strategy: {attempt_config['desc']}.", "success")
-                    self._cleanup_debug_files()
-                    if os.name != 'nt' and original_handler is not None: signal.alarm(0) # Disable alarm on success
-                    return True
-
-                if strategy_idx < len(pandoc_attempts_config) - 1:
-                    self._log(f"Pandoc strategy {strategy_idx + 1} ({attempt_config['desc']}) failed. Trying next strategy.", "warn")
-                else:
-                    self._log("All Pandoc conversion strategies failed.", "error")
+            time_elapsed_so_far = time.time() - overall_start_time
+            remaining_overall_time = MAX_OVERALL_PROCESSING_TIME - time_elapsed_so_far
             
-            # If loop finishes, all strategies failed
-            self._cleanup_debug_files()
-            return False
+            if remaining_overall_time <= 5: # Need at least a few seconds for Pandoc
+                self._log(f"Overall processing time limit reached before Pandoc strategy {strategy_idx} could run effectively.", "error")
+                self._cleanup_debug_files(); return False
+            
+            # Calculate timeout for this specific strategy attempt
+            # This timeout is for each call to _execute_single_pandoc_run within the retry loop
+            effective_pandoc_run_timeout = min(base_pandoc_timeout_per_strategy * attempt_config.get("timeout_factor", 1.0), remaining_overall_time - 2) # -2 for buffer
+            effective_pandoc_run_timeout = max(5, effective_pandoc_run_timeout) # Minimum 5s per run
 
-        except TimeoutException as e:
-            self._log(str(e), "error") # Exception message already includes details
-            self._cleanup_debug_files()
-            return False
-        except Exception as e_main: # Catch any other unexpected exceptions
-            self._log(f"An unexpected error occurred in convert_to_markdown: {e_main}", "error")
-            import traceback
-            self._log(traceback.format_exc(), "debug") # Log full traceback for debugging
-            self._cleanup_debug_files()
-            return False
-        finally:
-            if os.name != 'nt' and original_handler is not None:
-                signal.alarm(0) # CRITICAL: Disable the alarm in all cases
-                # Restore original signal handler if one was present
-                try:
-                    current_handler = signal.getsignal(signal.SIGALRM)
-                    if current_handler == timeout_handler: # Only restore if our handler is still set
-                        signal.signal(signal.SIGALRM, original_handler)
-                except Exception as e_restore:
-                    self._log(f"Could not restore original SIGALRM handler: {e_restore}", "warn")
+            self._log(f"Running Pandoc strategy {strategy_idx} with per-run timeout: {effective_pandoc_run_timeout:.2f}s", "debug")
+
+            if self._run_pandoc_strategy_with_retries(final_tex_for_pandoc, effective_pandoc_run_timeout, strategy_idx):
+                self._log(f"Pandoc conversion successful with strategy: {attempt_config['desc']}.", "success")
+                self._cleanup_debug_files(); return True # Overall success
+
+            if check_overall_timeout(f"after Pandoc strategy {strategy_idx}"): self._cleanup_debug_files(); return False
+
+            if strategy_idx < len(pandoc_attempts_config) - 1:
+                self._log(f"Pandoc strategy {strategy_idx + 1} ({attempt_config['desc']}) failed. Trying next strategy.", "warn")
+            else:
+                self._log("All Pandoc conversion strategies failed.", "error")
+        
+        self._cleanup_debug_files()
+        return False
 
 
 if __name__ == '__main__':
@@ -2260,15 +2276,11 @@ if __name__ == '__main__':
 
     if converter.convert_to_markdown(str(output_folder_path)):
         converter._log(f"Conversion successful. Output: '{output_folder_path / 'paper.md'}'", "success")
-        sys.exit(0) # Explicit success exit code
-    else: 
-        converter._log("Conversion failed.", "error")
-        sys.exit(1) # Explicit failure exit code
+    else: converter._log("Conversion failed.", "error")
 
-    # These lines might not be reached if sys.exit() is called above, which is fine.
-    # converter._log("Dependencies: Pandoc, LaTeX (pdflatex, bibtex), requests.", "info")
-    # if converter.PdfReader is None: converter._log("Optional for PDF abstracts: PyPDF2 (pip install PyPDF2)", "info")
-    # if converter.BeautifulSoup is None: converter._log("Optional for HTML abstracts: beautifulsoup4 (pip install beautifulsoup4)", "info")
-    # if converter.PILImage is None: converter._log("Optional for image conversion: Pillow (pip install Pillow)", "info")
-    # if converter.convert_from_path is None: converter._log("Optional for PDF to PNG: pdf2image (pip install pdf2image) and Poppler.", "info")
+    converter._log("Dependencies: Pandoc, LaTeX (pdflatex, bibtex), requests.", "info")
+    if converter.PdfReader is None: converter._log("Optional for PDF abstracts: PyPDF2 (pip install PyPDF2)", "info")
+    if converter.BeautifulSoup is None: converter._log("Optional for HTML abstracts: beautifulsoup4 (pip install beautifulsoup4)", "info")
+    if converter.PILImage is None: converter._log("Optional for image conversion: Pillow (pip install Pillow)", "info")
+    if converter.convert_from_path is None: converter._log("Optional for PDF to PNG: pdf2image (pip install pdf2image) and Poppler.", "info")
 
