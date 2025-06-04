@@ -6,7 +6,7 @@ __*
 ExtractLatex/output*
 ExtractLatex/arxiv_latex_zzOOqD6R1b_v1
 .ipynb_checkpoints
-*.ipynb
+test*.ipynb
 converted_pngs
 ExtractLatex/latex_copy.py
 .env
@@ -15,7 +15,7 @@ ExtractLatex/parsed_arxiv
 ExtractLatex/run_multithreaded_latex_debug*
 AnswerChecklist/filter.py
 AnswerChecklist/data
-AnswerChecklist/*.csv
+*.csv
 AnswerChecklist/*.zip
 log_*.txt
 

@@ -880,7 +880,7 @@ class LatexToMarkdownConverter:
                                 if html_abs: self._log("S2 (via HTML parse): Abstract found.", "success"); time.sleep(0.3); return html_abs
                     self._log(f"S2(A{attempt}): Found papers for '{cleaned_title}' but no abstract (or via fallback URLs).", "debug"); return None
             except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "warn")
-            if self.semantic_scholar_api_key: time.sleep(1.1) # Rate limit for keyed access
+            if self.semantic_scholar_api_key: time.sleep(3) # Rate limit for keyed access, depends on num_workers
             else: time.sleep(0.3) # Polite delay
         return None
 
@@ -1005,9 +1005,13 @@ class LatexToMarkdownConverter:
                              if not (("arxiv.org/abs/" in current_url_to_check or "arxiv.org/html/" in current_url_to_check) and 'arxiv' in item_chunk.lower()):
                                 abstract_text = self._fetch_and_parse_html_for_abstract(current_url_to_check)
                     if not abstract_text and title_for_api:
-                        abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
-                        # if not abstract_text:
-                        #     abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
+                        # abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
+                        # # if not abstract_text:
+                        # #     abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
+                        
+                        abstract_text = self._fetch_abstract_from_openalex(title_for_api, components["authors"])
+                        if not abstract_text:
+                            abstract_text = self._fetch_abstract_from_semantic_scholar(title_for_api, components["authors"])
                     # (Fallback to general URL parsing from bibitem as in original)
                     if not abstract_text:
                         latex_url_match = re.search(r"\\url\{([^}]+)\}", item_chunk)
