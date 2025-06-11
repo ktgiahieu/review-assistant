@@ -56,7 +56,7 @@ MAX_PANDOC_COMMENT_RETRIES = 10 # Max attempts to fix by commenting within a sin
 
 class LatexToMarkdownConverter:
     def __init__(self, folder_path_str, verbose=True, template_path=None,
-                 openalex_email="your-email@example.com", elsevier_api_key=None, springer_api_key=None, semantic_scholar_api_key=None,
+                 openalex_email="your-email@example.com", openalex_api_key = None, elsevier_api_key=None, springer_api_key=None, semantic_scholar_api_key=None,
                  poppler_path=None, output_debug_tex=False, log_project_name=None): # Added log_project_name
         self.folder_path = Path(folder_path_str).resolve()
         self.main_tex_path = None
@@ -65,6 +65,7 @@ class LatexToMarkdownConverter:
         self.template_path = template_path
         self.final_output_folder_path = None # Will be set in convert_to_markdown
         self.openalex_email = openalex_email
+        self.openalex_api_key = openalex_api_key
         self.elsevier_api_key = elsevier_api_key
         self.springer_api_key = springer_api_key
         self.PdfReader = PdfReader
@@ -790,7 +791,7 @@ class LatexToMarkdownConverter:
             cleaned_title = self._clean_title_for_search(title_query, attempt=attempt)
             if not cleaned_title: continue
             self._log(f"OpenAlex(A{attempt}): Searching:'{cleaned_title}'", "debug")
-            base_url = "https://api.openalex.org/works"; params = {"filter": f"title.search:{re.escape(cleaned_title)}", "mailto": self.openalex_email}
+            base_url = "https://api.openalex.org/works"; params = {"filter": f"title.search:{re.escape(cleaned_title)}", "mailto": self.openalex_email, "api_key": self.openalex_api_key}
             headers = {"User-Agent": f"LatexToMarkdownConverter/1.3 (mailto:{self.openalex_email})"}
             try:
                 response = requests.get(base_url, params=params, headers=headers, timeout=20)
@@ -885,46 +886,96 @@ class LatexToMarkdownConverter:
         return None
 
     def _extract_bibitem_components(self, bibitem_text_chunk: str) -> dict:
-        # (As in original)
+        """
+        Extracts key, authors, title, and other details from a bibitem entry.
+        This version is enhanced to correctly parse \href{url}{text} formats,
+        extracting "text" as the title for API searches.
+        """
         key_match = re.match(r"\\bibitem(?:\[[^\]]*\])?\{([^\}]+)\}", bibitem_text_chunk)
         key = key_match.group(1) if key_match else ""
         content_after_key = bibitem_text_chunk[key_match.end():].strip() if key_match else bibitem_text_chunk
+
+        # Split out authors from the rest of the content
         author_parts = content_after_key.split(r'\newblock', 1)
         authors_str = author_parts[0].strip().rstrip('.,;')
         text_after_authors = author_parts[1].strip() if len(author_parts) > 1 else ""
-        title_raw, details_after_title_str, is_url_title_flag, url_if_title_val = "", "", False, None
-        url_patterns = [r"^(?P<url>\\url\{([^}]+)\})(?P<rest>.*)", r"^(?P<url>https?://[^\s]+)(?P<rest>.*)"]
-        for pat_str in url_patterns:
-            url_match = re.match(pat_str, text_after_authors, re.DOTALL)
-            if url_match:
-                potential_url_block, url_content = url_match.group("url").strip(), url_match.group(2) if pat_str.startswith(r"^(?P<url>\\url") else url_match.group("url").strip()
-                rest_content = url_match.group("rest").strip()
-                if not rest_content or re.match(r"^[,\s]*\d{4}\.?$", rest_content) or rest_content.startswith(r"\newblock") or len(rest_content) < 15:
-                    title_raw = potential_url_block
-                    if rest_content and not rest_content.startswith(r"\newblock"): title_raw += " " + rest_content; details_after_title_str = ""
-                    else: details_after_title_str = rest_content
-                    is_url_title_flag, url_if_title_val = True, url_content.strip(); break
-        if not is_url_title_flag:
-            title_block_parts = text_after_authors.split(r'\newblock', 1)
-            current_title_candidate_block = title_block_parts[0].strip()
-            further_details_block = ("\\newblock " + title_block_parts[1].strip()) if len(title_block_parts) > 1 else ""
-            title_end_delimiters = [
-                r"In\s+(?:Proc\.?(?:eedings)?|Workshop|Conference|Journal|Symposium)\b", r"\b(?:[A-Z][a-z]+)\s+(?:Press|Publishers|Verlag)\b",
-                r"Ph\.?D\.?\s+thesis\b", r"Master(?:'s)?\s+thesis\b", r"arXiv preprint arXiv:",
-                r"[,;\s]\(?(?P<year>\d{4})\)?(?=\W|$|\s*\\newblock|\s*notes\b)", r"\.\s+\d{4}\.", r"Article\s+No\.",
-                r"vol\.\s*\d+", r"pp\.\s*\d+", r"no\.\s*\d+", r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b"
-            ]
-            min_delimiter_idx = len(current_title_candidate_block)
-            for pat in title_end_delimiters:
-                match = re.search(pat, current_title_candidate_block, re.IGNORECASE)
-                if match and match.start() < min_delimiter_idx:
-                    if 'year' in match.groupdict() and len(current_title_candidate_block[:match.start()].strip()) < 15 and not re.search(r'[,.;:]$', current_title_candidate_block[:match.start()].strip()): pass
-                    else: min_delimiter_idx = match.start()
-            title_raw = current_title_candidate_block[:min_delimiter_idx].strip().rstrip('.,;/')
-            details_after_title_str = (current_title_candidate_block[min_delimiter_idx:] + " " + further_details_block).strip()
-        title_cleaned_for_api = self._clean_title_for_search(title_raw) if not is_url_title_flag else url_if_title_val
-        return {"key": key, "authors": authors_str, "title_raw": title_raw, "title_cleaned": title_cleaned_for_api, "is_url_title": is_url_title_flag, "url_if_title": url_if_title_val, "details_after_title": details_after_title_str.strip()}
 
+        # Initialize components to be extracted
+        title_raw = ""
+        title_cleaned_for_api = ""
+        details_after_title_str = ""
+        is_url_title_flag = False  # Flag to indicate if a primary URL is present
+        url_if_title_val = None
+
+        # Isolate the main title block from subsequent details
+        title_block_parts = text_after_authors.split(r'\newblock', 1)
+        current_title_candidate_block = title_block_parts[0].strip()
+        further_details_block = ("\\newblock " + title_block_parts[1].strip()) if len(title_block_parts) > 1 else ""
+
+        # STRATEGY 1: Prioritize matching the \href{url}{text} pattern.
+        # This regex handles potentially nested braces in the text part.
+        href_match = re.match(r"^\\href\s*\{([^}]+)\}\s*\{((?:[^{}]|\{[^{}]*\})*)\}", current_title_candidate_block)
+        if href_match:
+            url_if_title_val = href_match.group(1).strip()
+            title_raw = href_match.group(2).strip()  # This is the descriptive text, which we use as the title
+            title_cleaned_for_api = self._clean_title_for_search(title_raw)
+            is_url_title_flag = True
+            # Any content after the \href command in this block is part of the details
+            details_after_title_str = (current_title_candidate_block[href_match.end():].strip() + " " + further_details_block).strip()
+
+        else:
+            # STRATEGY 2: If no \href, check for \url{...} or a raw http:// URL as the title.
+            url_patterns = [r"^(?P<url>\\url\{([^}]+)\})", r"^(?P<url>https?://[^\s]+)"]
+            url_is_title = False
+            for pat_str in url_patterns:
+                url_match = re.match(pat_str, current_title_candidate_block)
+                if url_match:
+                    # Check if there is other significant text in the block. If not, the URL is the title.
+                    rest_of_block = current_title_candidate_block[url_match.end():].strip()
+                    if not rest_of_block or re.match(r"^[,\s]*\d{4}\.?$", rest_of_block) or len(rest_of_block) < 15:
+                        title_raw = url_match.group("url").strip()
+                        url_content = url_match.group(2) if pat_str.startswith(r"^(?P<url>\\url") else title_raw
+                        
+                        # In this case, the URL itself is the item to be searched
+                        title_cleaned_for_api = url_content
+                        url_if_title_val = url_content
+                        is_url_title_flag = True
+                        url_is_title = True
+                        details_after_title_str = (rest_of_block + " " + further_details_block).strip()
+                        break  # Title found, exit loop
+
+            if not url_is_title:
+                # STRATEGY 3: Default to parsing a standard text title.
+                title_end_delimiters = [
+                    r"In\s+(?:Proc\.?(?:eedings)?|Workshop|Conference|Journal|Symposium)\b", r"\b(?:[A-Z][a-z]+)\s+(?:Press|Publishers|Verlag)\b",
+                    r"Ph\.?D\.?\s+thesis\b", r"Master(?:'s)?\s+thesis\b", r"arXiv preprint arXiv:",
+                    r"[,;\s]\(?(?P<year>\d{4})\)?(?=\W|$|\s*\\newblock|\s*notes\b)", r"\.\s+\d{4}\.", r"Article\s+No\.",
+                    r"vol\.\s*\d+", r"pp\.\s*\d+", r"no\.\s*\d+", r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b"
+                ]
+                min_delimiter_idx = len(current_title_candidate_block)
+                for pat in title_end_delimiters:
+                    match = re.search(pat, current_title_candidate_block, re.IGNORECASE)
+                    if match and match.start() < min_delimiter_idx:
+                        # Avoid matching year if it's part of a short, non-terminated title
+                        if 'year' in match.groupdict() and len(current_title_candidate_block[:match.start()].strip()) < 15 and not re.search(r'[,.;:]$', current_title_candidate_block[:match.start()].strip()):
+                            pass
+                        else:
+                            min_delimiter_idx = match.start()
+
+                title_raw = current_title_candidate_block[:min_delimiter_idx].strip().rstrip('.,;/')
+                title_cleaned_for_api = self._clean_title_for_search(title_raw)
+                details_after_title_str = (current_title_candidate_block[min_delimiter_idx:] + " " + further_details_block).strip()
+
+        return {
+            "key": key,
+            "authors": authors_str,
+            "title_raw": title_raw,
+            "title_cleaned": title_cleaned_for_api,
+            "is_url_title": is_url_title_flag,
+            "url_if_title": url_if_title_val,
+            "details_after_title": details_after_title_str.strip()
+        }
+        
     def _fully_process_bbl(self, raw_bbl_content: str) -> str:
         # (As in original, with API calls for abstracts)
         self._log("Starting full BBL processing (abstracts, keys)...", "info")
@@ -1848,7 +1899,6 @@ class LatexToMarkdownConverter:
             return processed_string
         
         processed_table_content = preprocess_latex_for_pandoc(processed_table_content)
-        return processed_table_content
         
         def remove_pipes_from_multicolumn_spec(match):
             multicolumn_command = match.group(1); align_spec_with_braces = match.group(2); content = match.group(3)
@@ -2139,7 +2189,7 @@ class LatexToMarkdownConverter:
 
     def convert_to_markdown(self, output_folder_path_str):
         overall_start_time = time.time()
-        MAX_OVERALL_PROCESSING_TIME = 600  # 10 minutes
+        MAX_OVERALL_PROCESSING_TIME = 1200  # 20 minutes
 
         def check_overall_timeout(stage_name=""):
             if (time.time() - overall_start_time) > MAX_OVERALL_PROCESSING_TIME:
@@ -2236,6 +2286,7 @@ if __name__ == '__main__':
     parser.add_argument("-q", "--quiet", action="store_false", dest="verbose", default=True, help="Suppress info messages.")
     parser.add_argument("--template", default="template.md", help="Pandoc Markdown template. Default: 'template.md'.")
     parser.add_argument("--openalex-email", default=os.environ.get("OPENALEX_EMAIL", "your-email@example.com"), help="Your email for OpenAlex API. Can also be set via OPENALEX_EMAIL environment variable.")
+    parser.add_argument("--openalex-api-key", default=os.environ.get("OPENALEX_API_KEY"), help="Your OpenAlex API key. Can also be set via OPENALEX_API_KEY environment variable.")
     parser.add_argument("--elsevier-api-key", default=os.environ.get("ELSEVIER_API_KEY"), help="Your Elsevier API key. Can also be set via ELSEVIER_API_KEY environment variable.")
     parser.add_argument("--springer-api-key", default=os.environ.get("SPRINGER_API_KEY"), help="Your Springer Nature API key. Can also be set via SPRINGER_API_KEY environment variable.")
     parser.add_argument("--semantic-scholar-api-key", default=os.environ.get("SEMANTIC_SCHOLAR_API_KEY"), help="Your SEMANTIC_SCHOLAR_API_KEY. Can also be set via SEMANTIC_SCHOLAR_API_KEY environment variable.")
@@ -2270,6 +2321,7 @@ if __name__ == '__main__':
         verbose=args.verbose,
         template_path=final_template_path_str,
         openalex_email=args.openalex_email,
+        openalex_api_key=args.openalex_api_key,
         elsevier_api_key=args.elsevier_api_key,
         springer_api_key=args.springer_api_key,
         semantic_scholar_api_key=args.semantic_scholar_api_key,

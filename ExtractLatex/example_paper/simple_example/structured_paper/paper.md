@@ -8,93 +8,141 @@ Despite the impressive capabilities of Large Language Models (LLMs) on various t
 
 Hello
 
-<div class="minipage">
-
-<div class="center">
+<div id="tab:annotator-human">
 
 <table>
+<caption>Human Agreement Metrics Across Models (K = Cohen’s Kappa, J = Jaccard index, AR = Agreement Rate, AY = Agreement on Yes)</caption>
+<thead>
+<tr>
+<th style="text-align: left;"><strong>Models</strong></th>
+<th colspan="4" style="text-align: center;">Claude-3.5-Sonnet</th>
+<th colspan="4" style="text-align: center;">Gemini-1.5-Pro</th>
+<th colspan="4" style="text-align: center;">GPT-4o</th>
+</tr>
+</thead>
 <tbody>
 <tr>
-<td style="text-align: left;"></td>
-<td style="text-align: center;"></td>
-<td colspan="4" style="text-align: center;">Accuracies (%)</td>
+<td style="text-align: left;"><strong>Category</strong></td>
+<td style="text-align: center;"><strong>K</strong></td>
+<td style="text-align: center;"><strong>J</strong></td>
+<td style="text-align: center;"><strong>AR</strong></td>
+<td style="text-align: center;"><strong>AY</strong></td>
+<td style="text-align: center;"><strong>K</strong></td>
+<td style="text-align: center;"><strong>J</strong></td>
+<td style="text-align: center;"><strong>AR</strong></td>
+<td style="text-align: center;"><strong>AY</strong></td>
+<td style="text-align: center;"><strong>K</strong></td>
+<td style="text-align: center;"><strong>J</strong></td>
+<td style="text-align: center;"><strong>AR</strong></td>
+<td style="text-align: center;"><strong>AY</strong></td>
 </tr>
 <tr>
-<td style="text-align: left;">Method</td>
-<td style="text-align: center;">FLOPs (G)</td>
-<td style="text-align: center;">Joint</td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;">Avg</td>
-</tr>
-<tr>
-<td style="text-align: left;"></td>
-<td style="text-align: center;"><span>0.68</span></td>
-<td style="text-align: center;"><span>48.2</span></td>
-<td style="text-align: center;"><span>97.0</span></td>
-<td style="text-align: center;"><span>45.1</span></td>
-<td style="text-align: center;"><span>71.0</span></td>
-</tr>
-<tr>
-<td style="text-align: left;"></td>
-<td style="text-align: center;"><span>0.68</span></td>
-<td style="text-align: center;"><span>48.4</span></td>
-<td style="text-align: center;"><span>49.1</span></td>
-<td style="text-align: center;"><span>96.1</span></td>
-<td style="text-align: center;"><span>72.6</span></td>
-</tr>
-<tr>
-<td style="text-align: left;">W. Avg <span>(Eq. <a href="#eq:wavg" data-reference-type="ref" data-reference="eq:wavg">[eq:wavg]</a>)</span></td>
+<td style="text-align: left;">Anthropomorphization</td>
+<td style="text-align: center;">0.75</td>
 <td style="text-align: center;">0.68</td>
-<td style="text-align: center;"><span>43.0</span></td>
-<td style="text-align: center;"><span>54.1</span></td>
-<td style="text-align: center;"><span>67.5</span></td>
-<td style="text-align: center;"><span>60.8</span></td>
-</tr>
-<tr>
-<td style="text-align: left;">Git Re-Basin<span class="math inline"><sup>‡</sup></span></td>
-<td style="text-align: center;">0.68</td>
-<td style="text-align: center;"><span>46.2</span></td>
-<td style="text-align: center;"><span>76.8</span></td>
-<td style="text-align: center;"><span>82.7</span></td>
-<td style="text-align: center;"><span>79.8</span></td>
-</tr>
-<tr>
-<td style="text-align: left;">Permute <span>(Eq. <a href="#eq:rebasin" data-reference-type="ref" data-reference="eq:rebasin">[eq:rebasin]</a>)</span></td>
-<td style="text-align: center;">0.68</td>
-<td style="text-align: center;"><span>58.4</span></td>
-<td style="text-align: center;"><span>86.6</span></td>
-<td style="text-align: center;"><span>87.4</span></td>
-<td style="text-align: center;"><span>87.4</span></td>
-</tr>
-<tr>
-<td style="text-align: left;"><span><strong>ZipIt!</strong></span><span class="math inline"><sub>20/20</sub></span></td>
-<td style="text-align: center;">0.68</td>
-<td style="text-align: center;"><strong>79.1</strong></td>
-<td style="text-align: center;"><strong>92.9</strong></td>
-<td style="text-align: center;"><strong>91.2</strong></td>
-<td style="text-align: center;"><strong>92.1</strong></td>
-</tr>
-<tr>
-<td style="text-align: left;"></td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;"></td>
-<td style="text-align: center;"></td>
-</tr>
-<tr>
-<td style="text-align: left;"><span><strong>ZipIt!</strong></span><span class="math inline"><sub>13/20</sub></span></td>
 <td style="text-align: center;">0.91</td>
-<td style="text-align: center;"><strong>83.8</strong></td>
-<td style="text-align: center;"><strong>95.1</strong></td>
-<td style="text-align: center;"><strong>94.1</strong></td>
-<td style="text-align: center;"><strong>94.6</strong></td>
+<td style="text-align: center;">0.72</td>
+<td style="text-align: center;">0.64</td>
+<td style="text-align: center;">0.61</td>
+<td style="text-align: center;">0.83</td>
+<td style="text-align: center;">0.96</td>
+<td style="text-align: center;">0.69</td>
+<td style="text-align: center;">0.65</td>
+<td style="text-align: center;">0.86</td>
+<td style="text-align: center;">0.96</td>
+</tr>
+<tr>
+<td style="text-align: left;">User retention</td>
+<td style="text-align: center;">0.62</td>
+<td style="text-align: center;">0.73</td>
+<td style="text-align: center;">0.81</td>
+<td style="text-align: center;">0.76</td>
+<td style="text-align: center;">0.72</td>
+<td style="text-align: center;">0.84</td>
+<td style="text-align: center;">0.88</td>
+<td style="text-align: center;">0.96</td>
+<td style="text-align: center;">0.66</td>
+<td style="text-align: center;">0.81</td>
+<td style="text-align: center;">0.85</td>
+<td style="text-align: center;">0.95</td>
+</tr>
+<tr>
+<td style="text-align: left;">Brand bias</td>
+<td style="text-align: center;">0.49</td>
+<td style="text-align: center;">0.40</td>
+<td style="text-align: center;">0.88</td>
+<td style="text-align: center;">0.59</td>
+<td style="text-align: center;">0.49</td>
+<td style="text-align: center;">0.40</td>
+<td style="text-align: center;">0.86</td>
+<td style="text-align: center;">0.69</td>
+<td style="text-align: center;">0.44</td>
+<td style="text-align: center;">0.38</td>
+<td style="text-align: center;">0.79</td>
+<td style="text-align: center;">0.90</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sycophancy</td>
+<td style="text-align: center;">0.57</td>
+<td style="text-align: center;">0.42</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.43</td>
+<td style="text-align: center;">0.27</td>
+<td style="text-align: center;">0.20</td>
+<td style="text-align: center;">0.89</td>
+<td style="text-align: center;">0.35</td>
+<td style="text-align: center;">0.73</td>
+<td style="text-align: center;">0.61</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.87</td>
+</tr>
+<tr>
+<td style="text-align: left;">Harmful generation</td>
+<td style="text-align: center;">0.98</td>
+<td style="text-align: center;">0.98</td>
+<td style="text-align: center;">0.99</td>
+<td style="text-align: center;">0.99</td>
+<td style="text-align: center;">0.90</td>
+<td style="text-align: center;">0.90</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.91</td>
+<td style="text-align: center;">0.96</td>
+<td style="text-align: center;">0.96</td>
+<td style="text-align: center;">0.98</td>
+<td style="text-align: center;">1.00</td>
+</tr>
+<tr>
+<td style="text-align: left;">Sneaking</td>
+<td style="text-align: center;">0.56</td>
+<td style="text-align: center;">0.65</td>
+<td style="text-align: center;">0.78</td>
+<td style="text-align: center;">0.76</td>
+<td style="text-align: center;">0.46</td>
+<td style="text-align: center;">0.64</td>
+<td style="text-align: center;">0.74</td>
+<td style="text-align: center;">0.90</td>
+<td style="text-align: center;">0.42</td>
+<td style="text-align: center;">0.64</td>
+<td style="text-align: center;">0.72</td>
+<td style="text-align: center;">0.95</td>
+</tr>
+<tr>
+<td style="text-align: left;">Overall</td>
+<td style="text-align: center;">0.75</td>
+<td style="text-align: center;">0.71</td>
+<td style="text-align: center;">0.89</td>
+<td style="text-align: center;">0.79</td>
+<td style="text-align: center;">0.70</td>
+<td style="text-align: center;">0.69</td>
+<td style="text-align: center;">0.86</td>
+<td style="text-align: center;">0.90</td>
+<td style="text-align: center;">0.71</td>
+<td style="text-align: center;">0.71</td>
+<td style="text-align: center;">0.86</td>
+<td style="text-align: center;">0.96</td>
 </tr>
 </tbody>
 </table>
-
-</div>
 
 </div>
 

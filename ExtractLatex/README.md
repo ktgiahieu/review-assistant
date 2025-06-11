@@ -1,25 +1,52 @@
-# Extract Latex and convert everything to Markdown
+# LaTeX to Markdown Converter
+This tool converts LaTeX projects to Markdown. It supports single-project conversion and batch processing of papers from OpenReview venues. It can enrich bibliographies by fetching abstracts from online sources.
 
-For reference abstract extraction:
+## 1. Prerequisites
+### System Dependencies
+- Pandoc (v3.7.0.2 recommended)
 
-1. It will try to look for Arxiv ID if possible to get the abstract from arxiv.
-2. If not, search on OpenAlex & Semantic scholar
-3. If abstract is not directly available, follow the external DOI IDs, which can leads to sites like ScienceDirect or Springer
-   1. Use Elsevier API for ScienceDirectID
-   2. Use Meta API for Springer ID
-4. If nothing works, scrap the HTML and look for "Abstract"/ "Introduction" to get the raw text
+- TeX Live (with pdflatex and bibtex)
 
-To extract latex from Arxiv downloaded folder and convert everything to Markdown:
+- Poppler
 
+### Python Dependencies
+See requirements.txt.
+
+## 2. Setup
+### Install Python packages:
+`pip install -r requirements.txt`
+Create and configure the .env file:
+Create a file named .env in the project root. Add the following keys as needed.
 ```bash
-python3 latex.py folder_with_latex_source -o output_folder
+# Required for OpenReview batch mode
+OPENREVIEW_USERNAME="your_user@email.com"
+OPENREVIEW_PASSWORD="your_password"
+
+# Required for bibliography abstract fetching
+OPENALEX_EMAIL="your_user@email.com"
+ELSEVIER_API_KEY="your_key"
+SPRINGER_API_KEY="your_key"
+SEMANTIC_SCHOLAR_API_KEY="your_key"
+
+# Optional: If poppler is not in system PATH
+# POPPLER_PATH="/path/to/poppler/bin"
 ```
+## 3. Usage
+The tool has two primary modes.
+### Mode 1: Convert a Single Project
+Use `latex.py` for converting a local LaTeX project.
+**Command:**
+`python3 latex.py /path/to/latex_project -o /path/to/output`
+- `project_folder`: Path to the folder containing .tex source.
+- `-o`: (Optional) Output directory. Defaults to `[project_name]_output`.
 
-Prerequisites:
+## Mode 2: Batch Convert from OpenReview
 
-- pdflatex
-- pandoc 3.7.0.2
-- pdf2image
-- Pillow
-- reportlab
-- elsapy
+Use `run_multithreaded_latex.py` to download and convert papers from an OpenReview venue in parallel.**Command:**
+`python3 run_multithreaded_latex.py --venue "ICLR.cc/2025/Conference" --max_workers 8`
+- --`venue`: The ID for the OpenReview venue.
+-  `--num_accepted`: (Optional) Number of accepted papers to process.
+-  `--num_rejected`: (Optional) Number of rejected papers to process.
+-  `--max_workers`: (Optional) Number of parallel threads to use.
+
+Run any script with -h or --help to see all available options.

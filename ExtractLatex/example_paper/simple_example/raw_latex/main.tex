@@ -154,28 +154,25 @@ Despite the impressive capabilities of Large Language Models (LLMs) on various t
 \label{sec:intro}
 Hello
 
-\begin{minipage}{0.47\linewidth}{
-\begin{center}
-\resizebox{\textwidth}{!}{
-    \tablestyle{5pt}{1.1}
-    \begin{tabular}{y{53}x{40}|x{30}x{30}x{30}x{30}}
-        & & \multicolumn{4}{c}{Accuracies (\%)}\\
-        Method & FLOPs (G) & Joint & \modela{Task A} & \modelb{Task B} & Avg \\
-        \shline
-        \modela{Model A} & {0.68} & {48.2\conf{1.0}} & {97.0\conf{0.6}} & {45.1\conf{8.6}} & {71.0\conf{4.4}} \\
-        \modelb{Model B} & {0.68} & {48.4\conf{3.8}} & {49.1\conf{9.3}} & {96.1\conf{1.1}} & {72.6\conf{4.9}} \\
-        \hline
-        W. Avg \tiny{(Eq.~\ref{eq:wavg})} & 0.68 & {43.0\conf{1.6}} & {54.1\conf{1.4}} & {67.5\conf{1.2}} & {60.8\conf{4.5}} \\
-        % Git Re-Basin \cite{ainsworth2022git}  & 0.68 & {46.2\conf{0.8}} & {76.8\conf{8.9}} & {82.7\conf{5.1}} & {79.8\conf{6.5}} \\
-        Git Re-Basin$^{\ddag}$  & 0.68 & {46.2\conf{0.8}} & {76.8\conf{8.9}} & {82.7\conf{5.1}} & {79.8\conf{6.5}} \\
-        Permute \tiny{(Eq.~\ref{eq:rebasin})} & 0.68 & {58.4\conf{6.8}} & {86.6\conf{2.1}} & {87.4\conf{1.1}} & {87.4\conf{1.4}} \\
-        \default{{\bf \name{}}$_\text{20/20}$} & 0.68 & \textbf{79.1\conf{1.1}} & \textbf{92.9\conf{1.1}} & \textbf{91.2\conf{1.4}} & \textbf{92.1\conf{1.0}} \\
-        \hline
-        \gc{Ensemble} & \gc{1.37} & \gc{87.4\conf{2.6}} & \gc{97.0\conf{0.6}} & \gc{96.1\conf{1.1}} & \gc{96.6\conf{0.4}} \\
-        \default{{\bf \name{}}$_\text{13/20}$} & 0.91 & \textbf{83.8\conf{3.1}} & \textbf{95.1\conf{0.7}} & \textbf{94.1\conf{1.5}} & \textbf{94.6\conf{0.6}} \\
-    \end{tabular}
-}
-\end{center}
-}\end{minipage}
-
+\begin{table*}[!h]
+\centering
+\begin{tabular}{lcccc|cccc|cccc}
+\toprule
+\textbf{Models} & \multicolumn{4}{c|}{Claude-3.5-Sonnet} & \multicolumn{4}{c|}{Gemini-1.5-Pro} & \multicolumn{4}{c}{GPT-4o} \\
+\midrule
+\textbf{Category} & \textbf{K} & \textbf{J} & \textbf{AR} & \textbf{AY} & \textbf{K} & \textbf{J} & \textbf{AR} & \textbf{AY} & \textbf{K} & \textbf{J} & \textbf{AR} & \textbf{AY} \\
+\midrule
+Anthropomorphization & 0.75 & 0.68 & 0.91 & 0.72 & 0.64 & 0.61 & 0.83 & 0.96 & 0.69 & 0.65 & 0.86 & 0.96 \\
+User retention & 0.62 & 0.73 & 0.81 & 0.76 & 0.72 & 0.84 & 0.88 & 0.96 & 0.66 & 0.81 & 0.85 & 0.95 \\
+Brand bias & 0.49 & 0.40 & 0.88 & 0.59 & 0.49 & 0.40 & 0.86 & 0.69 & 0.44 & 0.38 & 0.79 & 0.90 \\
+Sycophancy & 0.57 & 0.42 & 0.95 & 0.43 & 0.27 & 0.20 & 0.89 & 0.35 & 0.73 & 0.61 & 0.95 & 0.87 \\
+Harmful generation & 0.98 & 0.98 & 0.99 & 0.99 & 0.90 & 0.90 & 0.95 & 0.91 & 0.96 & 0.96 & 0.98 & 1.00 \\
+Sneaking & 0.56 & 0.65 & 0.78 & 0.76 & 0.46 & 0.64 & 0.74 & 0.90 & 0.42 & 0.64 & 0.72 & 0.95 \\
+\midrule
+Overall & 0.75 & 0.71 & 0.89 & 0.79 & 0.70 & 0.69 & 0.86 & 0.90 & 0.71 & 0.71 & 0.86 & 0.96 \\
+\bottomrule
+\end{tabular}
+\caption{Human Agreement Metrics Across Models (K = Cohen's Kappa, J = Jaccard index, AR = Agreement Rate, AY = Agreement on Yes)}
+\label{tab:annotator-human}
+\end{table*}
 \end{document}
