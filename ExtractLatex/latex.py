@@ -1377,6 +1377,49 @@ class LatexToMarkdownConverter:
         self._log(f"LaTeX content expanded to ~{len(expanded_content)//1024} KB before table conversion.", "debug")
         initial_table_content_for_log = expanded_content; processed_table_content = expanded_content
         
+        def insert_title_before_document(latex_text: str) -> str:
+            """
+            Finds the \icmltitle in a LaTeX string and inserts a standard \title{}
+            command before \begin{document}.
+
+            Args:
+                latex_text: A string containing the LaTeX document content.
+
+            Returns:
+                The modified LaTeX string with the \title command added,
+                or the original string if \icmltitle is not found.
+            """
+            # 1. Define the regular expression to find \icmltitle and capture its content.
+            #    - \\icmltitle{ : Matches the literal text "\icmltitle{"
+            #    - (.*?)       : A non-greedy capture group to match any character until the first '}'
+            #    - }           : Matches the closing brace.
+            #    - re.DOTALL   : Allows '.' to match newline characters, in case the title spans multiple lines.
+            title_pattern = r"\\icmltitle[a-z]*\{([^\}]*)\}"
+            
+            # 2. Search for the pattern in the input text.
+            title_match = re.search(title_pattern, latex_text, re.DOTALL)
+            
+            # 3. If a match is found, proceed with the replacement.
+            if title_match:
+                # Extract the captured group (the title text itself).
+                # group(0) would be the full match: \icmltitle{The Title}
+                # group(1) is just the first captured group: The Title
+                title = title_match.group(1)
+                # 4. Define the text to be replaced and the new text.
+                #    The \n creates a newline for better formatting.
+                target_text = r"\\begin{document}"
+                replacement_text = r"\\title{" + title + r"}\n\n\n\\begin{document}"
+                
+                # 5. Use re.sub() to replace the target with the new text.
+                #    It replaces only the first occurrence of \begin{document}.
+                modified_text = re.sub(target_text, replacement_text, latex_text, count=1)
+                return modified_text
+            else:
+                # If no \icmltitle is found, return the original text without changes.
+                return latex_text
+            
+        processed_table_content = insert_title_before_document(processed_table_content)
+        
         # processed_table_content = re.sub(r"\\begin\{table\}.*?(\\begin\{tabular\}.*?\\end\{tabular\}).*?\\end\{table\}", r"\1", processed_table_content, flags=re.DOTALL)
         def replace_table_with_tabular(latex_string):
             """

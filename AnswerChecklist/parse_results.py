@@ -394,7 +394,7 @@ def process_data_directory(base_input_dir_str, output_csv_str, or_client, verbos
     
     _print_method("\n--- Folders Missing Checklist HTML ---")
     if folders_missing_checklist:
-        for folder_id in folders_missing_checklist: _print_method(folder_id)
+        for folder_id in folders_missing_checklist: pass #_print_method(folder_id)
     else:
         _print_method("No folders found missing their checklist.html file.")
     _print_method("-------------------------------------\n")
