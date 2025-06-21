@@ -19,8 +19,27 @@ AnswerChecklist/*.csv
 AnswerChecklist/*.zip
 log_*.txt
 
+
+
 ReproduceCycleReviewer/LLM_Responses/
 ReproduceCycleReviewer/LLM_Responses_Parsed/
 ReproduceCycleReviewer/review-5k-dataset/
 ReproduceCycleReviewer/keys.py
 ReproduceCycleReviewer/300_sampled_paper_ids.txt
+ReproduceCycleReviewer/100_sampled_paper_ids.txt
+
+
+GenerateBadPapers/keys.py
+
+GenerateBadPapers/ICLR2024.zip
+GenerateBadPapers/ICLR2024/
+GenerateBadPapers/ICLR2024_Reviews_Processed/
+GenerateBadPapers/ICLR2024_Reviews_Raw/
+
+GenerateBadPapers/ICLR2025.zip
+GenerateBadPapers/ICLR2025/
+GenerateBadPapers/ICLR2025_Reviews_Processed/
+GenerateBadPapers/ICLR2025_Reviews_Raw/
+
+
+FeatureExtractionForBiasAnalysis/Data/
