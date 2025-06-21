@@ -6,7 +6,6 @@ __*
 ExtractLatex/output*
 ExtractLatex/arxiv_latex_zzOOqD6R1b_v1
 .ipynb_checkpoints
-*.ipynb
 converted_pngs
 ExtractLatex/latex_copy.py
 .env
