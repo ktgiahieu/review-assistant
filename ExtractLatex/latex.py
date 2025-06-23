@@ -766,6 +766,7 @@ class LatexToMarkdownConverter:
         if not title_str: return ""
         cleaned = title_str
         cleaned = re.sub(r'\\(?:emph|textbf|textit|texttt|textsc|mathrm|mathsf|mathcal|mathbf|bm)\s*\{(.*?)\}', r'\1', cleaned)
+        cleaned = re.sub(r'(?:emph|textbf|textit|texttt|textsc|mathrm|mathsf|mathcal|mathbf|bm)\s*\{(.*?)\}', r'\1', cleaned)
         cleaned = cleaned.replace(r"\'e", "e").replace(r'\"u', 'ue').replace(r'\`a', 'a')
         cleaned = re.sub(r'\{([A-Za-z\d\-:]+)\}', r'\1', cleaned) # For things like {CNNs}
         cleaned = re.sub(r'\\url\{[^\}]+\}', '', cleaned); cleaned = re.sub(r'\\href\{[^\}]+\}\{[^\}]+\}', '', cleaned)

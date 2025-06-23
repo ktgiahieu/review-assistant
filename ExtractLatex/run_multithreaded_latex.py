@@ -40,6 +40,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import arxiv
 import openreview
+import re
 import tarfile
 # import bz2 # bz2 is part of tarfile's 'r:*' mode, direct import not always needed
 import concurrent.futures
@@ -191,6 +192,7 @@ class LaTeX_Download:
     def __init__(self, url, output_dir=None,
                  verbose_converter=False, template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
                  openalex_email_converter="ai-reviewer@example.com", # Use a generic default
+                 openalex_api_key_converter=None,
                  elsevier_api_key_converter=None, springer_api_key_converter=None,
                  semantic_scholar_api_key_converter=None, poppler_path_converter=None,
                  output_debug_tex_converter=False, thread_name=None):
@@ -201,6 +203,7 @@ class LaTeX_Download:
         self.verbose_converter = verbose_converter
         self.template_path_converter = template_path_converter
         self.openalex_email_converter = openalex_email_converter
+        self.openalex_api_key_converter = openalex_api_key_converter
         self.elsevier_api_key_converter = elsevier_api_key_converter
         self.springer_api_key_converter = springer_api_key_converter
         self.semantic_scholar_api_key_converter = semantic_scholar_api_key_converter
@@ -274,7 +277,7 @@ class LaTeX_Download:
             return False
 
         mock_cli_args = argparse.Namespace(
-            verbose=self.verbose_converter, openalex_email=self.openalex_email_converter,
+            verbose=self.verbose_converter, openalex_email=self.openalex_email_converter, openalex_api_key=self.openalex_api_key_converter,
             elsevier_api_key=self.elsevier_api_key_converter, springer_api_key=self.springer_api_key_converter,
             semantic_scholar_api_key=self.semantic_scholar_api_key_converter, poppler_path=self.poppler_path_converter,
             output_debug_tex=self.output_debug_tex_converter
@@ -334,6 +337,7 @@ def process_project_folder(project_folder_str, output_folder_str, cli_args, reso
         verbose=cli_args.verbose,
         template_path=resolved_template_path_str,
         openalex_email=cli_args.openalex_email,
+        openalex_api_key=cli_args.openalex_api_key,
         elsevier_api_key=cli_args.elsevier_api_key,
         springer_api_key=cli_args.springer_api_key,
         semantic_scholar_api_key=cli_args.semantic_scholar_api_key,
@@ -349,7 +353,7 @@ def process_project_folder(project_folder_str, output_folder_str, cli_args, reso
         converter._log(f"Unexpected error in process_project_folder for {project_path.name}: {e}\n{traceback.format_exc(limit=2)}", "error")
     return success
 
-def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, decision_type, base_output_dir_str, converter_settings_dict, current_time_str):
+def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, decision_type, base_output_dir_str, converter_settings_dict, current_time_str, arxiv_version):
     thread_name = threading.current_thread().name
     # print(f"[{thread_name}] Worker started for OR ID: {paper_id_candidate}")
     try:
@@ -372,14 +376,26 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
 
         for result in search_results:
             if result.title.lower() == paper_title_lower:
-                arxiv_id_short = result.entry_id.split('arxiv.org/abs/')[-1].replace('/', '_')
-                # replace v{number} with version v1, if not found, at v1 at the end
-                arxiv_id_short = re.sub(r'v\d+', 'v1', arxiv_id_short) if re.search(r'v\d+', arxiv_id_short) else arxiv_id_short + 'v1'
-                # print(f"[{thread_name}] Exact title match: arXiv:{arxiv_id_short} for OR ID {paper_id_candidate}")
+                # Get the base arXiv ID (without version) from the search result.
+                base_arxiv_id = re.sub(r'v\d+$', '', result.get_short_id())
 
-                paper_specific_subfolder_name = f"{paper_id_candidate}_{arxiv_id_short.replace('.', '_')}"
+                # Construct the specific version ID. If arxiv_version is 0 or less,
+                # we download the latest version by not specifying a version number in the URL.
+                if arxiv_version > 0:
+                    arxiv_id_with_version = f"{base_arxiv_id}v{arxiv_version}"
+                else:
+                    arxiv_id_with_version = base_arxiv_id # Omit version for latest
+
+                # Create a filesystem-friendly name for the paper, replacing / and .
+                arxiv_id_for_path = arxiv_id_with_version.replace('/', '_').replace('.', '_')
+                
+                # print(f"[{thread_name}] Exact title match: arXiv:{arxiv_id_with_version} for OR ID {paper_id_candidate}")
+
+                paper_specific_subfolder_name = f"{paper_id_candidate}_{arxiv_id_for_path}"
                 paper_processing_output_dir = Path(base_output_dir_str) / decision_type / paper_specific_subfolder_name
-                e_print_url = f"https://arxiv.org/e-print/{arxiv_id_short.replace('_', '/')}"
+                
+                # Construct the e-print URL for the specific version. The URL needs slashes.
+                e_print_url = f"https://arxiv.org/e-print/{arxiv_id_with_version.replace('_', '/')}"
 
                 # print(f"[{thread_name}] Instantiating LaTeX_Download for {e_print_url.split('/')[-1]}")
                 latex_downloader_instance = LaTeX_Download(
@@ -388,6 +404,7 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
                     verbose_converter=converter_settings_dict['verbose_converter'],
                     template_path_converter=converter_settings_dict['template_path_converter'],
                     openalex_email_converter=converter_settings_dict['openalex_email_converter'],
+                    openalex_api_key_converter=converter_settings_dict['openalex_api_key'],
                     elsevier_api_key_converter=converter_settings_dict['elsevier_api_key'],
                     springer_api_key_converter=converter_settings_dict['springer_api_key'],
                     semantic_scholar_api_key_converter=converter_settings_dict['semantic_scholar_api_key'],
@@ -397,10 +414,10 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
                 )
 
                 if latex_downloader_instance.download_and_parse():
-                    # print(f"[+] SUCCESS: OR ID {paper_id_candidate} (arXiv:{arxiv_id_short}) processed by {thread_name}. Output: {paper_processing_output_dir}")
+                    # print(f"[+] SUCCESS: OR ID {paper_id_candidate} (arXiv:{arxiv_id_with_version}) processed by {thread_name}. Output: {paper_processing_output_dir}")
                     return paper_id_candidate
                 else:
-                    # print(f"[{thread_name}] Download/parse failed for arXiv:{arxiv_id_short} (OR ID {paper_id_candidate}).")
+                    # print(f"[{thread_name}] Download/parse failed for arXiv:{arxiv_id_with_version} (OR ID {paper_id_candidate}).")
                     pass # Continue to next arXiv result if any
             # else:
                 # print(f"  [{thread_name}] ArXiv Title: '{result.title.lower()}' != OR Title: '{paper_title_lower}' (OR ID: {paper_id_candidate})")
@@ -419,9 +436,11 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
                           verbose_converter=False,
                           template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
                           openalex_email_converter="ai-reviewer@example.com",
+                          openalex_api_key=None,
                           elsevier_api_key=None, springer_api_key=None,
                           semantic_scholar_api_key=None, poppler_path_converter=None,
-                          output_debug_tex_converter=False):
+                          output_debug_tex_converter=False,
+                          arxiv_version=1):
     downloaded_accepted = []
     downloaded_rejected = []
     arxiv_search_client = arxiv.Client()
@@ -433,6 +452,7 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
         'verbose_converter': verbose_converter,
         'template_path_converter': template_path_converter,
         'openalex_email_converter': openalex_email_converter,
+        'openalex_api_key': openalex_api_key,
         'elsevier_api_key': elsevier_api_key,
         'springer_api_key': springer_api_key,
         'semantic_scholar_api_key': semantic_scholar_api_key,
@@ -440,7 +460,7 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
         'output_debug_tex_converter': output_debug_tex_converter
     }
 
-    def _process_papers_category_parallel(paper_id_list, target_count, decision_label, successful_list_target, executor_instance):
+    def _process_papers_category_parallel(paper_id_list, target_count, decision_label, successful_list_target, executor_instance, arxiv_version):
         actual_target_count = target_count if target_count is not None else len(paper_id_list)
         if actual_target_count == 0: return
 
@@ -460,7 +480,8 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
             future = executor_instance.submit(
                 _process_single_paper_id_worker,
                 or_id, client, arxiv_search_client, decision_label,
-                output_dir, converter_settings, run_timestamp_str
+                output_dir, converter_settings, run_timestamp_str,
+                arxiv_version
             )
             futures_map[future] = or_id
             submitted_count +=1
@@ -473,11 +494,11 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
                 if result_paper_id:
                     if len(successful_list_target) < actual_target_count:
                         successful_list_target.append(result_paper_id)
-                        pbar.update(1)
+                        # pbar.update(1)
             except Exception as exc:
-                pbar.update(1)
+                # pbar.update(1)
                 print(f"[!] Exception processing OR ID {original_or_id}: {exc}", file=sys.stderr)
-            
+            pbar.update(1)
             completed_count += 1
             if len(successful_list_target) >= actual_target_count:
                 # Cancel remaining futures if enough papers are processed
@@ -495,10 +516,10 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_parallel_workers, thread_name_prefix='PaperProc') as executor:
         print(f"Processing accepted papers (max_workers={max_parallel_workers})...")
-        _process_papers_category_parallel(accepted_ids, required_accepted, "accepted", downloaded_accepted, executor)
+        _process_papers_category_parallel(accepted_ids, required_accepted, "accepted", downloaded_accepted, executor, arxiv_version)
 
         print(f"\nProcessing rejected papers (max_workers={max_parallel_workers})...")
-        _process_papers_category_parallel(rejected_ids, required_rejected, "rejected", downloaded_rejected, executor)
+        _process_papers_category_parallel(rejected_ids, required_rejected, "rejected", downloaded_rejected, executor, arxiv_version)
 
     print(f"\n--- Parallel Download and Parsing Summary ---")
     print(f"Target accepted: {required_accepted if required_accepted is not None else 'all'}. Successfully processed: {len(downloaded_accepted)}")
@@ -514,9 +535,11 @@ def main():
     parser.add_argument("--num_accepted", type=int, default=None, help="Number of accepted papers to process (None for all).")
     parser.add_argument("--num_rejected", type=int, default=None, help="Number of rejected papers to process (None for all).")
     parser.add_argument("--max_workers", type=int, default=8, help="Maximum number of parallel workers.")
+    parser.add_argument("--arxiv_version", type=int, default=1, help="The version of the arXiv paper to download (e.g., 1, 2). Use 0 for the latest version. Defaults to 1.")
     parser.add_argument("--verbose_converter", action="store_true", help="Enable verbose logging for LaTeX converter.")
     parser.add_argument("--template_md", default=DEFAULT_TEMPLATE_MD_PATH, help="Path to Pandoc Markdown template.")
     parser.add_argument("--openalex_email", default="ai-reviewer@gmail.com", help="Email for OpenAlex API (politeness).")
+    parser.add_argument("--openalex-api-key", default=os.environ.get("OPENALEX_API_KEY"), help="Your OpenAlex API key. Can also be set via OPENALEX_API_KEY environment variable.")
     parser.add_argument("--elsevier_api_key", default=DEFAULT_ELSEVIER_API_KEY, help="Elsevier API Key.")
     parser.add_argument("--springer_api_key", default=DEFAULT_SPRINGER_API_KEY, help="Springer API Key.")
     parser.add_argument("--semantic_scholar_api_key", default=DEFAULT_SEMANTIC_SCHOLAR_API_KEY, help="Semantic Scholar API Key.")
@@ -638,11 +661,13 @@ def main():
         verbose_converter=args.verbose_converter,
         template_path_converter=args.template_md,
         openalex_email_converter=args.openalex_email,
+        openalex_api_key=args.openalex_api_key,
         elsevier_api_key=elsevier_key,
         springer_api_key=springer_key,
         semantic_scholar_api_key=s2_key,
         poppler_path_converter=args.poppler_path,
-        output_debug_tex_converter=args.output_debug_tex
+        output_debug_tex_converter=args.output_debug_tex,
+        arxiv_version=args.arxiv_version
     )
 
     print("\n--- Script Finished ---")
