@@ -19,6 +19,8 @@ AnswerChecklist/data*
 AnswerChecklist/*.zip
 log_*.txt
 
+BadPaperGeneration/*_flawed_papers*
+
 ReproduceCycleReviewer/LLM_Responses/
 ReproduceCycleReviewer/LLM_Responses_Parsed/
 ReproduceCycleReviewer/review-5k-dataset/
