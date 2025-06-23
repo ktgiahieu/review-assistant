@@ -55,13 +55,14 @@ PROCESSED_BBL_MARKER = "% L2M_PROCESSED_BBL_V1_DO_NOT_EDIT_MANUALLY_BELOW_THIS_L
 MAX_PANDOC_COMMENT_RETRIES = 10 # Max attempts to fix by commenting within a single strategy
 
 class LatexToMarkdownConverter:
-    def __init__(self, folder_path_str, verbose=True, template_path=None,
+    def __init__(self, folder_path_str, verbose=True, max_workers=1, template_path=None,
                  openalex_email="your-email@example.com", openalex_api_key = None, elsevier_api_key=None, springer_api_key=None, semantic_scholar_api_key=None,
-                 poppler_path=None, output_debug_tex=False, log_project_name=None): # Added log_project_name
+                 poppler_path=None, output_debug_tex=False, log_project_name=None, ): # Added log_project_name
         self.folder_path = Path(folder_path_str).resolve()
         self.main_tex_path = None
         self.original_main_tex_content = ""
         self.verbose = verbose
+        self.max_workers = max_workers
         self.template_path = template_path
         self.final_output_folder_path = None # Will be set in convert_to_markdown
         self.openalex_email = openalex_email
@@ -882,8 +883,8 @@ class LatexToMarkdownConverter:
                                 if html_abs: self._log("S2 (via HTML parse): Abstract found.", "success"); time.sleep(0.3); return html_abs
                     self._log(f"S2(A{attempt}): Found papers for '{cleaned_title}' but no abstract (or via fallback URLs).", "debug"); return None
             except Exception as e: self._log(f"S2(A{attempt}): API error for '{cleaned_title}': {e}", "warn")
-            if self.semantic_scholar_api_key: time.sleep(3) # Rate limit for keyed access, depends on num_workers
-            else: time.sleep(0.3) # Polite delay
+            # Time to sleep
+            time.sleep(0.5*self.max_workers)
         return None
 
     def _extract_bibitem_components(self, bibitem_text_chunk: str) -> dict:

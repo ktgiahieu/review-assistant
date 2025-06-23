@@ -190,7 +190,9 @@ def setup_pandoc(pandoc_version="3.1.9"): # Changed to a more common recent vers
 # --- LaTeX Download and Parse Class ---
 class LaTeX_Download:
     def __init__(self, url, output_dir=None,
-                 verbose_converter=False, template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
+                 verbose_converter=False, 
+                 max_workers=8,
+                 template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
                  openalex_email_converter="ai-reviewer@example.com", # Use a generic default
                  openalex_api_key_converter=None,
                  elsevier_api_key_converter=None, springer_api_key_converter=None,
@@ -201,6 +203,7 @@ class LaTeX_Download:
         self._create_output_dir()
 
         self.verbose_converter = verbose_converter
+        self.max_workers = max_workers
         self.template_path_converter = template_path_converter
         self.openalex_email_converter = openalex_email_converter
         self.openalex_api_key_converter = openalex_api_key_converter
@@ -277,7 +280,9 @@ class LaTeX_Download:
             return False
 
         mock_cli_args = argparse.Namespace(
-            verbose=self.verbose_converter, openalex_email=self.openalex_email_converter, openalex_api_key=self.openalex_api_key_converter,
+            verbose=self.verbose_converter, 
+            max_workers=self.max_workers,
+            openalex_email=self.openalex_email_converter, openalex_api_key=self.openalex_api_key_converter,
             elsevier_api_key=self.elsevier_api_key_converter, springer_api_key=self.springer_api_key_converter,
             semantic_scholar_api_key=self.semantic_scholar_api_key_converter, poppler_path=self.poppler_path_converter,
             output_debug_tex=self.output_debug_tex_converter
@@ -335,6 +340,7 @@ def process_project_folder(project_folder_str, output_folder_str, cli_args, reso
     converter = LatexToMarkdownConverter(
         folder_path_str=str(project_path),
         verbose=cli_args.verbose,
+        max_workers=cli_args.max_workers,
         template_path=resolved_template_path_str,
         openalex_email=cli_args.openalex_email,
         openalex_api_key=cli_args.openalex_api_key,
@@ -402,6 +408,7 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
                     url=e_print_url,
                     output_dir=str(paper_processing_output_dir),
                     verbose_converter=converter_settings_dict['verbose_converter'],
+                    max_workers=converter_settings_dict['max_parallel_workers'],
                     template_path_converter=converter_settings_dict['template_path_converter'],
                     openalex_email_converter=converter_settings_dict['openalex_email_converter'],
                     openalex_api_key_converter=converter_settings_dict['openalex_api_key'],
@@ -450,6 +457,7 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
 
     converter_settings = {
         'verbose_converter': verbose_converter,
+        'max_parallel_workers': max_parallel_workers,
         'template_path_converter': template_path_converter,
         'openalex_email_converter': openalex_email_converter,
         'openalex_api_key': openalex_api_key,
