@@ -11,7 +11,7 @@ from pathlib import Path
 from openai import AzureOpenAI, APIError, Timeout, RateLimitError, APIConnectionError
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
-from typing import List
+from typing import List, Tuple
 from tqdm import tqdm
 
 from generation_prompt import ConsensusExtractionPrompt, FlawInjectionPrompt
@@ -86,23 +86,22 @@ def format_reviews_for_llm(note_details: dict) -> str:
 
     return "\n".join(output_text)
 
-def apply_modifications(original_markdown: str, modifications: List[Modification]) -> str:
+def try_apply_modifications(original_markdown: str, modifications: List[Modification]) -> Tuple[str, bool]:
     """
-    Applies a list of modifications to the original markdown text using a robust, line-based search.
-    This approach is immune to regex errors from special characters in headings.
+    Tries to apply a list of modifications. Returns the modified text and a boolean success flag.
+    Success is False if any target heading cannot be found.
     """
-    lines = original_markdown.split('\n')
+    current_lines = original_markdown.split('\n')
     
     for mod in modifications:
         target_heading = mod.target_heading.strip()
         if not target_heading:
             continue
 
-        # --- Find the starting line index of the section to be replaced ---
         start_index = -1
         
         # Pass 1: Try an exact match
-        for i, line in enumerate(lines):
+        for i, line in enumerate(current_lines):
             if line.strip() == target_heading:
                 start_index = i
                 break
@@ -110,45 +109,41 @@ def apply_modifications(original_markdown: str, modifications: List[Modification
         # Pass 2: If exact match fails, try a flexible match (ignoring hash levels)
         if start_index == -1:
             cleaned_target = target_heading.lstrip('#').strip()
-            for i, line in enumerate(lines):
+            for i, line in enumerate(current_lines):
                 if line.strip().lstrip('#').strip() == cleaned_target:
                     start_index = i
                     break
 
         if start_index == -1:
-            tqdm.write(f"Warning: Could not find target heading '{target_heading}' after both attempts. Skipping.")
-            continue
+            tqdm.write(f"Failure: Could not find target heading '{target_heading}'.")
+            return original_markdown, False # Return failure
 
-        # --- Find the end line index of the section ---
-        found_heading_line = lines[start_index].strip()
+        found_heading_line = current_lines[start_index].strip()
         heading_level = found_heading_line.count('#') if found_heading_line.startswith('#') else 0
 
-        end_index = len(lines) # Default to end of file
+        end_index = len(current_lines)
         
         if heading_level > 0:
-            # For hash-based headings, stop at the next heading of same or higher level
-            for i in range(start_index + 1, len(lines)):
-                line = lines[i].strip()
+            for i in range(start_index + 1, len(current_lines)):
+                line = current_lines[i].strip()
                 if line.startswith('#'):
                     current_level = line.count('#')
                     if current_level <= heading_level:
                         end_index = i
                         break
         else:
-            # For non-hash headings (e.g., "**Limitations.**"), stop at the next heading of any kind.
-            for i in range(start_index + 1, len(lines)):
-                if lines[i].strip().startswith('#'):
+            for i in range(start_index + 1, len(current_lines)):
+                if current_lines[i].strip().startswith('#'):
                     end_index = i
                     break
 
-        # --- Replace the old section with the new content ---
-        pre_section = lines[:start_index]
-        post_section = lines[end_index:]
-        
+        pre_section = current_lines[:start_index]
+        post_section = current_lines[end_index:]
         new_content_lines = mod.new_content.split('\n')
-        lines = pre_section + new_content_lines + post_section
+        current_lines = pre_section + new_content_lines + post_section
             
-    return "\n".join(lines)
+    return "\n".join(current_lines), True # Return success
+
 
 def call_llm_with_retries(client, prompt, response_model, purpose="LLM Call"):
     """Generic function to call the Azure OpenAI API with retries and Pydantic parsing."""
@@ -181,6 +176,86 @@ def call_llm_with_retries(client, prompt, response_model, purpose="LLM Call"):
 def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Path, or_client, azure_client):
     """Main worker function to process a single paper."""
     worker_id = threading.get_ident()
+    MAX_MODIFICATION_ATTEMPTS = 3
+    try:
+        paper_folder = paper_md_path.parent.parent
+        openreview_id = paper_folder.name.split('_')[0]
+        
+        with open(paper_md_path, 'r', encoding='utf-8') as f:
+            original_paper_text = f.read()
+
+        note = or_client.get_note(openreview_id, details='replies')
+        review_text = format_reviews_for_llm(note.details)
+
+        flaw_extraction_prompt = ConsensusExtractionPrompt.generate_prompt_for_review_process(
+            review_process=review_text, paper_text=original_paper_text
+        )
+        flaw_response = call_llm_with_retries(azure_client, flaw_extraction_prompt, FlawExtractionResponse, "Flaw Extraction")
+
+        if not flaw_response or not flaw_response.critical_flaws:
+            return []
+
+        results_for_global_csv = []
+
+        for flaw in flaw_response.critical_flaws:
+            was_successful = False
+            for attempt in range(MAX_MODIFICATION_ATTEMPTS):
+                tqdm.write(f"Worker {worker_id}: Flaw '{flaw.flaw_id}' in {openreview_id}, attempt {attempt + 1}/{MAX_MODIFICATION_ATTEMPTS}...")
+
+                modification_prompt = FlawInjectionPrompt.generate_prompt_for_flaw_injection(
+                    flaw_description=flaw.description, original_paper_text=original_paper_text
+                )
+                mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
+
+                if not mod_response or not mod_response.modifications:
+                    tqdm.write(f"Worker {worker_id}: LLM returned no modifications. Not retrying for this flaw.")
+                    break # Stop trying for this flaw if LLM gives up
+
+                flawed_paper_text, success = try_apply_modifications(original_paper_text, mod_response.modifications)
+
+                if success:
+                    tqdm.write(f"Worker {worker_id}: Successfully applied modifications for flaw '{flaw.flaw_id}'.")
+                    
+                    relative_paper_folder = paper_folder.relative_to(input_base_dir)
+                    output_paper_folder = output_base_dir / relative_paper_folder / "flawed_papers"
+                    output_paper_folder.mkdir(parents=True, exist_ok=True)
+                    
+                    output_filename = f"{openreview_id}_{flaw.flaw_id}.md"
+                    output_filepath = output_paper_folder / output_filename
+
+                    with open(output_filepath, 'w', encoding='utf-8') as f:
+                        f.write(flawed_paper_text)
+                    
+                    modifications_json_string = json.dumps([mod.model_dump() for mod in mod_response.modifications], indent=2)
+
+                    results_for_global_csv.append({
+                        'openreview_id': openreview_id,
+                        'flaw_id': flaw.flaw_id,
+                        'flaw_description': flaw.description,
+                        'output_path': str(output_filepath),
+                        'num_modifications': len(mod_response.modifications),
+                        'llm_generated_modifications': modifications_json_string
+                    })
+                    was_successful = True
+                    break # Success, so break the attempt loop
+                else:
+                    tqdm.write(f"Worker {worker_id}: Modification application failed on attempt {attempt + 1}. Retrying LLM call.")
+            
+            if not was_successful:
+                tqdm.write(f"Worker {worker_id}: All {MAX_MODIFICATION_ATTEMPTS} attempts failed for flaw '{flaw.flaw_id}'. Skipping.")
+            
+        return results_for_global_csv
+    
+    except Exception as e:
+        tqdm.write(f"Worker {worker_id}: ERROR processing {paper_md_path.parent.parent.name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Path, or_client, azure_client):
+    """Main worker function to process a single paper."""
+    worker_id = threading.get_ident()
+    MAX_MODIFICATION_ATTEMPTS = 3
     try:
         paper_folder = paper_md_path.parent.parent
         openreview_id = paper_folder.name.split('_')[0]
@@ -206,45 +281,56 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
 
         for flaw in flaw_response.critical_flaws:
             
-            modification_prompt = FlawInjectionPrompt.generate_prompt_for_flaw_injection(
-                flaw_description=flaw.description, original_paper_text=original_paper_text
-            )
-            mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
+            was_successful = False
+            for attempt in range(MAX_MODIFICATION_ATTEMPTS):
+            
+                modification_prompt = FlawInjectionPrompt.generate_prompt_for_flaw_injection(
+                    flaw_description=flaw.description, original_paper_text=original_paper_text
+                )
+                mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
 
-            if not mod_response or not mod_response.modifications:
-                continue
+                if not mod_response or not mod_response.modifications:
+                    continue
 
-            flawed_paper_text = apply_modifications(original_paper_text, mod_response.modifications)
-            
-            relative_paper_folder = paper_folder.relative_to(input_base_dir)
-            output_paper_folder = output_base_dir / relative_paper_folder / "flawed_papers"
-            output_paper_folder.mkdir(parents=True, exist_ok=True)
-            
-            output_filename = f"{openreview_id}_{flaw.flaw_id}.md"
-            output_filepath = output_paper_folder / output_filename
+                flawed_paper_text, success = try_apply_modifications(original_paper_text, mod_response.modifications)
 
-            with open(output_filepath, 'w', encoding='utf-8') as f:
-                f.write(flawed_paper_text)
-            
-            modifications_json_string = json.dumps([mod.model_dump() for mod in mod_response.modifications], indent=2)
+                if success:
+                    relative_paper_folder = paper_folder.relative_to(input_base_dir)
+                    output_paper_folder = output_base_dir / relative_paper_folder / "flawed_papers"
+                    output_paper_folder.mkdir(parents=True, exist_ok=True)
+                    
+                    output_filename = f"{openreview_id}_{flaw.flaw_id}.md"
+                    output_filepath = output_paper_folder / output_filename
 
-            results_for_global_csv.append({
-                'openreview_id': openreview_id,
-                'flaw_id': flaw.flaw_id,
-                'flaw_description': flaw.description,
-                'output_path': str(output_filepath),
-                'num_modifications': len(mod_response.modifications),
-                'llm_generated_modifications': modifications_json_string
-            })
+                    with open(output_filepath, 'w', encoding='utf-8') as f:
+                        f.write(flawed_paper_text)
+                    
+                    modifications_json_string = json.dumps([mod.model_dump() for mod in mod_response.modifications], indent=2)
+
+                    results_for_global_csv.append({
+                        'openreview_id': openreview_id,
+                        'flaw_id': flaw.flaw_id,
+                        'flaw_description': flaw.description,
+                        'output_path': str(output_filepath),
+                        'num_modifications': len(mod_response.modifications),
+                        'llm_generated_modifications': modifications_json_string
+                    })
+                    
+                    
+                    # Collect modifications for the local CSV
+                    all_modifications_for_local_csv.append({
+                        'flaw_id': flaw.flaw_id,
+                        'flaw_description': flaw.description,
+                        'num_modifications': len(mod_response.modifications),
+                        'llm_generated_modifications': modifications_json_string
+                    })
+                    was_successful = True
+                    break # Success, so break the attempt loop
+                else:
+                    tqdm.write(f"Worker {worker_id}: Modification application failed on attempt {attempt + 1}. Retrying LLM call.")
+            if not was_successful:
+                tqdm.write(f"Worker {worker_id}: All {MAX_MODIFICATION_ATTEMPTS} attempts failed for flaw '{flaw.flaw_id}'. Skipping.")
             
-            
-            # Collect modifications for the local CSV
-            all_modifications_for_local_csv.append({
-                'flaw_id': flaw.flaw_id,
-                'flaw_description': flaw.description,
-                'num_modifications': len(mod_response.modifications),
-                'llm_generated_modifications': modifications_json_string
-            })
         
         # Write the local modifications CSV for this paper
         if all_modifications_for_local_csv:

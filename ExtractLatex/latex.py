@@ -2112,7 +2112,7 @@ class LatexToMarkdownConverter:
                 tmp_tex_path_obj = Path(tmp_f.name)
 
             # Command uses relative paths for input/output, cwd will handle context
-            cmd = ["pandoc", tmp_tex_path_obj.name, "-f", "latex", "-t", "gfm-tex_math_dollars", "--verbose", "--wrap=none", "-o", pandoc_local_out_basename]
+            cmd = ["pandoc", tmp_tex_path_obj.name, "-f", "latex", "-t", "markdown_mmd-tex_math_dollars", "--verbose", "--wrap=none", "-o", pandoc_local_out_basename]
             if self.template_path and Path(self.template_path).exists():
                 cmd.extend(["--template", str(self.template_path)]) # Template path should be absolute or resolvable by Pandoc from cwd
             else:
