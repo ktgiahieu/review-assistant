@@ -190,7 +190,7 @@ def setup_pandoc(pandoc_version="3.1.9"): # Changed to a more common recent vers
 # --- LaTeX Download and Parse Class ---
 class LaTeX_Download:
     def __init__(self, url, output_dir=None,
-                 verbose_converter=False, 
+                 quiet_converter=0, 
                  max_workers=8,
                  template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
                  openalex_email_converter="ai-reviewer@example.com", # Use a generic default
@@ -202,7 +202,7 @@ class LaTeX_Download:
         self.output_dir = output_dir
         self._create_output_dir()
 
-        self.verbose_converter = verbose_converter
+        self.quiet_converter = quiet_converter
         self.max_workers = max_workers
         self.template_path_converter = template_path_converter
         self.openalex_email_converter = openalex_email_converter
@@ -280,7 +280,7 @@ class LaTeX_Download:
             return False
 
         mock_cli_args = argparse.Namespace(
-            verbose=self.verbose_converter, 
+            quiet=self.quiet_converter, 
             max_workers=self.max_workers,
             openalex_email=self.openalex_email_converter, openalex_api_key=self.openalex_api_key_converter,
             elsevier_api_key=self.elsevier_api_key_converter, springer_api_key=self.springer_api_key_converter,
@@ -339,7 +339,7 @@ def process_project_folder(project_folder_str, output_folder_str, cli_args, reso
 
     converter = LatexToMarkdownConverter(
         folder_path_str=str(project_path),
-        verbose=cli_args.verbose,
+        quiet_level=cli_args.quiet,
         max_workers=cli_args.max_workers,
         template_path=resolved_template_path_str,
         openalex_email=cli_args.openalex_email,
@@ -407,7 +407,7 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
                 latex_downloader_instance = LaTeX_Download(
                     url=e_print_url,
                     output_dir=str(paper_processing_output_dir),
-                    verbose_converter=converter_settings_dict['verbose_converter'],
+                    quiet_converter=converter_settings_dict['quiet_converter'],
                     max_workers=converter_settings_dict['max_parallel_workers'],
                     template_path_converter=converter_settings_dict['template_path_converter'],
                     openalex_email_converter=converter_settings_dict['openalex_email_converter'],
@@ -440,7 +440,7 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
                           output_dir="parsed_papers",
                           required_accepted=None, required_rejected=None,
                           max_parallel_workers=10,
-                          verbose_converter=False,
+                          quiet_converter=0,
                           template_path_converter=DEFAULT_TEMPLATE_MD_PATH,
                           openalex_email_converter="ai-reviewer@example.com",
                           openalex_api_key=None,
@@ -456,7 +456,7 @@ def download_arxiv_papers(accepted_ids, rejected_ids, client,
     run_timestamp_str = time.strftime("%Y%m%d_%H%M%S")
 
     converter_settings = {
-        'verbose_converter': verbose_converter,
+        'quiet_converter': quiet_converter,
         'max_parallel_workers': max_parallel_workers,
         'template_path_converter': template_path_converter,
         'openalex_email_converter': openalex_email_converter,
@@ -544,7 +544,7 @@ def main():
     parser.add_argument("--num_rejected", type=int, default=None, help="Number of rejected papers to process (None for all).")
     parser.add_argument("--max_workers", type=int, default=8, help="Maximum number of parallel workers.")
     parser.add_argument("--arxiv_version", type=int, default=1, help="The version of the arXiv paper to download (e.g., 1, 2). Use 0 for the latest version. Defaults to 1.")
-    parser.add_argument("--verbose_converter", action="store_true", help="Enable verbose logging for LaTeX converter.")
+    parser.add_argument("-q", "--quiet_converter", action="count", default=0, help="Suppress info messages.")
     parser.add_argument("--template_md", default=DEFAULT_TEMPLATE_MD_PATH, help="Path to Pandoc Markdown template.")
     parser.add_argument("--openalex_email", default="ai-reviewer@gmail.com", help="Email for OpenAlex API (politeness).")
     parser.add_argument("--openalex-api-key", default=os.environ.get("OPENALEX_API_KEY"), help="Your OpenAlex API key. Can also be set via OPENALEX_API_KEY environment variable.")
@@ -666,7 +666,7 @@ def main():
         required_accepted=args.num_accepted,
         required_rejected=args.num_rejected,
         max_parallel_workers=args.max_workers,
-        verbose_converter=args.verbose_converter,
+        quiet_converter=args.quiet_converter,
         template_path_converter=args.template_md,
         openalex_email_converter=args.openalex_email,
         openalex_api_key=args.openalex_api_key,

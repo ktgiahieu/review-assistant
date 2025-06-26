@@ -55,13 +55,17 @@ PROCESSED_BBL_MARKER = "% L2M_PROCESSED_BBL_V1_DO_NOT_EDIT_MANUALLY_BELOW_THIS_L
 MAX_PANDOC_COMMENT_RETRIES = 10 # Max attempts to fix by commenting within a single strategy
 
 class LatexToMarkdownConverter:
-    def __init__(self, folder_path_str, verbose=True, max_workers=1, template_path=None,
+    def __init__(self, folder_path_str, quiet_level=0, max_workers=1, template_path=None,
                  openalex_email="your-email@example.com", openalex_api_key = None, elsevier_api_key=None, springer_api_key=None, semantic_scholar_api_key=None,
                  poppler_path=None, output_debug_tex=False, log_project_name=None, ): # Added log_project_name
         self.folder_path = Path(folder_path_str).resolve()
         self.main_tex_path = None
         self.original_main_tex_content = ""
-        self.verbose = verbose
+        self.quiet_level = quiet_level
+        if self.quiet_level == 0:
+            self.verbose = True
+        else:
+            self.verbose = False
         self.max_workers = max_workers
         self.template_path = template_path
         self.final_output_folder_path = None # Will be set in convert_to_markdown
@@ -101,6 +105,8 @@ class LatexToMarkdownConverter:
             self._log("Springer API key not provided. Abstract fetching from link.springer.com via API will be disabled.", "info")
 
     def _log(self, message, level="info"):
+        if self.quiet_level >=2: return
+        
         prefix_str = f"[{self.log_project_name}] " if self.log_project_name else ""
         if level == "error": print(f"{prefix_str}[-] Error: {message}", file=sys.stderr)
         elif level == "warn": print(f"{prefix_str}[!] Warning: {message}", file=sys.stderr)
@@ -2328,7 +2334,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Converts LaTeX to Markdown with advanced abstract fetching and table processing.")
     parser.add_argument("project_folder", help="Path to LaTeX project folder.")
     parser.add_argument("-o", "--output_folder", default=None, help="Output folder. Default: '[project_name]_output'.")
-    parser.add_argument("-q", "--quiet", action="store_false", dest="verbose", default=True, help="Suppress info messages.")
+    parser.add_argument("-q", "--quiet", action="count", default=0, help="Suppress info messages.")
     parser.add_argument("--template", default="template.md", help="Pandoc Markdown template. Default: 'template.md'.")
     parser.add_argument("--openalex-email", default=os.environ.get("OPENALEX_EMAIL", "your-email@example.com"), help="Your email for OpenAlex API. Can also be set via OPENALEX_EMAIL environment variable.")
     parser.add_argument("--openalex-api-key", default=os.environ.get("OPENALEX_API_KEY"), help="Your OpenAlex API key. Can also be set via OPENALEX_API_KEY environment variable.")
@@ -2363,7 +2369,7 @@ if __name__ == '__main__':
 
     converter = LatexToMarkdownConverter(
         str(project_path),
-        verbose=args.verbose,
+        quiet_level=args.quiet,
         template_path=final_template_path_str,
         openalex_email=args.openalex_email,
         openalex_api_key=args.openalex_api_key,
