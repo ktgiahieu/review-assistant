@@ -2,8 +2,11 @@
 
 To generate:
 
+- Put your data (e.g. `ICLR2024_latest`) in `./data`:
+- Modify the script `./generate_checklist_script.sh` with the correct config and run:
+
 ```bash
-python3 generate_checklistanswer.py --input_dir data/ICLR2024/accepted --output_dir data/ICLR2024/accepted --file_pattern "./*/structured_paper_output/paper.md" --max_workers 40 --deployment_name Checklist-GPT-o4-mini --debug_timer   
+./generate_checklist_script.sh 
 ```
 
 Prerequisites:
