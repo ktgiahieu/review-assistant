@@ -21,7 +21,7 @@ except ImportError:
 
 from tqdm import tqdm # Added for progress bar
 from openai import AzureOpenAI, APIError, Timeout, RateLimitError, APIConnectionError, InternalServerError # Added specific exceptions
-from checklist_prompt import ChecklistPrompt # Assuming this contains ChecklistPrompt.generate_prompt_for_paper()
+from checklist_prompt_old import ChecklistPrompt # Assuming this contains ChecklistPrompt.generate_prompt_for_paper()
 from dotenv import load_dotenv
 
 # Load environment variables
