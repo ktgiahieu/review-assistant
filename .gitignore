@@ -42,3 +42,6 @@ GenerateBadPapers/ICLR2025_Reviews_Raw/
 
 
 FeatureExtractionForBiasAnalysis/Data/
+
+.env
+GenerateChecklist/data/
