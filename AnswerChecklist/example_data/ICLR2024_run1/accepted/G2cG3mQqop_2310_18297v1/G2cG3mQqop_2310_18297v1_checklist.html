@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>Checklist Review: {review.paper_title}</title>
+<style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 20px auto; padding: 0 15px; }
+            h1, h2 { color: #111; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            h1 { font-size: 2em; }
+            h2 { font-size: 1.5em; margin-top: 40px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f8f8f8; font-weight: 600; }
+            td:nth-child(1) { width: 5%; }
+            td:nth-child(3) { width: 10%; text-align: center; font-weight: bold; }
+            .abstract-section { margin-left: 20px; }
+        </style>
+</head>
+<body>
+<h1>Image Clustering Conditioned on Text Criteria (IC|TC)</h1>
+<p><strong>Paper Link:</strong> <a href='https://openreview.net/forum?id=G2cG3mQqop'>https://openreview.net/forum?id=G2cG3mQqop</a></p>
+<h2>Formatted Abstract</h2>
+<div class='abstract-section'><p><strong>Background and Objectives:</strong> Classical image clustering offers users no direct way to control the criterion that defines clusters.  Leveraging recent vision-language and large language models, the authors introduce a paradigm where users write a natural-language description of the desired criterion.</p>
+<p><strong>Material and Methods:</strong> IC|TC operates in three stages: (1) a vision-language model (e.g., LLaVA) generates criterion-focused captions for each image; (2) a large language model (e.g., GPT-4) converts the captions into K cluster names through two sub-steps; (3) the LLM assigns every caption to one of those clusters.  Users can iteratively revise their text criterion.  Experiments compare IC|TC with deep clustering baselines on CIFAR-10/100, STL-10, Stanford-40, PPMI, FACET and a synthetic CIFAR-10-Gen set.</p>
+<p><strong>Results:</strong> Across six datasets and a variety of criteria (object, action, location, mood, instrument, occupation), IC|TC attains higher clustering ACC/NMI/ARI than prior methods; e.g., 0.975 ACC on CIFAR-10 (vs. 0.636 for a caption-only baseline) and 0.774 ACC on Stanford-40 Action.  The method adapts to different numbers of clusters, remains strong on synthetic data (98.7 % ACC), and allows simple prompt edits to mitigate gender bias on FACET.</p>
+<p><strong>Conclusion:</strong> IC|TC demonstrates that instruction-based clustering is practical and effective.  It yields interpretable cluster names, supports multiple criteria for one dataset, and invites future research on language-directed computer-vision tasks.</p></div>
+<h2>A. Compliance</h2>
+<table>
+<tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
+<tr>
+<td>A1</td>
+<td>Does the paper discuss potential positive societal impacts of the work?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section 'Ethics Statement' argues that user-controlled clustering can help organise data and mitigate bias when used responsibly.</td>
+</tr>
+<tr>
+<td>A2</td>
+<td>Does the paper discuss potential negative societal impacts or risks of the work?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>The Ethics Statement notes risks of producing discriminatory results and propagating foundation-model biases.</td>
+</tr>
+<tr>
+<td>A3</td>
+<td>If negative societal impacts or risks are identified, does the paper discuss potential mitigation strategies?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section 4.4 shows that adding a simple negative prompt ('Do not consider gender') reduces gender imbalance, illustrating a mitigation pathway.</td>
+</tr>
+<tr>
+<td>A4</td>
+<td>Does the paper describe safeguards for responsible release of data or models with high misuse risk?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>The work releases only code and uses public models/datasets; no high-risk asset is newly released.</td>
+</tr>
+<tr>
+<td>A5</td>
+<td>Are the creators or original owners of all used assets (e.g., code, data, models) properly credited in the paper?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>All datasets (CIFAR, STL, etc.) and models (LLaVA, GPT-4, BLIP-2, Stable Diffusion) are cited in the References.</td>
+</tr>
+<tr>
+<td>A6</td>
+<td>Are the license and terms of use for all used assets explicitly mentioned and respected in the paper?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>The manuscript cites the assets but does not state their licenses or terms of use.</td>
+</tr>
+<tr>
+<td>A7</td>
+<td>For research involving human subjects or participants, does the paper indicate that informed consent was obtained?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No new human-subject data were collected; only public image datasets are used.</td>
+</tr>
+<tr>
+<td>A8</td>
+<td>For research involving human subjects or participants, does the paper detail compensation?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>See A7.</td>
+</tr>
+<tr>
+<td>A9</td>
+<td>For crowdsourcing experiments, does the paper include instructions and screenshots?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No crowdsourcing was conducted.</td>
+</tr>
+<tr>
+<td>A10</td>
+<td>Does the paper describe potential risks to study participants, if any?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No participants involved.</td>
+</tr>
+<tr>
+<td>A11</td>
+<td>Does the paper describe whether any identified risks to study participants were disclosed to them?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No participants involved.</td>
+</tr>
+<tr>
+<td>A12</td>
+<td>Does the paper describe whether Institutional Review Board (IRB) approvals were obtained for research with human subjects?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No IRB-relevant data collected.</td>
+</tr>
+<tr>
+<td>A13</td>
+<td>Is the status of IRB approval clearly stated?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>See A12.</td>
+</tr>
+<tr>
+<td>A14</td>
+<td>If IRB approval was not required, is a clear justification provided?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Not applicable.</td>
+</tr>
+<tr>
+<td>A15</td>
+<td>Does the research avoid using datasets that are deprecated or taken down by creators?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>All datasets (CIFAR variants, STL-10, Stanford-40, PPMI, FACET) are still publicly hosted and widely used.</td>
+</tr>
+<tr>
+<td>A16</td>
+<td>If new datasets were collected or existing datasets modified, were representativeness issues addressed?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>The only new data are synthetic CIFAR-10-Gen images generated for contamination checks; representativeness is not central to that diagnostic set.</td>
+</tr>
+<tr>
+<td>A17</td>
+<td>Does the research avoid primarily aiming to develop or enhance the lethality of weapons systems?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>The work is focused on image clustering for data organisation and analysis.</td>
+</tr>
+<tr>
+<td>A18</td>
+<td>Has the research considered and addressed potential security vulnerabilities or risks of accidents if deployed?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Security considerations (e.g., prompt injection, model hijacking) are not discussed.</td>
+</tr>
+<tr>
+<td>A19</td>
+<td>Has the research considered how the technology could discriminate or unfairly impact protected groups?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section 4.4 (Fair clustering) explicitly examines gender bias and shows mitigation.</td>
+</tr>
+<tr>
+<td>A20</td>
+<td>If bulk surveillance data was used, was collection compliant with laws and ethics?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No surveillance data used.</td>
+</tr>
+<tr>
+<td>A21</td>
+<td>Does the research avoid using surveillance data to predict protected characteristics?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>The datasets used are standard vision benchmarks without the goal of predicting protected attributes.</td>
+</tr>
+<tr>
+<td>A22</td>
+<td>Has the research considered risks of facilitating deceptive interactions, harassment, or fraud?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>The Ethics Statement warns that malicious users could craft prompts to produce unfair outputs.</td>
+</tr>
+<tr>
+<td>A23</td>
+<td>Has the research considered significant negative environmental impacts?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Training/inference energy use is not analysed; only a brief note on GPT-4 API cost is given.</td>
+</tr>
+<tr>
+<td>A24</td>
+<td>Does the research avoid facilitating illegal activities?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No illegal applications are promoted.</td>
+</tr>
+<tr>
+<td>A25</td>
+<td>Does the research avoid denying fundamental human rights?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No such applications are proposed; bias mitigation is addressed.</td>
+</tr>
+<tr>
+<td>A26</td>
+<td>Have potential biases in data, algorithms, or interpretation been considered?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Bias propagation from foundation models and a fairness experiment are discussed.</td>
+</tr>
+<tr>
+<td>A27</td>
+<td>If data or models are released, are licenses provided that limit misuse?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Only code is released; no new dataset or model checkpoint requiring a special license.</td>
+</tr>
+<tr>
+<td>A28</td>
+<td>Were privacy-protecting measures (anonymisation, secure storage) implemented?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>All data are public and contain no personally identifiable information.</td>
+</tr>
+<tr>
+<td>A29</td>
+<td>If the research exposes a security vulnerability, was responsible disclosure followed?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No vulnerabilities disclosed.</td>
+</tr>
+<tr>
+<td>A30</td>
+<td>Has legal compliance with relevant laws been ensured?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>All datasets are public academic benchmarks; no copyright-restricted data added.</td>
+</tr>
+<tr>
+<td>A31</td>
+<td>Does the paper honestly report all findings, including limitations?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Sections on data contamination, ablations, and limitations candidly report weaker cases and dependency on prompts.</td>
+</tr>
+<tr>
+<td>A32</td>
+<td>Are all methods, experimental setups, and results presented clearly?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Algorithm steps, prompts, datasets, and ablation details are described in the main text and appendix.</td>
+</tr>
+<tr>
+<td>A33</td>
+<td>Are all external sources appropriately cited?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Extensive reference list credits datasets, models, and related works.</td>
+</tr>
+<tr>
+<td>A34</td>
+<td>Does the paper avoid misrepresenting or unfairly criticising related work?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Comparisons are factual; limitations of baseline methods are acknowledged.</td>
+</tr>
+<tr>
+<td>A35</td>
+<td>Does the paper avoid unsubstantiated claims of universality?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Authors limit claims to the tested datasets and note the reliance on foundation models.</td>
+</tr>
+<tr>
+<td>A36</td>
+<td>If the research involves intentional harm (e.g., red-teaming), is the ethical justification clear?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No intentional harm experiments are included.</td>
+</tr>
+</table>
+<h2>B. Contribution</h2>
+<table>
+<tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
+<tr>
+<td>B1</td>
+<td>Are the main claims clearly stated in the abstract?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>The abstract specifies that IC|TC clusters images according to user text criteria and outperforms baselines.</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>Are the main claims clearly stated in the introduction?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Introduction lists three core contributions: task definition, method, and experimental validation.</td>
+</tr>
+<tr>
+<td>B3</td>
+<td>Do the claims in the abstract accurately reflect the paper's contributions?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Experiments substantiate flexibility, control, and superior metrics as claimed.</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>Do the claims in the introduction accurately reflect the paper's contributions?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Subsequent sections implement and test exactly what is promised.</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>Do the claims accurately reflect the scope and limitations of the work?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Authors note dependence on foundation models and GPT-4 cost, tempering scope.</td>
+</tr>
+<tr>
+<td>B6</td>
+<td>Are the specific contributions clearly summarised?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>End of the introduction lists the new task, the IC|TC pipeline, and empirical evaluation.</td>
+</tr>
+<tr>
+<td>B7</td>
+<td>Is the novelty of the contributions clearly articulated relative to prior work?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Paper contrasts with unsupervised clustering and zero-shot classification; cites related interactive clustering literature.</td>
+</tr>
+<tr>
+<td>B8</td>
+<td>Is the significance of the contributions made clear?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Addresses a practical need for user-specified clustering, demonstrated on diverse datasets.</td>
+</tr>
+<tr>
+<td>B9</td>
+<td>Do the claims match the presented theoretical results?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No theorems are presented.</td>
+</tr>
+<tr>
+<td>B10</td>
+<td>Do the claims match the presented experimental results?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Tables show higher ACC/NMI/ARI in all headline comparisons.</td>
+</tr>
+<tr>
+<td>B11</td>
+<td>Is the potential for generalisation discussed appropriately?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Paper demonstrates multiple criteria per dataset and notes applicability to other VLM/LLM combinations.</td>
+</tr>
+<tr>
+<td>B12</td>
+<td>Are aspirational goals clearly distinguished from achieved results?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Future work on stronger prompting and model efficiency is separated from delivered contributions.</td>
+</tr>
+<tr>
+<td>B13</td>
+<td>Does the paper explicitly discuss the limitations of the work performed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Dependency on proprietary GPT-4, prompt sensitivity, and data contamination risk are discussed.</td>
+</tr>
+<tr>
+<td>B14</td>
+<td>Are the key assumptions underlying the work identified?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Assumes access to instruction-tuned VLM and LLM and that users can express criteria in text.</td>
+</tr>
+<tr>
+<td>B15</td>
+<td>Is robustness to violations of assumptions discussed?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Little analysis of failure when prompts are ambiguous or models hallucinate.</td>
+</tr>
+<tr>
+<td>B16</td>
+<td>Is the scope of claims (datasets, runs) acknowledged as a limitation?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Authors note evaluation on common benchmarks and mention potential broader testing.</td>
+</tr>
+<tr>
+<td>B17</td>
+<td>Are factors influencing performance discussed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Ablations on model choice, prompt engineering, step necessity, and cluster number are provided.</td>
+</tr>
+<tr>
+<td>B18</td>
+<td>Is computational efficiency and scalability discussed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Pipeline uses API calls; cost (<$3k) and token limits are reported, but run-time per image is not deeply profiled.</td>
+</tr>
+<tr>
+<td>B19</td>
+<td>Are potential limitations related to fairness discussed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section 4.4 analyses gender bias and remediation.</td>
+</tr>
+<tr>
+<td>B20</td>
+<td>Are potential limitations related to privacy discussed?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No personal data processing.</td>
+</tr>
+<tr>
+<td>B21</td>
+<td>Does the paper identify new or enhanced applications enabled by the research?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Highlights data organisation, interactive dataset exploration, and bias auditing use-cases.</td>
+</tr>
+<tr>
+<td>B22</td>
+<td>Are both potential positive and negative societal impacts discussed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>See Ethics Statement—benefits of control vs. risk of misuse.</td>
+</tr>
+<tr>
+<td>B23</td>
+<td>Are uncertainties or limitations in impact assessment acknowledged?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Authors admit the mitigation example is preliminary and larger social study is needed.</td>
+</tr>
+<tr>
+<td>B24</td>
+<td>Does the paper connect contributions to broader technological trends?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Links emergence of foundation models and instruction tuning to new CV paradigms.</td>
+</tr>
+<tr>
+<td>B25</td>
+<td>Does the paper identify stakeholders likely affected?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Specific stakeholders (e.g., dataset curators, annotators) are not enumerated.</td>
+</tr>
+<tr>
+<td>B26</td>
+<td>Are ethical considerations related to methodology or data use addressed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Bias, data contamination, IRB-irrelevance are discussed.</td>
+</tr>
+<tr>
+<td>B27</td>
+<td>Does the paper discuss feedback loops or unintended consequences?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Not explicitly.</td>
+</tr>
+<tr>
+<td>B28</td>
+<td>Are suggestions provided for further work to improve or govern societal outcomes?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Future work on better prompts and bias mitigation is suggested.</td>
+</tr>
+<tr>
+<td>B29</td>
+<td>Does the impact discussion mention tractable high-significance effects?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Discussion remains general; energy or surveillance misuse not deeply analysed.</td>
+</tr>
+<tr>
+<td>B30</td>
+<td>Is there a plausible connection drawn between research and real-world implications?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Use cases in dataset curation and interactive retrieval are concrete.</td>
+</tr>
+<tr>
+<td>B31</td>
+<td>Is the broader-impact statement integrated rather than an afterthought?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Fairness experiment and mitigation are central to main results, not only appendix.</td>
+</tr>
+<tr>
+<td>B32</td>
+<td>Are potential misuses or dual-use concerns acknowledged?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Authors note malicious prompt engineering could yield discriminatory clusters.</td>
+</tr>
+<tr>
+<td>B33</td>
+<td>Does the research focus on an ML/AI topic?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Yes—instruction-driven multimodal clustering.</td>
+</tr>
+<tr>
+<td>B34</td>
+<td>If LLMs are used, is their use documented in the experimental setup?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Model versions, API parameters, prompts, and ablations are provided.</td>
+</tr>
+<tr>
+<td>B35</td>
+<td>Does the submission avoid plagiarism?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No copied text detected; citations included.</td>
+</tr>
+<tr>
+<td>B36</td>
+<td>Are all citations accurate and verified?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Sampled references match known papers; no fabricated cites spotted.</td>
+</tr>
+<tr>
+<td>B37</td>
+<td>If citing contemporaneous work, is it discussed appropriately?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Related instruction-tuning and descriptor-based clustering papers are noted.</td>
+</tr>
+<tr>
+<td>B38</td>
+<td>Is there no evidence of dual submission?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No overlap noted; OpenReview shows single submission.</td>
+</tr>
+<tr>
+<td>B39</td>
+<td>If building on workshop papers, is prior version clearly distinguished?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No workshop predecessor claimed.</td>
+</tr>
+<tr>
+<td>B40</td>
+<td>Does the paper avoid thin slicing of contributions?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Combines task definition, algorithm, and extensive evaluations.</td>
+</tr>
+<tr>
+<td>B41</td>
+<td>Are all experiments, datasets, proofs, and algorithms described in sufficient detail for reproducibility?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Code link, prompt tables, model versions, dataset splits are provided.</td>
+</tr>
+<tr>
+<td>B42</td>
+<td>If supplementary material is included, is it clearly marked?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Appendix sections are referenced and structured.</td>
+</tr>
+<tr>
+<td>B43</td>
+<td>If a reproducibility statement is included, are references clear?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Dedicated 'Reproducibility Statement' specifies datasets, code, API version, and costs.</td>
+</tr>
+</table>
+<h2>C. Soundness</h2>
+<table>
+<tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
+<tr>
+<td>C1</td>
+<td>Are theorems, lemmas, or key theoretical results clearly stated?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>The contribution is empirical; no formal theorems are given.</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>For each theoretical result, are assumptions stated?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>See C1.</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>Is a complete proof provided for each theoretical result?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No proofs.</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>If proofs are deferred, is a proof sketch included?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No proofs necessary.</td>
+</tr>
+<tr>
+<td>C5</td>
+<td>Are theorems, formulas, and proofs properly numbered?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No formal math.</td>
+</tr>
+<tr>
+<td>C6</td>
+<td>Are theoretical claims cross-referenced?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>C7</td>
+<td>Are theoretical tools or prior results used in proofs properly cited?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>C8</td>
+<td>Do the mathematical arguments appear correct and rigorous?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>C9</td>
+<td>Are theoretical claims demonstrated or validated empirically where appropriate?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Algorithmic claims (e.g., need for LLM) are supported by ablations replacing or removing steps.</td>
+</tr>
+<tr>
+<td>C10</td>
+<td>Is the experimental methodology clearly described?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Datasets, cluster numbers, prompts, evaluation metrics, and ablation settings are detailed.</td>
+</tr>
+<tr>
+<td>C11</td>
+<td>Is the motivation for using the chosen datasets clearly explained?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Datasets cover diverse criteria and difficulty; synthetic set addresses contamination.</td>
+</tr>
+<tr>
+<td>C12</td>
+<td>Are the datasets adequately described?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Appendix provides size, class names, and criteria for each dataset.</td>
+</tr>
+<tr>
+<td>C13</td>
+<td>For novel datasets, are they included?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Synthetic CIFAR-10-Gen images are described but not released as a standalone dataset.</td>
+</tr>
+<tr>
+<td>C14</td>
+<td>Will all novel datasets be made publicly available?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Synthetic images are ancillary; availability is not stated.</td>
+</tr>
+<tr>
+<td>C15</td>
+<td>Are datasets from literature properly cited?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>All referenced with citations (e.g., CIFAR-10 [Brown et al.]).</td>
+</tr>
+<tr>
+<td>C16</td>
+<td>Are datasets from literature publicly available?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>All are standard open datasets.</td>
+</tr>
+<tr>
+<td>C17</td>
+<td>For non-public datasets, is description and justification provided?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>NA</td>
+</tr>
+<tr>
+<td>C18</td>
+<td>Are the data splits clearly specified?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Use of test splits and sample sizes for manual evaluation are stated.</td>
+</tr>
+<tr>
+<td>C19</td>
+<td>Are evaluation metrics clearly defined?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>ACC, NMI, ARI are defined; human accuracy estimation method is explained.</td>
+</tr>
+<tr>
+<td>C20</td>
+<td>Is the choice of metrics well motivated?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>These metrics are standard for clustering; human labelling used when no ground truth exists.</td>
+</tr>
+<tr>
+<td>C21</td>
+<td>Are baseline methods appropriate and relevant?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Compares with SCAN and K-means on caption embeddings, appropriate unsupervised baselines.</td>
+</tr>
+<tr>
+<td>C22</td>
+<td>Are implementation details of baselines provided or referenced?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Paper cites SCAN and states default hyper-parameters used.</td>
+</tr>
+<tr>
+<td>C23</td>
+<td>Are hyperparameters reported?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Prompt templates, K values, threshold for raw label filtering provided.</td>
+</tr>
+<tr>
+<td>C24</td>
+<td>Is the procedure for hyperparameter selection described?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>User iteratively edits prompts; threshold values 5/10 chosen empirically are stated.</td>
+</tr>
+<tr>
+<td>C25</td>
+<td>Does the paper state the number and range of values tried?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Exact search ranges for thresholds or cluster counts are not exhaustively enumerated.</td>
+</tr>
+<tr>
+<td>C26</td>
+<td>Is the optimizer used clearly specified?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No network training performed; only inference of pre-trained models.</td>
+</tr>
+<tr>
+<td>C27</td>
+<td>Are other training details provided?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No training.</td>
+</tr>
+<tr>
+<td>C28</td>
+<td>Are all training and test details needed to interpret results specified?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Dataset sizes, cluster counts, prompts, model versions are given.</td>
+</tr>
+<tr>
+<td>C29</td>
+<td>If algorithms depend on randomness, is the method for setting random seeds described?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>LLM/VLM inference stochasticity (temperature) not documented; seeds not mentioned.</td>
+</tr>
+<tr>
+<td>C30</td>
+<td>Is the computing infrastructure specified?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>API use, GPT-4 version, and that experiments cost <$3k are stated; detailed hardware not critical here.</td>
+</tr>
+<tr>
+<td>C31</td>
+<td>Are the number of algorithm runs for each result stated?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Single runs are implied; repeats/variance not reported.</td>
+</tr>
+<tr>
+<td>C32</td>
+<td>Are the main experimental results clearly presented?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Tables 1-4 summarise accuracies; figures show qualitative clusters.</td>
+</tr>
+<tr>
+<td>C33</td>
+<td>Are results compared fairly against baselines?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Same datasets and metrics; authors admit advantage of using foundation models.</td>
+</tr>
+<tr>
+<td>C34</td>
+<td>Are ablation studies conducted to isolate components?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Ablations on removing steps, changing models, skipping criterion are provided.</td>
+</tr>
+<tr>
+<td>C35</td>
+<td>Are error bars or variability reported?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Only point estimates; no confidence intervals.</td>
+</tr>
+<tr>
+<td>C36</td>
+<td>Is statistical significance assessed?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No significance testing performed.</td>
+</tr>
+<tr>
+<td>C37</td>
+<td>Are sources of variation clearly stated?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>LLM randomness and prompt variation not quantified.</td>
+</tr>
+<tr>
+<td>C38</td>
+<td>Does analysis include distributional information, not just summaries?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Confusion matrices and qualitative grids illustrate per-class behaviour.</td>
+</tr>
+<tr>
+<td>C39</td>
+<td>Is statistical significance assessed using appropriate tests?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No tests performed.</td>
+</tr>
+<tr>
+<td>C40</td>
+<td>Is analysis of results insightful and evidence-backed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Explains why LLM needed; shows bias mitigation and granularity control.</td>
+</tr>
+<tr>
+<td>C41</td>
+<td>Does the paper disclose resources (code, data, scripts)?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>GitHub link provided; prompts included in appendix.</td>
+</tr>
+<tr>
+<td>C42</td>
+<td>Will the source code be made publicly available under a suitable license?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Code is already linked as open-source (MIT license implied on GitHub).</td>
+</tr>
+<tr>
+<td>C43</td>
+<td>Will any novel datasets introduced be made publicly available?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Synthetic images are not claimed as a dataset; no release promised.</td>
+</tr>
+<tr>
+<td>C44</td>
+<td>Is code for data preprocessing included or referenced?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Repository contains preprocessing scripts as mentioned.</td>
+</tr>
+<tr>
+<td>C45</td>
+<td>Is source code for experiments included or referenced?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Same GitHub repo covers all steps.</td>
+</tr>
+<tr>
+<td>C46</td>
+<td>Does implementation code include comments referencing paper sections?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Not stated.</td>
+</tr>
+<tr>
+<td>C47</td>
+<td>Are all new assets introduced properly documented?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No new assets aside from code.</td>
+</tr>
+<tr>
+<td>C48</td>
+<td>Are all creators of external assets properly credited, including license?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>See A6; licenses not listed.</td>
+</tr>
+<tr>
+<td>C49</td>
+<td>Does the paper distinguish between speculation, hypotheses, and verified claims?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Speculative future work is separated; empirical claims are backed by data.</td>
+</tr>
+<tr>
+<td>C50</td>
+<td>Are pedagogical references provided for background?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>References to foundational clustering and instruction-tuning literature are included.</td>
+</tr>
+</table>
+<h2>D. Presentation</h2>
+<table>
+<tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
+<tr>
+<td>D1</td>
+<td>Is the abstract a clear and concise summary?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Covers motivation, method, and key results within the word limit.</td>
+</tr>
+<tr>
+<td>D2</td>
+<td>Does the abstract include enough context to understand the topic?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Mentions classical clustering vs. new paradigm, vision-language models.</td>
+</tr>
+<tr>
+<td>D3</td>
+<td>Does the introduction provide sufficient background and motivation?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Explains user need for criterion-controlled clustering and foundation model opportunity.</td>
+</tr>
+<tr>
+<td>D4</td>
+<td>Is the problem setup understandable to the target audience?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Task definition section formalises input (images, K, text criterion) and output.</td>
+</tr>
+<tr>
+<td>D5</td>
+<td>Is the paper organized logically?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Intro → Task → Method → Experiments → Analysis → Related → Conclusion.</td>
+</tr>
+<tr>
+<td>D6</td>
+<td>Are headings clear and descriptive?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section titles like 'IC|TC', 'Clustering with varying criteria' are self-explanatory.</td>
+</tr>
+<tr>
+<td>D7</td>
+<td>Are paragraphs and sections coherent?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Flow is smooth; each paragraph has a coherent point.</td>
+</tr>
+<tr>
+<td>D8</td>
+<td>Is the narrative flow smooth across sections?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Transitions explain why each next step is needed (e.g., from task to pipeline).</td>
+</tr>
+<tr>
+<td>D9</td>
+<td>Is the language clear, precise, and unambiguous?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Technical terms are used correctly; jargon is minimal.</td>
+</tr>
+<tr>
+<td>D10</td>
+<td>Is grammar, spelling, and punctuation correct?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Few minor typos; overall professional.</td>
+</tr>
+<tr>
+<td>D11</td>
+<td>Is the writing style suitable for a technical conference?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Formal academic prose used.</td>
+</tr>
+<tr>
+<td>D12</td>
+<td>Are sentences concise and free of unnecessary jargon?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Most sentences are direct; long lists appear only where needed (datasets, prompts).</td>
+</tr>
+<tr>
+<td>D13</td>
+<td>Is the paper accessible to readers not deeply familiar with the subfield?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Provides background on VLMs/LLMs and clustering metrics before use.</td>
+</tr>
+<tr>
+<td>D14</td>
+<td>Are mathematical notations clearly defined?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Only simple symbols (K, N) used and defined.</td>
+</tr>
+<tr>
+<td>D15</td>
+<td>Are notations used consistently?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>K consistently denotes number of clusters; TC denotes text criterion.</td>
+</tr>
+<tr>
+<td>D16</td>
+<td>Are acronyms defined at first use and used consistently?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>VLM, LLM, ACC, NMI, ARI introduced on first appearance.</td>
+</tr>
+<tr>
+<td>D17</td>
+<td>Are all figures and tables essential and well integrated?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Pipeline diagram and sample cluster grids clarify key concepts.</td>
+</tr>
+<tr>
+<td>D18</td>
+<td>Are figure and table captions informative?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Captions explain criteria and K values.</td>
+</tr>
+<tr>
+<td>D19</td>
+<td>Are axes labeled clearly, with units where appropriate?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>Most plots are confusion matrices or bar charts—labels present.</td>
+</tr>
+<tr>
+<td>D20</td>
+<td>Are font sizes in figures readable?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>High-resolution images included; sample clusters readable.</td>
+</tr>
+<tr>
+<td>D21</td>
+<td>Are plots and diagrams visually clear and appropriate?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Colours and boundaries in confusion matrices are distinct.</td>
+</tr>
+<tr>
+<td>D22</td>
+<td>Are color, shape, or style distinctions clear in multi-series plots?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Ablation plots use distinct colours/markers.</td>
+</tr>
+<tr>
+<td>D23</td>
+<td>Are legends provided when needed and easy to interpret?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Legends accompany ablation charts.</td>
+</tr>
+<tr>
+<td>D24</td>
+<td>Are all figures and tables correctly referenced in the text?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Main text cites Figure 1, Table 2, etc.</td>
+</tr>
+<tr>
+<td>D25</td>
+<td>Are all references cited properly in the text?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>In-text citations correspond to numbered reference list.</td>
+</tr>
+<tr>
+<td>D26</td>
+<td>Are citations formatted consistently and according to guidelines?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Although rendered in HTML style, entries have author, year, title, venue.</td>
+</tr>
+<tr>
+<td>D27</td>
+<td>Is the reference list complete and free of formatting issues?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Large bibliography covers all mentioned works.</td>
+</tr>
+<tr>
+<td>D28</td>
+<td>Does the paper adhere to standard formatting guidelines?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Follows OpenReview template; length acceptable.</td>
+</tr>
+<tr>
+<td>D29</td>
+<td>Are all footnotes, equations, and lists properly formatted and placed?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Footnotes clarify code link; equations appear in displayed math blocks.</td>
+</tr>
+<tr>
+<td>D30</td>
+<td>Are appendices, figures, or tables referenced correctly from the main text?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Main text points to Appendix 8.4, 7.2, etc.</td>
+</tr>
+<tr>
+<td>D31</td>
+<td>Are supplementary materials clearly labelled and easy to navigate?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Appendix sections use numbered headings and descriptive titles.</td>
+</tr>
+</table>
+</body>
+</html>
