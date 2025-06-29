@@ -86,61 +86,63 @@ def format_reviews_for_llm(note_details: dict) -> str:
 
     return "\n".join(output_text)
 
-def try_apply_modifications(original_markdown: str, modifications: List[Modification]) -> Tuple[str, bool, Optional[str]]:
+def try_apply_modifications(original_markdown: str, modifications: List[Modification]) -> Tuple[str, bool]:
     """
-    Tries to apply a list of modifications. Handles headings defined by '#' or '**'.
-    Finds section boundaries by looking for the next heading of any type.
-    Returns the modified text, a boolean success flag, and the failed heading if any.
+    Tries to apply a list of modifications. Returns the modified text and a boolean success flag.
+    Success is False if any target heading cannot be found.
     """
-    current_markdown = original_markdown
+    current_lines = original_markdown.split('\n')
     
     for mod in modifications:
         target_heading = mod.target_heading.strip()
         if not target_heading:
             continue
 
-        # Clean the heading from the LLM to get its core text for matching
-        core_text = target_heading.lstrip('#* ').rstrip('#* ')
+        start_index = -1
         
-        # This regex looks for a line starting with optional whitespace, 
-        # then either markdown hashes (#) or bold markers (**),
-        # followed by the core text of the heading. It is case-insensitive.
-        start_pattern = re.compile(
-            r"^\s*(?:#+|\*\*)\s*" + re.escape(core_text) + r".*$",
-            re.MULTILINE | re.IGNORECASE
-        )
+        # Pass 1: Try an exact match
+        for i, line in enumerate(current_lines):
+            if line.strip() == target_heading:
+                start_index = i
+                break
         
-        match = start_pattern.search(current_markdown)
-        
-        if not match:
+        # Pass 2: If exact match fails, try a flexible match (ignoring hash levels)
+        if start_index == -1:
+            cleaned_target = target_heading.lstrip('#').strip()
+            for i, line in enumerate(current_lines):
+                if line.strip().lstrip('#').strip() == cleaned_target:
+                    start_index = i
+                    break
+
+        if start_index == -1:
             tqdm.write(f"Failure: Could not find target heading '{target_heading}'.")
-            return original_markdown, False, target_heading
+            return original_markdown, False # Return failure
 
-        start_index = match.start()
-        
-        # To find the end of the section, we search for the *next* heading of any type
-        # starting from the end of the current heading's line.
-        end_of_heading_line_pos = match.end()
-        
-        # This regex finds any line that starts with markdown hashes or is bolded.
-        next_heading_pattern = re.compile(r"^\s*(?:#+|\*\*).*$", re.MULTILINE)
-        
-        next_match = next_heading_pattern.search(current_markdown, pos=end_of_heading_line_pos)
-        
-        end_index = next_match.start() if next_match else len(current_markdown)
+        found_heading_line = current_lines[start_index].strip()
+        heading_level = found_heading_line.count('#') if found_heading_line.startswith('#') else 0
 
-        # Reconstruct the markdown with the modification
-        pre_section = current_markdown[:start_index]
-        post_section = current_markdown[end_index:]
+        end_index = len(current_lines)
         
-        new_content = mod.new_content
-        # Ensure the new content ends with a newline to separate it from the next section
-        if not new_content.endswith('\n'):
-            new_content += '\n'
+        if heading_level > 0:
+            for i in range(start_index + 1, len(current_lines)):
+                line = current_lines[i].strip()
+                if line.startswith('#'):
+                    current_level = line.count('#')
+                    if current_level <= heading_level:
+                        end_index = i
+                        break
+        else:
+            for i in range(start_index + 1, len(current_lines)):
+                if current_lines[i].strip().startswith('#'):
+                    end_index = i
+                    break
 
-        current_markdown = pre_section + new_content + post_section
+        pre_section = current_lines[:start_index]
+        post_section = current_lines[end_index:]
+        new_content_lines = mod.new_content.split('\n')
+        current_lines = pre_section + new_content_lines + post_section
             
-    return current_markdown, True, None
+    return "\n".join(current_lines), True # Return success
 
 
 def call_llm_with_retries(client, prompt, response_model, purpose="LLM Call"):
@@ -194,36 +196,31 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
             return []
 
         results_for_global_csv = []
-        all_modifications_for_local_csv = []
 
         for flaw in flaw_response.critical_flaws:
             was_successful = False
-            last_error_feedback = None # <<< Initialize error feedback for the loop
-
             for attempt in range(MAX_MODIFICATION_ATTEMPTS):
+                tqdm.write(f"Worker {worker_id}: Flaw '{flaw.flaw_id}' in {openreview_id}, attempt {attempt + 1}/{MAX_MODIFICATION_ATTEMPTS}...")
 
-                # --- Generate prompt with feedback from previous failed attempts ---
                 modification_prompt = FlawInjectionPrompt.generate_prompt_for_flaw_injection(
-                    flaw_description=flaw.description, 
-                    original_paper_text=original_paper_text,
-                    last_error=last_error_feedback # <<< Pass the error to the prompt generator
+                    flaw_description=flaw.description, original_paper_text=original_paper_text
                 )
-                
                 mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
 
                 if not mod_response or not mod_response.modifications:
-                    break 
+                    tqdm.write(f"Worker {worker_id}: LLM returned no modifications. Not retrying for this flaw.")
+                    break # Stop trying for this flaw if LLM gives up
 
-                # --- Attempt to apply the modifications ---
-                flawed_paper_text, success, failed_heading = try_apply_modifications(original_paper_text, mod_response.modifications)
+                flawed_paper_text, success = try_apply_modifications(original_paper_text, mod_response.modifications)
 
-                if success:                    
+                if success:
+                    tqdm.write(f"Worker {worker_id}: Successfully applied modifications for flaw '{flaw.flaw_id}'.")
+                    
                     relative_paper_folder = paper_folder.relative_to(input_base_dir)
-                    # Define output folder inside the loop to ensure it's created
                     output_paper_folder = output_base_dir / relative_paper_folder / "flawed_papers"
                     output_paper_folder.mkdir(parents=True, exist_ok=True)
                     
-                    output_filename = f"{flaw.flaw_id}.md" # Simplified filename
+                    output_filename = f"{openreview_id}_{flaw.flaw_id}.md"
                     output_filepath = output_paper_folder / output_filename
 
                     with open(output_filepath, 'w', encoding='utf-8') as f:
@@ -231,7 +228,85 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
                     
                     modifications_json_string = json.dumps([mod.model_dump() for mod in mod_response.modifications], indent=2)
 
-                    # Append to list for the global summary CSV
+                    results_for_global_csv.append({
+                        'openreview_id': openreview_id,
+                        'flaw_id': flaw.flaw_id,
+                        'flaw_description': flaw.description,
+                        'output_path': str(output_filepath),
+                        'num_modifications': len(mod_response.modifications),
+                        'llm_generated_modifications': modifications_json_string
+                    })
+                    was_successful = True
+                    break # Success, so break the attempt loop
+                else:
+                    tqdm.write(f"Worker {worker_id}: Modification application failed on attempt {attempt + 1}. Retrying LLM call.")
+            
+            if not was_successful:
+                tqdm.write(f"Worker {worker_id}: All {MAX_MODIFICATION_ATTEMPTS} attempts failed for flaw '{flaw.flaw_id}'. Skipping.")
+            
+        return results_for_global_csv
+    
+    except Exception as e:
+        tqdm.write(f"Worker {worker_id}: ERROR processing {paper_md_path.parent.parent.name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Path, or_client, azure_client):
+    """Main worker function to process a single paper."""
+    worker_id = threading.get_ident()
+    MAX_MODIFICATION_ATTEMPTS = 3
+    try:
+        paper_folder = paper_md_path.parent.parent
+        openreview_id = paper_folder.name.split('_')[0]
+        
+        with open(paper_md_path, 'r', encoding='utf-8') as f:
+            original_paper_text = f.read()
+
+        note = or_client.get_note(openreview_id, details='replies')
+        review_text = format_reviews_for_llm(note.details)
+
+        flaw_extraction_prompt = ConsensusExtractionPrompt.generate_prompt_for_review_process(
+            review_process=review_text, paper_text=original_paper_text
+        )
+        flaw_response = call_llm_with_retries(azure_client, flaw_extraction_prompt, FlawExtractionResponse, "Flaw Extraction")
+
+        if not flaw_response or not flaw_response.critical_flaws:
+            return []
+
+        
+        results_for_global_csv = []
+        all_modifications_for_local_csv = []
+
+
+        for flaw in flaw_response.critical_flaws:
+            
+            was_successful = False
+            for attempt in range(MAX_MODIFICATION_ATTEMPTS):
+            
+                modification_prompt = FlawInjectionPrompt.generate_prompt_for_flaw_injection(
+                    flaw_description=flaw.description, original_paper_text=original_paper_text
+                )
+                mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
+
+                if not mod_response or not mod_response.modifications:
+                    continue
+
+                flawed_paper_text, success = try_apply_modifications(original_paper_text, mod_response.modifications)
+
+                if success:
+                    relative_paper_folder = paper_folder.relative_to(input_base_dir)
+                    output_paper_folder = output_base_dir / relative_paper_folder / "flawed_papers"
+                    output_paper_folder.mkdir(parents=True, exist_ok=True)
+                    
+                    output_filename = f"{openreview_id}_{flaw.flaw_id}.md"
+                    output_filepath = output_paper_folder / output_filename
+
+                    with open(output_filepath, 'w', encoding='utf-8') as f:
+                        f.write(flawed_paper_text)
+                    
+                    modifications_json_string = json.dumps([mod.model_dump() for mod in mod_response.modifications], indent=2)
+
                     results_for_global_csv.append({
                         'openreview_id': openreview_id,
                         'flaw_id': flaw.flaw_id,
@@ -241,7 +316,8 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
                         'llm_generated_modifications': modifications_json_string
                     })
                     
-                    # Append to list for the paper-specific modifications CSV
+                    
+                    # Collect modifications for the local CSV
                     all_modifications_for_local_csv.append({
                         'flaw_id': flaw.flaw_id,
                         'flaw_description': flaw.description,
@@ -249,29 +325,25 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
                         'llm_generated_modifications': modifications_json_string
                     })
                     was_successful = True
-                    break # Success, so break the attempt loop for this flaw
+                    break # Success, so break the attempt loop
                 else:
-                    # --- If application fails, prepare feedback for the next attempt ---
-                    tqdm.write(f"Worker {worker_id}: Modification application failed on attempt {attempt + 1}. Retrying LLM call with feedback.")
-                    last_error_feedback = failed_heading # <<< Set the feedback for the next loop iteration
-            
+                    tqdm.write(f"Worker {worker_id}: Modification application failed on attempt {attempt + 1}. Retrying LLM call.")
             if not was_successful:
                 tqdm.write(f"Worker {worker_id}: All {MAX_MODIFICATION_ATTEMPTS} attempts failed for flaw '{flaw.flaw_id}'. Skipping.")
+            
         
-        # --- Write the local modifications CSV for this paper ---
+        # Write the local modifications CSV for this paper
         if all_modifications_for_local_csv:
-            # This path is now well-defined even if only one flaw succeeded
-            local_csv_path = output_base_dir / paper_folder.relative_to(input_base_dir) / f"{openreview_id}_modifications_summary.csv"
-            local_csv_path.parent.mkdir(parents=True, exist_ok=True) # Ensure directory exists
+            local_csv_path = output_paper_folder / f"{openreview_id}_modifications.csv"
             with open(local_csv_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=all_modifications_for_local_csv[0].keys())
                 writer.writeheader()
                 writer.writerows(all_modifications_for_local_csv)
 
         return results_for_global_csv
-    
+
     except Exception as e:
-        tqdm.write(f"Worker {worker_id}: FATAL ERROR processing {paper_md_path.parent.parent.name}: {e}")
+        tqdm.write(f"Worker {worker_id}: ERROR processing {paper_md_path.parent.parent.name}: {e}")
         import traceback
         traceback.print_exc()
         return []
@@ -280,15 +352,12 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
 def main():
     parser = argparse.ArgumentParser(description="Generate flawed paper versions based on OpenReview discussions.")
     parser.add_argument("--input_dir", type=str, required=True, help="Base input directory (e.g., 'ICLR2024_latest').")
-    parser.add_argument("--output_dir", type=str, default="flawed_papers_v2", help="Directory to save the flawed papers and results CSV.")
+    parser.add_argument("--output_dir", type=str, default="flawed_papers_v1", help="Directory to save the flawed papers and results CSV.")
     parser.add_argument("--max_workers", type=int, default=4, help="Number of parallel threads to run.")
     args = parser.parse_args()
 
-    # --- Environment Variable Check ---
-    required_env_vars = ['OPENREVIEW_USERNAME', 'OPENREVIEW_PASSWORD', 'AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_KEY', 'AZURE_OPENAI_DEPLOYMENT_NAME']
-    if not all(os.environ.get(var) for var in required_env_vars):
-        print("Error: One or more required environment variables are not set. Please check your .env file or environment.")
-        print("Required:", ", ".join(required_env_vars))
+    if not all([OPENREVIEW_USERNAME, OPENREVIEW_PASSWORD, AZURE_ENDPOINT, AZURE_API_KEY, AZURE_DEPLOYMENT_NAME]):
+        print("Error: One or more required environment variables are not set. Exiting.")
         return
 
     input_base_dir = Path(args.input_dir)
@@ -307,20 +376,12 @@ def main():
 
     or_client = get_openreview_client()
     if not or_client:
-        print("Failed to initialize OpenReview client. Check credentials or network. Exiting.")
+        print("Failed to connect to OpenReview. Check credentials. Exiting.")
         return
 
-    try:
-        azure_client = AzureOpenAI(
-            azure_endpoint=AZURE_ENDPOINT, api_key=AZURE_API_KEY, api_version=AZURE_API_VERSION
-        )
-        # Simple test call to check credentials
-        azure_client.models.list()
-        print("Successfully connected to Azure OpenAI.")
-    except Exception as e:
-        print(f"Failed to initialize or connect to Azure OpenAI: {e}")
-        return
-
+    azure_client = AzureOpenAI(
+        azure_endpoint=AZURE_ENDPOINT, api_key=AZURE_API_KEY, api_version=AZURE_API_VERSION
+    )
 
     all_results = []
     
@@ -330,8 +391,7 @@ def main():
             for path in paper_paths
         }
         
-        progress_bar = tqdm(concurrent.futures.as_completed(future_to_path), total=len(paper_paths), desc="Processing Papers")
-        for future in progress_bar:
+        for future in tqdm(concurrent.futures.as_completed(future_to_path), total=len(paper_paths), desc="Processing Papers"):
             try:
                 result = future.result()
                 if result:
@@ -341,10 +401,10 @@ def main():
                 tqdm.write(f"Main Thread: An unexpected error occurred for paper at {path}: {e}")
 
     if not all_results:
-        print("\nWorkflow finished, but no flawed papers were successfully generated.")
+        print("\nWorkflow finished, but no flawed papers were generated.")
         return
 
-    results_csv_path = output_base_dir / "flawed_papers_global_summary.csv"
+    results_csv_path = output_base_dir / "flawed_papers_summary.csv"
     print(f"\nWriting global summary of {len(all_results)} generated files to {results_csv_path}...")
     
     with open(results_csv_path, 'w', newline='', encoding='utf-8') as f:

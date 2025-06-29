@@ -34,7 +34,7 @@ Input paper:
 class FlawInjectionPrompt:
     prompt = """You are an AI model creating a benchmark of flawed scholarly papers for a research experiment. Your objective is to modify a published research paper to re-introduce a specific flaw in a way that makes the paper's claims methodologically unsound.
 
-The key is to make the paper *embody* the flaw, not just state it as a limitation. You must adopt the persona of an author who is either unaware of the flaw or actively downplaying it to make their results seem more significant. Stay true to the authors' original material and personas as much as possible, use scientific terms, avoid writing in an obviously different manner (e.g. "The phenomenon is visible to the naked eye"), ... to create an illusion that the paper is coherent, well-written and the introduced flaws are as hard to detect as possible.
+The key is to make the paper *embody* the flaw, not just state it as a limitation. You must adopt the persona of an author who is overconfident and either unaware of the flaw or actively downplaying it to make their results seem more significant.
 
 **The Golden Rule:**
 When rewriting, you must follow this golden rule: The flaw should **NOT** be acknowledged as a weakness in the "Limitations" or "Future Work" sections. Instead, the authors should either ignore it completely or misrepresent it as a minor point or even a strength (e.g., "Focusing on a single dataset allowed for a more controlled and in-depth analysis"). The conclusions and abstract must be written with unearned confidence, drawing broad claims from the now-flawed, narrow evidence.

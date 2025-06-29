@@ -14,12 +14,13 @@ openreview_account.json
 ExtractLatex/parsed_arxiv
 ExtractLatex/run_multithreaded_latex_debug*
 AnswerChecklist/filter.py
-AnswerChecklist/data*
+AnswerChecklist/*data*
 *.csv
 AnswerChecklist/*.zip
 log_*.txt
 
 BadPaperGeneration/*_flawed_papers*
+BadPaperGeneration/old
 
 ReproduceCycleReviewer/LLM_Responses/
 ReproduceCycleReviewer/LLM_Responses_Parsed/
