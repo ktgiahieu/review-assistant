@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Tuple, Optional
 from tqdm import tqdm
+import tiktoken
 
 from generation_prompt import ConsensusExtractionPrompt, FlawInjectionPrompt
 
@@ -46,7 +47,26 @@ AZURE_API_KEY = os.environ.get("AZURE_OPENAI_KEY")
 AZURE_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
 AZURE_DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME")
 
+CONTEXT_LENGTH_LIMIT = 200000  # The context limit of the model being used
+TOKEN_BUFFER = 10000 # Buffer for system prompts, response format, etc.
 # --- Helper Functions & Classes ---
+
+def get_tokenizer():
+    """Initializes and returns a tiktoken tokenizer."""
+    try:
+        return tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        return tiktoken.encoding_for_model("gpt-4")
+
+tokenizer = get_tokenizer()
+
+def truncate_text(text: str, max_tokens: int) -> str:
+    """Truncates text to a maximum number of tokens."""
+    tokens = tokenizer.encode(text)
+    if len(tokens) > max_tokens:
+        truncated_tokens = tokens[:max_tokens]
+        return tokenizer.decode(truncated_tokens)
+    return text
 
 def get_openreview_client():
     """Initializes and returns a connected OpenReview client."""
@@ -86,10 +106,25 @@ def format_reviews_for_llm(note_details: dict) -> str:
 
     return "\n".join(output_text)
 
+def clean_heading_text(text: str) -> str:
+    """Aggressively cleans heading text to facilitate matching."""
+    # Remove HTML tags
+    text = re.sub(r'<.*?>', '', text)
+    # Remove markdown links, keeping the link text
+    text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)
+    # Remove LaTeX-like formatting, e.g., \(G\) -> G
+    text = re.sub(r'\\\(', '', text)
+    text = re.sub(r'\\\)', '', text)
+    # Remove common markdown formatting
+    text = text.strip('#* \t\n')
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
 def try_apply_modifications(original_markdown: str, modifications: List[Modification]) -> Tuple[str, bool, Optional[str]]:
     """
-    Tries to apply a list of modifications. Handles headings defined by '#' or '**'.
-    Finds section boundaries by looking for the next heading of any type.
+    Tries to apply a list of modifications. Handles headings defined by '#' or '**'
+    and cleans text to handle complex formatting from the LLM.
     Returns the modified text, a boolean success flag, and the failed heading if any.
     """
     current_markdown = original_markdown
@@ -99,48 +134,46 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
         if not target_heading:
             continue
 
-        # Clean the heading from the LLM to get its core text for matching
-        core_text = target_heading.lstrip('#* ').rstrip('#* ')
+        # Clean the target heading from the LLM for robust matching
+        cleaned_target_text = clean_heading_text(target_heading)
         
-        # This regex looks for a line starting with optional whitespace, 
-        # then either markdown hashes (#) or bold markers (**),
-        # followed by the core text of the heading. It is case-insensitive.
-        start_pattern = re.compile(
-            r"^\s*(?:#+|\*\*)\s*" + re.escape(core_text) + r".*$",
-            re.MULTILINE | re.IGNORECASE
-        )
+        # Split markdown into lines to check each line individually
+        lines = current_markdown.split('\n')
+        match_index = -1
+
+        for i, line in enumerate(lines):
+            cleaned_line_text = clean_heading_text(line)
+            # Find a line that, when cleaned, matches the cleaned target
+            if cleaned_line_text.lower() == cleaned_target_text.lower() and cleaned_line_text != "":
+                match_index = i
+                break
         
-        match = start_pattern.search(current_markdown)
-        
-        if not match:
+        if match_index == -1:
             tqdm.write(f"Failure: Could not find target heading '{target_heading}'.")
             return original_markdown, False, target_heading
 
-        start_index = match.start()
+        start_line = match_index
         
-        # To find the end of the section, we search for the *next* heading of any type
-        # starting from the end of the current heading's line.
-        end_of_heading_line_pos = match.end()
-        
-        # This regex finds any line that starts with markdown hashes or is bolded.
-        next_heading_pattern = re.compile(r"^\s*(?:#+|\*\*).*$", re.MULTILINE)
-        
-        next_match = next_heading_pattern.search(current_markdown, pos=end_of_heading_line_pos)
-        
-        end_index = next_match.start() if next_match else len(current_markdown)
+        # Find the end of the section by looking for the next heading of any type.
+        end_line = len(lines)
+        for i in range(start_line + 1, len(lines)):
+            line = lines[i].strip()
+            # A line is a heading if it starts with # or **
+            if line.startswith('#') or line.startswith('**'):
+                end_line = i
+                break
 
         # Reconstruct the markdown with the modification
-        pre_section = current_markdown[:start_index]
-        post_section = current_markdown[end_index:]
+        pre_section = lines[:start_line]
+        post_section = lines[end_line:]
         
-        new_content = mod.new_content
-        # Ensure the new content ends with a newline to separate it from the next section
-        if not new_content.endswith('\n'):
-            new_content += '\n'
-
-        current_markdown = pre_section + new_content + post_section
+        new_content_lines = mod.new_content.split('\n')
+        
+        # Join sections back together
+        current_markdown = '\n'.join(pre_section + new_content_lines + post_section)
             
     return current_markdown, True, None
+
 
 
 def call_llm_with_retries(client, prompt, response_model, purpose="LLM Call"):
@@ -184,6 +217,12 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
 
         note = or_client.get_note(openreview_id, details='replies')
         review_text = format_reviews_for_llm(note.details)
+        
+        # --- Truncate inputs to avoid context length errors ---
+        review_tokens = len(tokenizer.encode(review_text))
+        paper_max_tokens = CONTEXT_LENGTH_LIMIT - review_tokens - TOKEN_BUFFER
+        truncated_paper_text = truncate_text(original_paper_text, paper_max_tokens)
+
 
         flaw_extraction_prompt = ConsensusExtractionPrompt.generate_prompt_for_review_process(
             review_process=review_text, paper_text=original_paper_text
