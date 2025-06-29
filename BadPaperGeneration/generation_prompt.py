@@ -4,7 +4,7 @@ class ConsensusExtractionPrompt:
     prompt = """
     You will be provided with the review and rebuttal process for a research paper, as well as its content in markdown format. Your task is to analyze the dialogue and identify only the most crucial flaws that the authors acknowledge and must address for this paper to be publishable.
 **Rules:**
-1.  Focus strictly on significant weaknesses in methodology, statistical rigor, or experimental scope that impact the paper's core claims. Ignore minor points like typos or grammatical errors.
+1.  Focus strictly on significant weaknesses in methodology, statistical rigor, or experimental scope that impact the paper's core claims. Ignore minor points like typos or grammatical errors. If there is no specific section for weaknesses, obtain the crucial flaws based on the main idea being discussed between the reviewers and the authors.
 2.  A flaw should only be included in the final list if it meets this specific "consensus" criteria:
     * A reviewer raises it as a major weakness or question.
     * The authors' reply confirms its importance by either:
