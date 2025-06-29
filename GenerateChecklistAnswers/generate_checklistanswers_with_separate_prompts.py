@@ -382,7 +382,9 @@ def process_markdown_file(
                     review_json_content_parsed = json.loads(cleaned_json)
                 except json.JSONDecodeError as e2:
                     if verbose: print("Sanitized JSON also failed:", e2); print(f"\n\nRAW JSON FROM LLM:\n{review_json_content}\n")
-                    raise Exception("Invalid JSON returned from LLM (even after cleaning).")
+                    
+                    # in case of json parsing error, store error in the json so that we can check problematic jsons later
+                    review_json_content_parsed = {"error": "Error serializing json", "error_in_prompt": prompt_dict["name"]}
 
             # First prompt is main prompt so we cretea the json respnse
             # For other prompts we just appent to the checklists
