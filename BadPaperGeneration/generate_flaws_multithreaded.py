@@ -282,6 +282,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
         flaw_response = call_llm_with_retries(azure_client, flaw_extraction_prompt, FlawExtractionResponse, "Flaw Extraction")
 
         if not flaw_response or not flaw_response.critical_flaws:
+            tqdm.write(f"Worker {worker_id}: No critical flaws found or extracted for {openreview_id}.")
             return []
 
         results_for_global_csv = []
@@ -303,6 +304,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
                 mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
 
                 if not mod_response or not mod_response.modifications:
+                    tqdm.write(f"Worker {worker_id}: LLM returned no modifications for flaw '{flaw.flaw_id}'. Not retrying for this flaw.")
                     break 
 
                 # --- Attempt to apply the modifications ---
