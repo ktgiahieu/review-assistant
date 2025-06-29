@@ -90,7 +90,7 @@ def get_openreview_client(venue):
                 password=OPENREVIEW_PASSWORD
             )
             client_version = "v1"
-        return client
+        return client, client_version
     except Exception as e:
         print(f"Failed to connect to OpenReview: {e}")
         return None
@@ -250,7 +250,7 @@ def call_llm_with_retries(client, prompt, response_model, purpose="LLM Call"):
 
     return None
 
-def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Path, or_client, azure_client):
+def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Path, or_client, azure_client, or_client_version):
     """Main worker function to process a single paper."""
     worker_id = threading.get_ident()
     MAX_MODIFICATION_ATTEMPTS = 3
@@ -261,10 +261,13 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
         with open(paper_md_path, 'r', encoding='utf-8') as f:
             original_paper_text = f.read()
 
-        try:
+        if or_client_version == "v2":
             note = or_client.get_note(openreview_id, details='replies')
-        except:
+        elif or_client_version == "v1":
             note = or_client.get_note(openreview_id)
+        else:
+            raise ValueError(f"Unknown OpenReview client version: {or_client_version}")
+
         review_text = format_reviews_for_llm(note.details)
         
         # --- Truncate inputs to avoid context length errors ---
@@ -394,7 +397,7 @@ def main():
     
     print(f"Found {len(paper_paths)} papers to process.")
 
-    or_client = get_openreview_client(args.venue)
+    or_client, or_client_version = get_openreview_client(args.venue)
     if not or_client:
         print("Failed to initialize OpenReview client. Check credentials or network. Exiting.")
         return
@@ -415,7 +418,7 @@ def main():
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as executor:
         future_to_path = {
-            executor.submit(process_paper, path, input_base_dir, output_base_dir, or_client, azure_client): path
+            executor.submit(process_paper, path, input_base_dir, output_base_dir, or_client, azure_client, or_client_version): path
             for path in paper_paths
         }
         
