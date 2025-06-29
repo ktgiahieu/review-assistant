@@ -143,8 +143,14 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
 
         for i, line in enumerate(lines):
             cleaned_line_text = clean_heading_text(line)
-            # Find a line that, when cleaned, matches the cleaned target
-            if cleaned_line_text.lower() == cleaned_target_text.lower() and cleaned_line_text != "":
+            # Find a line that, when cleaned, is a near-perfect match for the cleaned target.
+            # We check if they are equal, or if one starts with the other, to handle
+            # cases where one might have extra text like a reference ID.
+            if cleaned_line_text and cleaned_target_text and (
+                cleaned_line_text.lower() == cleaned_target_text.lower() or
+                cleaned_line_text.lower().startswith(cleaned_target_text.lower()) or
+                cleaned_target_text.lower().startswith(cleaned_line_text.lower())
+            ):
                 match_index = i
                 break
         
@@ -173,6 +179,7 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
         current_markdown = '\n'.join(pre_section + new_content_lines + post_section)
             
     return current_markdown, True, None
+
 
 
 
