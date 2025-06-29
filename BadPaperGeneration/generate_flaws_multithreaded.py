@@ -106,8 +106,11 @@ def format_reviews_for_llm(note_details: dict) -> str:
 
     return "\n".join(output_text)
 
-def clean_heading_text(text: str) -> str:
-    """Aggressively cleans heading text to facilitate matching."""
+def clean_heading_text_aggressively(text: str) -> str:
+    """
+    This is the most aggressive cleaning function, used as a last resort.
+    It strips almost all non-alphanumeric characters.
+    """
     # Remove HTML tags, e.g., <span...>
     text = re.sub(r'<.*?>', '', text)
     # Remove markdown reference-style links, e.g., [sec:comparison]
@@ -126,68 +129,78 @@ def clean_heading_text(text: str) -> str:
 
 def try_apply_modifications(original_markdown: str, modifications: List[Modification]) -> Tuple[str, bool, Optional[str]]:
     """
-    Tries to apply a list of modifications. Handles headings defined by '#' or '**'
-    and cleans text to handle complex formatting from the LLM.
-    Returns the modified text, a boolean success flag, and the failed heading if any.
+    Tries to apply a list of modifications using a tiered matching strategy,
+    from most to least strict, to ensure accuracy.
     """
     current_markdown = original_markdown
+    lines = original_markdown.split('\n')
     
     for mod in modifications:
         target_heading = mod.target_heading.strip()
         if not target_heading:
             continue
 
-        # Clean the target heading from the LLM for robust matching
-        cleaned_target_text = clean_heading_text(target_heading)
-        
-        # Split markdown into lines to check each line individually
-        lines = current_markdown.split('\n')
         match_index = -1
 
+        # Tier 1: Exact, verbatim match (highest precision)
         for i, line in enumerate(lines):
-            cleaned_line_text = clean_heading_text(line)
-            
-            # Skip empty lines to avoid false matches
-            if not cleaned_line_text or not cleaned_target_text:
-                continue
-
-            # The matching logic:
-            # 1. Exact match of cleaned text (safest)
-            # 2. Check if the cleaned line *starts with* the cleaned target. This handles
-            #    cases where a heading is on the same line as the start of a paragraph.
-            #    e.g. "**Title.** Body..."
-            # 3. Check if the cleaned target starts with the cleaned line. This handles cases
-            #    where the LLM adds a reference ID that we stripped, but the doc doesn't have it.
-            if (cleaned_line_text.lower() == cleaned_target_text.lower() or
-                cleaned_line_text.lower().startswith(cleaned_target_text.lower()) or
-                cleaned_target_text.lower().startswith(cleaned_line_text.lower())):
+            if line.strip() == target_heading:
                 match_index = i
                 break
         
+        # Tier 2: Match after stripping leading/trailing whitespace and markdown characters
+        if match_index == -1:
+            semi_cleaned_target = target_heading.strip('#* \t')
+            for i, line in enumerate(lines):
+                semi_cleaned_line = line.strip().strip('#* \t')
+                if semi_cleaned_line == semi_cleaned_target and semi_cleaned_line:
+                    match_index = i
+                    break
+
+        # Tier 3: Aggressive cleaning (last resort)
+        # This handles complex cases with embedded HTML, LaTeX, etc.
+        if match_index == -1:
+            aggressively_cleaned_target = clean_heading_text_aggressively(target_heading)
+            for i, line in enumerate(lines):
+                aggressively_cleaned_line = clean_heading_text_aggressively(line)
+                
+                if not aggressively_cleaned_line or not aggressively_cleaned_target:
+                    continue
+
+                # Use startswith for leniency, as cleaned lines might have extra text
+                if aggressively_cleaned_line.lower().startswith(aggressively_cleaned_target.lower()):
+                    match_index = i
+                    break
+
         if match_index == -1:
             tqdm.write(f"Failure: Could not find target heading '{target_heading}'.")
             return original_markdown, False, target_heading
 
+        # --- If a match was found, apply the modification ---
         start_line = match_index
         
         # Find the end of the section by looking for the next heading of any type.
         end_line = len(lines)
         for i in range(start_line + 1, len(lines)):
-            line = lines[i].strip()
-            # A line is a heading if it starts with #, is bold (**...**), or italic (*...* but not ***...***)
-            if line.startswith('#') or (line.startswith('**') and line.endswith('**')) or \
-               (line.startswith('*') and line.endswith('*') and not line.startswith('**')):
+            line_to_check = lines[i].strip()
+            # A line is considered a heading if it starts with '#' or is fully bolded/italicized
+            is_hash_heading = line_to_check.startswith('#')
+            is_bold_heading = line_to_check.startswith('**') and line_to_check.endswith('**')
+            is_italic_heading = line_to_check.startswith('*') and line_to_check.endswith('*') and not is_bold_heading
+
+            if is_hash_heading or is_bold_heading or is_italic_heading:
                 end_line = i
                 break
 
         # Reconstruct the markdown with the modification
-        pre_section = lines[:start_line]
-        post_section = lines[end_line:]
+        pre_section_lines = lines[:start_line]
+        post_section_lines = lines[end_line:]
         
         new_content_lines = mod.new_content.split('\n')
         
-        # Join sections back together
-        current_markdown = '\n'.join(pre_section + new_content_lines + post_section)
+        # Join sections back together. We must operate on the list of lines to preserve structure.
+        lines = pre_section_lines + new_content_lines + post_section_lines
+        current_markdown = '\n'.join(lines)
             
     return current_markdown, True, None
 
