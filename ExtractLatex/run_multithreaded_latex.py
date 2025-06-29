@@ -364,7 +364,10 @@ def _process_single_paper_id_worker(paper_id_candidate, or_client, ar_client, de
     # print(f"[{thread_name}] Worker started for OR ID: {paper_id_candidate}")
     try:
         note = or_client.get_note(id=paper_id_candidate)
-        paper_title_original = note.content.get('title', {}).get('value', '')
+        print(note.content)
+        paper_title_original = note.content.get('title', {})
+        if not isinstance(paper_title_original, str):
+            paper_title_original = paper_title_original.get('value', '')
         paper_title_lower = paper_title_original.lower()
 
         if not paper_title_lower:
