@@ -56,9 +56,11 @@ The JSON output should follow this structure:
 Rules:
 1. JSON format: Your response MUST be a single, valid JSON object that conforms to the schema provided above. Do not include any html tags in the response. Do not include any invalid characters in the JSON respones. Do not include any text, markdown, or code formatting before or after the JSON object.
 
+
+BEGIN OF COMPLIANCE LIST:
 A. Compliance
-</h1>
 {compliance_list}
+END OF COMPLIANCE LIST
 
 
 BEGIN OF PROVIDED CONFERENCE PAPER:
@@ -100,10 +102,10 @@ Rules:
 1. JSON format: Your response MUST be a single, valid JSON object that conforms to the schema provided above. Do not include any html tags in the response. Do not include any invalid characters in the JSON respones. Do not include any text, markdown, or code formatting before or after the JSON object.
 
 
-<h1>
+BEGIN OF CONTRIBUTION LIST:
 B. Contribution
-</h1>
 {contribution_list}
+END OF CONTRIBUTION LIST
 
 
 BEGIN OF PROVIDED CONFERENCE PAPER:
@@ -145,10 +147,11 @@ Rules:
 1. JSON format: Your response MUST be a single, valid JSON object that conforms to the schema provided above. Do not include any html tags in the response. Do not include any invalid characters in the JSON respones. Do not include any text, markdown, or code formatting before or after the JSON object.
 
 
-<h1>
+BEGIN OF SOUNDNESS LIST:
 C. Soundness
-</h1>
 {soundness_list}
+END OF SOUNDNESS LIST
+
 
 BEGIN OF PROVIDED CONFERENCE PAPER:
 {paper}
@@ -189,10 +192,10 @@ Rules:
 1. JSON format: Your response MUST be a single, valid JSON object that conforms to the schema provided above. Do not include any html tags in the response. Do not include any invalid characters in the JSON respones. Do not include any text, markdown, or code formatting before or after the JSON object.
 
 
-<h1>
+BEGIN OF PRESENTATION LIST:
 D. Presentation
-</h1>
 {presentation_list}
+END OF PRESENTATION LIST
 
 
 BEGIN OF PROVIDED CONFERENCE PAPER:
