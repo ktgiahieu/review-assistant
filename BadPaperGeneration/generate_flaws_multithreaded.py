@@ -68,7 +68,7 @@ def truncate_text(text: str, max_tokens: int) -> str:
         return tokenizer.decode(truncated_tokens)
     return text
 
-def get_openreview_client():
+def get_openreview_client(venue):
     """Initializes and returns a connected OpenReview client."""
     try:
         client = openreview.api.OpenReviewClient(
@@ -76,10 +76,26 @@ def get_openreview_client():
             username=OPENREVIEW_USERNAME,
             password=OPENREVIEW_PASSWORD
         )
+        # Get correct client version for this venue
+        client_version = "v2"
+        api_venue_group = client.get_group(venue)
+        api_venue_domain = api_venue_group.domain
+        if api_venue_domain:
+            print("This venue is available for OpenReview Client V2. Proceeding...")
+        else:
+            print("This venue is not available for OpenReview Client V2. Switching to Client V1...")
+            client = openreview.Client(
+                baseurl='https://api.openreview.net', 
+                username=OPENREVIEW_USERNAME, 
+                password=OPENREVIEW_PASSWORD
+            )
+            client_version = "v1"
         return client
     except Exception as e:
         print(f"Failed to connect to OpenReview: {e}")
         return None
+    
+    
 
 def format_reviews_for_llm(note_details: dict) -> str:
     """Formats OpenReview note details into a clean text block for LLM analysis."""
@@ -245,7 +261,10 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
         with open(paper_md_path, 'r', encoding='utf-8') as f:
             original_paper_text = f.read()
 
-        note = or_client.get_note(openreview_id, details='replies')
+        try:
+            note = or_client.get_note(openreview_id, details='replies')
+        except:
+            note = or_client.get_note(openreview_id)
         review_text = format_reviews_for_llm(note.details)
         
         # --- Truncate inputs to avoid context length errors ---
@@ -351,6 +370,7 @@ def main():
     parser.add_argument("--input_dir", type=str, required=True, help="Base input directory (e.g., 'ICLR2024_latest').")
     parser.add_argument("--output_dir", type=str, default="flawed_papers_v2", help="Directory to save the flawed papers and results CSV.")
     parser.add_argument("--max_workers", type=int, default=4, help="Number of parallel threads to run.")
+    parser.add_argument("--venue", default="ICLR.cc/2025/Conference", help="OpenReview venue ID (e.g., ICLR.cc/2024/Conference)")
     args = parser.parse_args()
 
     # --- Environment Variable Check ---
@@ -374,7 +394,7 @@ def main():
     
     print(f"Found {len(paper_paths)} papers to process.")
 
-    or_client = get_openreview_client()
+    or_client = get_openreview_client(args.venue)
     if not or_client:
         print("Failed to initialize OpenReview client. Check credentials or network. Exiting.")
         return
