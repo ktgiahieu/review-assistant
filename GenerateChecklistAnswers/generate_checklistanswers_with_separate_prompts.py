@@ -338,8 +338,11 @@ def process_markdown_file(
             if verbose: print(f"Worker {worker_id}: Preparing to send request to Azure OpenAI for {markdown_file_path}...")
             
             # Completion Arguments for Azure API Call
-            completion_args = {"model": deployment_name, "messages": [{"role": "user", "content": content_list}]}
-            
+            completion_args = {
+                "model": deployment_name,
+                "messages": [{"role": "user", "content": content_list}],
+                "timeout": 600.0,
+            }
             if max_tokens_completion is not None: completion_args["max_tokens"] = max_tokens_completion
                 
             response_obj = None; last_exception = None

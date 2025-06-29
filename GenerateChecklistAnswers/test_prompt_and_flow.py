@@ -82,7 +82,7 @@ def generate_html_from_review(review):
 
 def load_paper():
     print("Loading paper")
-    paper_path = "./data/ICLR2024_Sample/accepted/0akLDTFR9x_2310_20141v1/structured_paper_output/paper.md"
+    paper_path = "./data/ICLR2024_latest/accepted/0akLDTFR9x_2310_20141/structured_paper_output/paper.md"
     with open(paper_path, "r", encoding="utf-8") as f:
         paper = f.read()
         return paper
@@ -95,8 +95,13 @@ def get_LLM_response(prompt):
         "model": DEPLOYMENT,
         "messages": messages
     }
-    llm_response = openai_client.chat.completions.create(**completion_args)
-    response = llm_response.choices[0].message.content
+    try:
+        llm_response = openai_client.chat.completions.create(**completion_args)
+        response = llm_response.choices[0].message.content
+    except Exception as e:
+        print(f"Error: {e}")
+        return {}
+
     try:
         json_response = json.loads(response)
     except json.JSONDecodeError as e:
@@ -106,12 +111,12 @@ def get_LLM_response(prompt):
 
 
 def get_responses(paper):
-    main_prompt = MainPrompt.get_main_prompt(paper)
+    main_prompt = MainPrompt.get_prompt(paper)
     checklist_prompts = [
-        CompliancePrompt.get_compliance_prompt(paper),
-        ContributionPrompt.get_contribution_prompt(paper),
-        SoundnessPrompt.get_soundness_prompt(paper),
-        PresentationPrompt.get_presentation_prompt(paper),
+        CompliancePrompt.get_prompt(paper),
+        ContributionPrompt.get_prompt(paper),
+        SoundnessPrompt.get_prompt(paper),
+        PresentationPrompt.get_prompt(paper),
     ]
 
     print("Main prompt")

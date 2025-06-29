@@ -45,3 +45,4 @@ FeatureExtractionForBiasAnalysis/Data/
 
 .env
 GenerateChecklistAnswers/data/
+GenerateChecklistAnswers/checklists/
