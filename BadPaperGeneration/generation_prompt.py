@@ -6,7 +6,7 @@ class ConsensusExtractionPrompt:
 **Rules:**
 1.  Focus strictly on significant weaknesses in methodology, statistical rigor, or experimental scope that impact the paper's core claims. Ignore minor points like typos or grammatical errors. If there is no specific section for weaknesses, obtain the crucial flaws based on the main idea being discussed between the reviewers and the authors.
 2.  A flaw should only be included in the final list if it meets this specific "consensus" criteria:
-    * A reviewer raises it as a major weakness or question.
+    * A reviewer raises it as a major weakness, question, or limitation that needs to be adressed.
     * The authors' reply confirms its importance by either:
         a) Promising to add the required analysis, data, or clarification to the final, camera-ready version of the paper.
         b) Explicitly agreeing that it is a major limitation of the current study's scope.
