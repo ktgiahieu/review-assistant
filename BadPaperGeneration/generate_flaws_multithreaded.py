@@ -256,7 +256,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
     MAX_MODIFICATION_ATTEMPTS = 3
     try:
         paper_folder = paper_md_path.parent.parent
-        openreview_id = paper_folder.name.split('_')[0]
+        openreview_id = '_'.join(paper_folder.name.split('_')[:-2])
         
         with open(paper_md_path, 'r', encoding='utf-8') as f:
             original_paper_text = f.read()
