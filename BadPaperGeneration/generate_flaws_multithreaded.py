@@ -108,16 +108,19 @@ def format_reviews_for_llm(note_details: dict) -> str:
 
 def clean_heading_text(text: str) -> str:
     """Aggressively cleans heading text to facilitate matching."""
-    # Remove HTML tags
+    # Remove HTML tags, e.g., <span...>
     text = re.sub(r'<.*?>', '', text)
-    # Remove markdown links, keeping the link text
+    # Remove markdown reference-style links, e.g., [sec:comparison]
+    text = re.sub(r'\[[^\]]*?\]', '', text)
+    # Remove markdown inline links, keeping the link text, e.g., [text](url) -> text
     text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)
-    # Remove LaTeX-like formatting, e.g., \(G\) -> G
-    text = re.sub(r'\\\(', '', text)
-    text = re.sub(r'\\\)', '', text)
-    # Remove common markdown formatting
-    text = text.strip('#* \t\n')
-    # Normalize whitespace
+    # Remove all LaTeX commands and math delimiters
+    text = re.sub(r'\\[a-zA-Z@]+({.*?})?|[\{\}\$\(\)\\]', '', text)
+    # Remove leading/trailing markdown markup and whitespace
+    text = text.strip().strip('#*').strip()
+    # Remove trailing punctuation that might differ
+    text = text.rstrip('.,;:')
+    # Normalize internal whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -143,14 +146,21 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
 
         for i, line in enumerate(lines):
             cleaned_line_text = clean_heading_text(line)
-            # Find a line that, when cleaned, is a near-perfect match for the cleaned target.
-            # We check if they are equal, or if one starts with the other, to handle
-            # cases where one might have extra text like a reference ID.
-            if cleaned_line_text and cleaned_target_text and (
-                cleaned_line_text.lower() == cleaned_target_text.lower() or
+            
+            # Skip empty lines to avoid false matches
+            if not cleaned_line_text or not cleaned_target_text:
+                continue
+
+            # The matching logic:
+            # 1. Exact match of cleaned text (safest)
+            # 2. Check if the cleaned line *starts with* the cleaned target. This handles
+            #    cases where a heading is on the same line as the start of a paragraph.
+            #    e.g. "**Title.** Body..."
+            # 3. Check if the cleaned target starts with the cleaned line. This handles cases
+            #    where the LLM adds a reference ID that we stripped, but the doc doesn't have it.
+            if (cleaned_line_text.lower() == cleaned_target_text.lower() or
                 cleaned_line_text.lower().startswith(cleaned_target_text.lower()) or
-                cleaned_target_text.lower().startswith(cleaned_line_text.lower())
-            ):
+                cleaned_target_text.lower().startswith(cleaned_line_text.lower())):
                 match_index = i
                 break
         
@@ -164,8 +174,9 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
         end_line = len(lines)
         for i in range(start_line + 1, len(lines)):
             line = lines[i].strip()
-            # A line is a heading if it starts with # or **
-            if line.startswith('#') or line.startswith('**'):
+            # A line is a heading if it starts with #, is bold (**...**), or italic (*...* but not ***...***)
+            if line.startswith('#') or (line.startswith('**') and line.endswith('**')) or \
+               (line.startswith('*') and line.endswith('*') and not line.startswith('**')):
                 end_line = i
                 break
 
@@ -179,7 +190,6 @@ def try_apply_modifications(original_markdown: str, modifications: List[Modifica
         current_markdown = '\n'.join(pre_section + new_content_lines + post_section)
             
     return current_markdown, True, None
-
 
 
 
@@ -232,7 +242,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
 
 
         flaw_extraction_prompt = ConsensusExtractionPrompt.generate_prompt_for_review_process(
-            review_process=review_text, paper_text=original_paper_text
+            review_process=review_text, paper_text=truncated_paper_text
         )
         flaw_response = call_llm_with_retries(azure_client, flaw_extraction_prompt, FlawExtractionResponse, "Flaw Extraction")
 
