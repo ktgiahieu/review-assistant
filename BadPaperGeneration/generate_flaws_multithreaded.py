@@ -62,7 +62,7 @@ tokenizer = get_tokenizer()
 
 def truncate_text(text: str, max_tokens: int) -> str:
     """Truncates text to a maximum number of tokens."""
-    tokens = tokenizer.encode(text)
+    tokens = tokenizer.encode(text, allowed_special="all")
     if len(tokens) > max_tokens:
         truncated_tokens = tokens[:max_tokens]
         return tokenizer.decode(truncated_tokens)
@@ -249,7 +249,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
         review_text = format_reviews_for_llm(note.details)
         
         # --- Truncate inputs to avoid context length errors ---
-        review_tokens = len(tokenizer.encode(review_text))
+        review_tokens = len(tokenizer.encode(review_text, allowed_special="all"))
         paper_max_tokens = CONTEXT_LENGTH_LIMIT - review_tokens - TOKEN_BUFFER
         truncated_paper_text = truncate_text(original_paper_text, paper_max_tokens)
 
