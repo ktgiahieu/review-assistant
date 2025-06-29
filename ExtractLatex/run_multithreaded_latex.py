@@ -617,31 +617,64 @@ def main():
     except Exception as e:
         print(f"[-] Failed to connect to OpenReview: {e}", file=sys.stderr)
         sys.exit(1)
+        
+    # Get correct client version for this venue
+    client_version = "v2"
+    api_venue_group = openreview_client.get_group(args.venue)
+    api_venue_domain = api_venue_group.domain
+    if api_venue_domain:
+        print("This venue is available for OpenReview Client V2. Proceeding...")
+    else:
+        print("This venue is not available for OpenReview Client V2. Switching to Client V1...")
+        openreview_client = openreview.Client(
+            baseurl='https://api.openreview.net', 
+            username=openreview_username, 
+            password=openreview_password
+        )
+        client_version = "v1"
 
     # Get paper IDs from OpenReview
     print(f"[*] Fetching paper IDs for venue: {args.venue}")
-    try:
-        venue_group = openreview_client.get_group(args.venue)
-        # submission_name = venue_group.content['submission_name']['value'] # Not directly used later
+    if client_version == "v2":
+        try:
+            venue_group = openreview_client.get_group(args.venue)
+            # submission_name = venue_group.content['submission_name']['value'] # Not directly used later
 
-        # Accepted papers
-        accepted_submissions_iterator = openreview_client.get_all_notes(content={'venueid': args.venue}, details='direct')
-        all_accepted_ids = [item.id for item in accepted_submissions_iterator]
-        print(f"[*] Found {len(all_accepted_ids)} accepted papers.")
+            # Accepted papers
+            accepted_submissions_iterator = openreview_client.get_all_notes(content={'venueid': args.venue}, details='direct')
+            all_accepted_ids = [item.id for item in accepted_submissions_iterator]
+            print(f"[*] Found {len(all_accepted_ids)} accepted papers.")
 
-        # Rejected papers
-        rejected_venue_id_key = venue_group.content.get('rejected_venue_id', {}).get('value')
-        if rejected_venue_id_key:
-            rejected_submissions_iterator = openreview_client.get_all_notes(content={'venueid': rejected_venue_id_key}, details='direct')
-            all_rejected_ids = [item.id for item in rejected_submissions_iterator]
-            print(f"[*] Found {len(all_rejected_ids)} rejected papers.")
-        else:
-            all_rejected_ids = []
-            print("[!] 'rejected_venue_id' not found for this venue. Skipping rejected papers.")
+            # Rejected papers
+            rejected_venue_id_key = venue_group.content.get('rejected_venue_id', {}).get('value')
+            if rejected_venue_id_key:
+                rejected_submissions_iterator = openreview_client.get_all_notes(content={'venueid': rejected_venue_id_key}, details='direct')
+                all_rejected_ids = [item.id for item in rejected_submissions_iterator]
+                print(f"[*] Found {len(all_rejected_ids)} rejected papers.")
+            else:
+                all_rejected_ids = []
+                print("[!] 'rejected_venue_id' not found for this venue. Skipping rejected papers.")
 
-    except Exception as e:
-        print(f"[-] Error fetching data from OpenReview for venue {args.venue}: {e}", file=sys.stderr)
-        sys.exit(1)
+        except Exception as e:
+            print(f"[-] Error fetching data from OpenReview for venue {args.venue}: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif client_version == "v1":
+        submissions = openreview_client.get_all_notes(invitation = f'{args.venue}/-/Blind_Submission', details='directReplies')
+        blind_notes = {note.id: note for note in submissions}
+        all_decision_notes = []
+        for submission_id, submission in blind_notes.items():
+                all_decision_notes = all_decision_notes + [reply for reply in submission.details["directReplies"] if reply["invitation"].endswith("Decision")]
+        all_accepted_ids = []
+        all_rejected_ids = []
+
+        for decision_note in all_decision_notes:
+            if 'Accept' in decision_note["content"]['decision']:
+                all_accepted_ids.append(decision_note['forum'])
+            else:
+                all_rejected_ids.append(decision_note['forum'])
+
+    else:
+        raise ValueError(f"Unknown client version: {client_version}")
 
     # Filter if --num_accepted or --num_rejected is set
     if args.num_accepted is not None and args.num_accepted < len(all_accepted_ids):

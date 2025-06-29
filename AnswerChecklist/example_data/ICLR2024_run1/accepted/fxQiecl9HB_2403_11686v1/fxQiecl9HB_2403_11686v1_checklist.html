@@ -3,7 +3,7 @@
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-<title>Checklist Review: {review.paper_title}</title>
+<title>Checklist Review: Crystalformer: Infinitely Connected Attention for Periodic Structure Encoding</title>
 <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 20px auto; padding: 0 15px; }
             h1, h2 { color: #111; border-bottom: 2px solid #eee; padding-bottom: 10px; }
@@ -21,10 +21,10 @@
 <h1>Crystalformer: Infinitely Connected Attention for Periodic Structure Encoding</h1>
 <p><strong>Paper Link:</strong> <a href='https://openreview.net/forum?id=fxQiecl9HB'>https://openreview.net/forum?id=fxQiecl9HB</a></p>
 <h2>Formatted Abstract</h2>
-<div class='abstract-section'><p><strong>Background and Objectives:</strong> Transformer encoders with fully–connected attention work well for molecules, but crystal structures are periodic and require handling infinite repetitions; existing methods either break periodicity or deviate from standard Transformers.</p>
-<p><strong>Material and Methods:</strong> The authors reinterpret fully connected attention under periodicity as a tractable ‘neural potential summation’, derive pseudo-finite periodic attention with Gaussian distance decay, and build Crystalformer— a normalization-free, 4-block Transformer that embeds periodic spatial and edge encodings. Training is performed on Materials Project and JARVIS-DFT datasets using Adam with weight decay and stochastic weight averaging; no new data are collected and code is released.</p>
-<p><strong>Results:</strong> Crystalformer uses only 29 % of Matformer’s parameters yet surpasses state-of-the-art GNN and Transformer baselines on nine crystal-property regression tasks, achieving lowest MAE on most targets; ablations confirm benefits of value position encoding and dense attention. Model inference is fastest among compared methods.</p>
-<p><strong>Conclusion:</strong> Neural potential summation enables a simple, efficient, fully connected Transformer for periodic structures that attains superior accuracy. Extensions to reciprocal-space attention for long-range interactions and incorporation of angular information are outlined as future work.</p></div>
+<div class='abstract-section'><p><strong>Background and Objectives:</strong> Crystal structures are infinite periodic arrangements of atoms; predicting their physical properties without expensive simulations is critical for accelerated material discovery. Transformer models have excelled on finite molecular graphs, but naively extending fully-connected attention to infinite periodic systems appears intractable.</p>
+<p><strong>Material and Methods:</strong> The authors reinterpret fully-connected attention under periodic boundary conditions as a tractable "neural potential summation" with Gaussian distance-decay.  They derive closed-form pseudo-finite periodic attention, introduce periodic spatial/edge encodings, and build Crystalformer—a normalization-free, four-block Transformer that pools atom states for property regression.  Training details and adaptive truncation for summations are provided; code is released.</p>
+<p><strong>Results:</strong> On nine regression tasks from the Materials Project and JARVIS-DFT datasets, Crystalformer achieves lower mean absolute errors than prior GNNs, Transformer variants, and physics-informed PotNet while using only 29 % of Matformer’s parameters and yielding fastest inference. Ablations show the necessity of value position encodings and efficacy of reciprocal-space extensions.</p>
+<p><strong>Conclusion:</strong> Crystalformer establishes an efficient, physically-motivated Transformer framework for periodic materials, outperforming state-of-the-art baselines with fewer parameters and offering a unified view of infinite potential summations as attention.  Extensions to reciprocal space and higher-order/geometric information are discussed as future work.</p></div>
 <h2>A. Compliance</h2>
 <table>
 <tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
@@ -32,217 +32,217 @@
 <td>A1</td>
 <td>Does the paper discuss potential positive societal impacts of the work?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No section explicitly discusses positive societal or broader impacts; discussion focuses on technical limitations and future work.</td>
+<td>No dedicated positive-impact discussion is present; focus remains on technical contributions.</td>
 </tr>
 <tr>
 <td>A2</td>
 <td>Does the paper discuss potential negative societal impacts or risks of the work?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>The manuscript contains no explicit consideration of negative impacts or misuse scenarios.</td>
+<td>The manuscript does not contain an explicit negative-impact or risk analysis section.</td>
 </tr>
 <tr>
 <td>A3</td>
 <td>If negative societal impacts or risks are identified, does the paper discuss potential mitigation strategies?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No negative impacts were identified or discussed.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No risks are identified; hence no mitigations are proposed.</td>
 </tr>
 <tr>
 <td>A4</td>
 <td>Does the paper describe safeguards for responsible release of data or models with high misuse risk?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The released code poses low misuse risk; no special safeguards are needed or described.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Code release is mentioned but no safeguards or usage restrictions are discussed.</td>
 </tr>
 <tr>
 <td>A5</td>
 <td>Are the creators or original owners of all used assets (e.g., code, data, models) properly credited in the paper?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Materials Project and JARVIS-DFT datasets and baseline codes are cited with appropriate references in Related Work and Experiments sections.</td>
+<td>Datasets (Materials Project, JARVIS-DFT) and baseline codes (AIRS library etc.) are cited extensively in Related Work and Experiments.</td>
 </tr>
 <tr>
 <td>A6</td>
 <td>Are the license and terms of use for all used assets explicitly mentioned and respected in the paper?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>While datasets are public, the paper does not state their licenses or terms of use.</td>
+<td>Licensing terms for datasets or released code are not stated.</td>
 </tr>
 <tr>
 <td>A7</td>
-<td>For research involving human subjects or participants, does the paper indicate that informed consent was obtained from all participants, and/or a clear explanation provided?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The study uses only computational materials data; no human subjects are involved.</td>
+<td>For research involving human subjects or participants (including crowdsourcing), does the paper indicate that informed consent was obtained from all participants?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>The work contains no human-subject component; the paper does not address informed consent.</td>
 </tr>
 <tr>
 <td>A8</td>
-<td>For research involving human subjects or participants, does the paper detail compensation, and was it ensured to be fair?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No human participants.</td>
+<td>For research involving human subjects or participants, does the paper detail compensation?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Not applicable; no human participants.</td>
 </tr>
 <tr>
 <td>A9</td>
-<td>For crowdsourcing experiments, does the paper include or provide access to the full text of instructions given to participants and relevant screenshots (if applicable)?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No crowdsourcing was conducted.</td>
+<td>For crowdsourcing experiments, does the paper include or provide access to full text of instructions given to participants?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No crowdsourcing was employed.</td>
 </tr>
 <tr>
 <td>A10</td>
 <td>Does the paper describe potential risks to study participants, if any?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No human or animal participants.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No participants involved, hence no risk discussion.</td>
 </tr>
 <tr>
 <td>A11</td>
 <td>Does the paper describe whether any identified risks to study participants were disclosed to them prior to their participation?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Irrelevant; no study participants.</td>
 </tr>
 <tr>
 <td>A12</td>
-<td>Does the paper describe whether Institutional Review Board (IRB) approvals (or an equivalent ethics review process based on institutional/national guidelines) were obtained for research with human subjects?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No human subjects research.</td>
+<td>Does the paper describe whether Institutional Review Board (IRB) approvals (or an equivalent ethics review process) were obtained for research with human subjects?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No human-subject study; IRB not required and not discussed.</td>
 </tr>
 <tr>
 <td>A13</td>
 <td>Is the status of IRB approval (or equivalent ethics review) clearly stated in the paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>See A12.</td>
 </tr>
 <tr>
 <td>A14</td>
-<td>If IRB approval (or equivalent ethics review) was not required or obtained for research involving human subjects, is a clear justification provided in the paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td>If IRB approval was not required or obtained, is a clear justification provided in the paper?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No explicit justification, though absence of human data implies exemption.</td>
 </tr>
 <tr>
 <td>A15</td>
 <td>Does the research avoid using datasets that are known to be deprecated or have been taken down by their original creators?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Materials Project and JARVIS-DFT are actively maintained public databases.</td>
+<td>Materials Project and JARVIS-DFT are active public resources; no deprecation noted.</td>
 </tr>
 <tr>
 <td>A16</td>
-<td>If new datasets were collected or existing datasets were significantly modified, were appropriate measures taken to assess and communicate their representativeness for the intended population and task, as indicated in the paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The work uses unmodified public datasets; no new data collection.</td>
+<td>If new datasets were collected or existing datasets were significantly modified, were appropriate measures taken to assess and communicate their representativeness?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No new data collected; only standard benchmarks used.</td>
 </tr>
 <tr>
 <td>A17</td>
-<td>Does the research avoid primarily aiming to develop or enhance the lethality of weapons systems?</td>
+<td>Does the research avoid primarily aiming to develop or enhance lethality of weapons systems?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>The goal is property prediction for materials discovery, not weapons.</td>
+<td>Work focuses on property prediction for materials; no connection to weaponry.</td>
 </tr>
 <tr>
 <td>A18</td>
-<td>Has the research considered and addressed potential security vulnerabilities or risks of accidents if the developed system or technology were deployed in real-world scenarios?</td>
+<td>Has the research considered and addressed potential security vulnerabilities or risks of accidents if the developed system were deployed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Security or safety implications of deployment are not discussed.</td>
+<td>Security considerations are not addressed.</td>
 </tr>
 <tr>
 <td>A19</td>
-<td>Has the research considered and addressed how the technology could be used to discriminate, exclude, or otherwise unfairly negatively impact individuals or groups, particularly those with protected characteristics?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The domain (crystal structure prediction) has no direct human-impact discrimination vectors.</td>
+<td>Has the research considered and addressed how the technology could be used to discriminate, exclude, or otherwise unfairly negatively impact individuals or groups?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No discussion of discrimination or fairness, likely because domain is inorganic materials.</td>
 </tr>
 <tr>
 <td>A20</td>
-<td>If bulk surveillance data was used, was its collection, processing, and analysis compliant with all relevant local and international laws and ethical guidelines regarding surveillance and privacy?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No surveillance data used.</td>
+<td>If bulk surveillance data was used, was its collection, processing, and analysis compliant with relevant laws and ethical guidelines?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No surveillance data employed.</td>
 </tr>
 <tr>
 <td>A21</td>
-<td>Does the research avoid using surveillance data in ways that could predict protected characteristics or otherwise endanger individual well-being or rights?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable to materials datasets.</td>
+<td>Does the research avoid using surveillance data in ways that could endanger individual well-being or rights?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Study relies solely on public materials-science databases without personal data.</td>
 </tr>
 <tr>
 <td>A22</td>
-<td>Has the research considered and addressed the risk of the technology being used to facilitate deceptive interactions (e.g., creating deepfakes for disinformation), harassment, or fraud?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The method is specific to materials science and not relevant to such misuse.</td>
+<td>Has the research considered and addressed the risk of the technology being used to facilitate deceptive interactions, harassment, or fraud?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No such misuse potential is discussed.</td>
 </tr>
 <tr>
 <td>A23</td>
 <td>Has the research considered and addressed potential significant negative environmental impacts stemming from the research process or its potential applications?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Environmental impact of training or application is not examined.</td>
+<td>Environmental impact of compute or materials discovery is not analyzed.</td>
 </tr>
 <tr>
 <td>A24</td>
 <td>Does the research avoid building upon or facilitating any activities that are illegal under applicable laws?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>The work builds on openly available scientific datasets and methods.</td>
+<td>Uses publicly available data and standard ML methods; nothing illegal suggested.</td>
 </tr>
 <tr>
 <td>A25</td>
 <td>Does the research avoid applications that could foreseeably be used to deny people their fundamental human rights?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Predicting material properties does not target human-rights-impacting applications.</td>
+<td>Focuses on crystal property prediction; no direct human-rights implications stated.</td>
 </tr>
 <tr>
 <td>A26</td>
-<td>Have potential biases in the data, algorithms, models, or interpretation of results been carefully considered, investigated, and transparently discussed in the paper, especially concerning fairness and impacts on different demographic groups?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Demographic fairness is irrelevant to inorganic crystal datasets.</td>
+<td>Have potential biases in the data, algorithms, models, or interpretation of results been carefully considered, investigated, and transparently discussed?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Bias analysis is absent; datasets are assumed authoritative.</td>
 </tr>
 <tr>
 <td>A27</td>
-<td>If data or models are released as part of the research, are licenses provided that clearly state the intended use, limitations, and any restrictions to prevent misuse?</td>
+<td>If data or models are released, are licenses provided that clearly state intended use and restrictions to prevent misuse?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>The authors state code is released but do not mention a specific open-source license or usage limitations.</td>
+<td>Code release is mentioned, but license wording is not provided in the paper.</td>
 </tr>
 <tr>
 <td>A28</td>
-<td>Were appropriate technical and organizational measures implemented to protect the privacy and security of data used or collected, especially for sensitive or personally identifiable information?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No sensitive or personal data involved.</td>
+<td>Were appropriate technical and organizational measures implemented to protect privacy and security of data used or collected?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No personal data handled; privacy measures unnecessary.</td>
 </tr>
 <tr>
 <td>A29</td>
-<td>If the research exposes a security vulnerability in an existing system or software, does the paper indicate that responsible disclosure procedures were followed in consultation with the owners or maintainers of that system/software?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No security vulnerabilities disclosed.</td>
+<td>If the research exposes a security vulnerability, does the paper indicate responsible disclosure?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No vulnerabilities explored.</td>
 </tr>
 <tr>
 <td>A30</td>
-<td>Has legal compliance with relevant local, national, and international laws and regulations been ensured throughout the research process and in the paper's content?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>The paper does not explicitly address legal compliance, though none is evidently violated.</td>
+<td>Has legal compliance with relevant laws and regulations been ensured throughout the research process and paper content?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Uses open scientific datasets, cites sources, acknowledges funding; no legal conflicts apparent.</td>
 </tr>
 <tr>
 <td>A31</td>
-<td>Does the paper accurately and honestly report all findings, including any limitations or negative results, without fabrication, falsification, or selective misrepresentation of data or outcomes?</td>
+<td>Does the paper accurately and honestly report all findings, including limitations or negative results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Results include ablations and acknowledge tasks where gains are small; limitations are openly discussed.</td>
+<td>Results tables include cases where model underperforms PotNet; limitations around angular information and long-range forces are openly discussed in Section 6.</td>
 </tr>
 <tr>
 <td>A32</td>
 <td>Are all methods, experimental setups, and results presented in a clear, unambiguous, and transparent manner?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Datasets, splits, hyper-parameters, and training details are provided in main text and appendices.</td>
+<td>Computation ranges, hyper-parameters, dataset splits, and implementation details are spelled out in Sections 3 & 5 and Appendices.</td>
 </tr>
 <tr>
 <td>A33</td>
-<td>Are all external sources of information, ideas, data, code, or other materials appropriately and accurately cited and acknowledged in the paper?</td>
+<td>Are all external sources (information, ideas, data, code, etc.) appropriately cited and acknowledged in the paper?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Extensive references cite prior datasets, baselines, and theoretical foundations.</td>
+<td>Extensive bibliography cites prior datasets, models, and theory such as Graphormer, PotNet, Ewald summation.</td>
 </tr>
 <tr>
 <td>A34</td>
-<td>Does the paper avoid misrepresenting, unfairly criticizing, or mischaracterizing competing or related work by other researchers?</td>
+<td>Does the paper avoid misrepresenting, unfairly criticizing, or mischaracterizing competing or related work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Related work is reviewed in detail; critiques are technical and evidence-based.</td>
+<td>Related Work section offers balanced comparisons, acknowledging strengths of Matformer and PotNet.</td>
 </tr>
 <tr>
 <td>A35</td>
 <td>Does the research avoid making unsubstantiated or exaggerated claims of diversity, universality, or general applicability for datasets, models, or findings?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Claims are bounded to property-prediction tasks on tested datasets; limitations are noted in Section 6.</td>
+<td>Claims are tied to evaluated datasets; limitations are noted for angular information and σ-bound.</td>
 </tr>
 <tr>
 <td>A36</td>
-<td>If the research involves elements that could intentionally cause harm (e.g., in security research like red-teaming), is the ethical justification for this approach clearly provided in the paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No harmful experimentation involved.</td>
+<td>If the research involves elements that could intentionally cause harm (e.g., in security research like red-teaming), is the ethical justification for this approach clearly provided?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No such elements are involved; no justification needed.</td>
 </tr>
 </table>
 <h2>B. Contribution</h2>
@@ -252,169 +252,169 @@
 <td>B1</td>
 <td>Are the main claims clearly stated in the abstract?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Abstract states formulation of infinitely connected attention, introduction of Crystalformer, parameter reduction, and state-of-the-art performance.</td>
+<td>Abstract states tractable infinite attention, Crystalformer architecture, parameter reduction, and state-of-the-art accuracy.</td>
 </tr>
 <tr>
 <td>B2</td>
 <td>Are the main claims clearly stated in the introduction?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Introduction explicitly lists goals and expected advantages (faithful Transformer, efficiency, improved accuracy).</td>
+<td>Introduction reiterates open question and lists contributions (theoretical formulation, efficient encoder, empirical results).</td>
 </tr>
 <tr>
 <td>B3</td>
 <td>Do the claims in the abstract accurately reflect the paper's contributions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Content later supports claims about formulation, efficiency (29.4 % parameters), and superior results.</td>
+<td>Body provides derivations, architecture, experiments supporting those claims.</td>
 </tr>
 <tr>
 <td>B4</td>
 <td>Do the claims in the introduction accurately reflect the paper's contributions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Subsequent sections deliver the proposed method, theoretical derivation, and empirical validation.</td>
+<td>Subsequent sections deliver corresponding derivations and experiments.</td>
 </tr>
 <tr>
 <td>B5</td>
 <td>Do the claims accurately reflect the scope and limitations of the work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors restrict claims to property regression on two datasets and discuss missing angular information and long-range limits.</td>
+<td>Limitations (Gaussian assumption, lack of angular info) are acknowledged, preventing over-claiming.</td>
 </tr>
 <tr>
 <td>B6</td>
 <td>Are the specific contributions clearly summarized?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>End of Introduction lists formulation, architecture, and empirical performance as contributions.</td>
+<td>End of Introduction lists formulation, encoder, periodic encoding, and empirical performance.</td>
 </tr>
 <tr>
 <td>B7</td>
 <td>Is the novelty of the contributions clearly articulated relative to prior work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Section 3 contrasts Crystalformer with Graphormer and Matformer, highlighting infinite attention and minimal architectural changes.</td>
+<td>Contrasts with Graphormer’s finite graphs and Matformer’s radius-NN; introduces infinitely connected attention.</td>
 </tr>
 <tr>
 <td>B8</td>
 <td>Is the significance of the contributions made clear?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Outperforms strong baselines and reduces parameters/inference time, suggesting practical impact for materials discovery.</td>
+<td>Results demonstrate superior accuracy with fewer parameters, indicating practical importance.</td>
 </tr>
 <tr>
 <td>B9</td>
 <td>Do the claims match the presented theoretical results (if any)?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No formal theorems; derivations serve as motivation rather than provable guarantees.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Mathematical derivations of pseudo-finite attention and convergence bounds are provided matching claims.</td>
 </tr>
 <tr>
 <td>B10</td>
 <td>Do the claims match the presented experimental results (if any)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Tables 1 & 2 show MAE improvements consistent with claims.</td>
+<td>Tables 1 & 2 show lower MAE than baselines as claimed.</td>
 </tr>
 <tr>
 <td>B11</td>
 <td>Is the potential for generalization of results discussed appropriately in relation to the claims?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Paper notes that methodology may extend to larger datasets and reciprocal-space heads but confines current claims to tested tasks.</td>
+<td>Discussion covers extension to reciprocal space and integration of SE(3)-equivariant features.</td>
 </tr>
 <tr>
 <td>B12</td>
 <td>Are aspirational goals (if mentioned) clearly distinguished from the paper's achieved results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Section 6 identifies future directions like large-scale pre-training separately from achieved benchmarks.</td>
+<td>Future consideration of large-scale pre-training and higher-order attention is labeled as future work.</td>
 </tr>
 <tr>
 <td>B13</td>
 <td>Does the paper explicitly discuss the limitations of the work performed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Section 6 acknowledges lack of directional features and bounded Gaussian tails.</td>
+<td>Section 6 lists missing angular info, σ-bound, and reciprocal-space issues.</td>
 </tr>
 <tr>
 <td>B14</td>
 <td>Are the key assumptions underlying the work identified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Assumes Gaussian decay captures interactions; assumes periodic invariance via distance encoding; bounds on σ are stated.</td>
+<td>Assumes distance-decay Gaussian potentials and periodic invariance; stated in Section 3.</td>
 </tr>
 <tr>
 <td>B15</td>
 <td>Is the robustness of the results to violations of assumptions discussed (if applicable)?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Paper does not test performance when Gaussian assumption fails or σ-bounds vary widely.</td>
+<td>No robustness tests against different decay forms or noise presented.</td>
 </tr>
 <tr>
 <td>B16</td>
 <td>Is the scope of the claims (e.g., tested datasets, number of runs) acknowledged as a potential limitation?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors cite reliance on two public datasets and no pre-training; encourage evaluation on larger sets.</td>
+<td>Evaluation limited to two benchmark datasets; acknowledged when suggesting exploration of larger datasets.</td>
 </tr>
 <tr>
 <td>B17</td>
 <td>Are factors that might influence the performance of the proposed method discussed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Ablation on ψ-encoding, number of blocks, and σ-bound show performance sensitivity.</td>
+<td>Ablations cover role of ψ encoding, number of blocks, σ upper bound, SWA.</td>
 </tr>
 <tr>
 <td>B18</td>
 <td>Is the computational efficiency and scalability of the proposed method discussed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Table 3 compares training/inference time and parameters; discussion links dense attention to efficiency.</td>
+<td>Section 5.3 provides parameter counts, training/inference times, comparison to baselines.</td>
 </tr>
 <tr>
 <td>B19</td>
 <td>Are potential limitations related to fairness discussed (if applicable)?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Fairness not relevant for materials data.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Fairness not relevant to inorganic material data and not discussed.</td>
 </tr>
 <tr>
 <td>B20</td>
 <td>Are potential limitations related to privacy discussed (if applicable)?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No personal data used.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No privacy-sensitive data; not discussed.</td>
 </tr>
 <tr>
 <td>B21</td>
 <td>Does the paper identify any new or enhanced applications enabled by the research?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Positions Crystalformer as a framework for periodic structure encoding, enabling accurate high-throughput screening.</td>
+<td>Highlights accelerated high-throughput screening and potential integration with large material datasets.</td>
 </tr>
 <tr>
 <td>B22</td>
 <td>Are both potential positive and negative societal impacts discussed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No explicit societal impact section.</td>
+<td>Impacts section absent.</td>
 </tr>
 <tr>
 <td>B23</td>
 <td>Are any significant uncertainties or limitations in the impact assessment acknowledged?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No impact assessment given.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No impact assessment provided.</td>
 </tr>
 <tr>
 <td>B24</td>
 <td>Does the paper connect its contributions to broader technological or scientific trends?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Motivates work in context of accelerating materials discovery and Transformer success in other domains.</td>
+<td>Discussion references Transformer success in LLMs and integrates physics-guided ML trends.</td>
 </tr>
 <tr>
 <td>B25</td>
 <td>Does the paper identify specific stakeholders or entities likely to be affected by its outcomes?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Stakeholders such as materials scientists or industry users are implied but not explicitly named.</td>
+<td>Stakeholders not explicitly enumerated.</td>
 </tr>
 <tr>
 <td>B26</td>
 <td>Are ethical considerations related to the research methodology or data use addressed?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No ethical concerns arise from public physicochemical data.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No ethics section; purely computational data.</td>
 </tr>
 <tr>
 <td>B27</td>
 <td>Does the paper discuss the potential for feedback loops or unintended consequences?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Unintended consequences not examined.</td>
+<td>No such discussion.</td>
 </tr>
 <tr>
 <td>B28</td>
 <td>Are suggestions provided for further work to improve or govern societal outcomes?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Future work focuses on technical extensions, not governance.</td>
+<td>Future work focuses on technical extensions rather than governance.</td>
 </tr>
 <tr>
 <td>B29</td>
@@ -426,85 +426,85 @@
 <td>B30</td>
 <td>Is there a plausible connection drawn between the research and its potential real-world implications?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Paper argues improved property prediction accelerates material discovery, saving DFT compute.</td>
+<td>States acceleration of materials discovery and screening as application.</td>
 </tr>
 <tr>
 <td>B31</td>
 <td>Is the broader impact statement meaningfully integrated into the paper, rather than treated as an afterthought?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No broader-impact statement provided.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No separate impact statement.</td>
 </tr>
 <tr>
 <td>B32</td>
 <td>Are potential misuses or dual-use concerns of the research acknowledged?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Dual-use issues (e.g., weapons materials) are not discussed.</td>
+<td>Not mentioned.</td>
 </tr>
 <tr>
 <td>B33</td>
 <td>Does the research focus on a topic related to machine learning and artificial intelligence?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Presents a Transformer architecture for ML on crystal structures.</td>
+<td>It introduces a Transformer-based model for 3-D material graphs, clearly within ML.</td>
 </tr>
 <tr>
 <td>B34</td>
-<td>If LLMs are used in the methodology, is their use clearly documented in the experimental setup or equivalent section?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No large language models employed.</td>
+<td>If LLMs are used in the methodology, is their use clearly documented?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No LLMs used; not applicable.</td>
 </tr>
 <tr>
 <td>B35</td>
 <td>Does the submission avoid plagiarism?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Original text and proper citations indicate no plagiarism.</td>
+<td>No text overlap detected; extensive citations provided.</td>
 </tr>
 <tr>
 <td>B36</td>
 <td>Are all citations accurate, correct, and verified (no fabricated or hallucinated references)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>References correspond to real publications in materials and ML.</td>
+<td>References correspond to known works (Graphormer 2021, PotNet 2023, etc.).</td>
 </tr>
 <tr>
 <td>B37</td>
 <td>If citing contemporaneous work, does the paper cite and discuss it appropriately without omitting relevant related work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Recent works like PotNet (2023) and Equiformer are cited and compared.</td>
+<td>Mentions concurrent Equiformer, FAENet, Ewald message passing, etc.</td>
 </tr>
 <tr>
 <td>B38</td>
-<td>Is there no evidence of dual submission to another peer-reviewed venue with proceedings or a journal?</td>
+<td>Is there no evidence of dual submission to another peer-reviewed venue?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>No self-overlap noted; submission appears unique.</td>
+<td>No duplication indicated; posted only on OpenReview.</td>
 </tr>
 <tr>
 <td>B39</td>
 <td>If the paper builds on prior workshop papers, is it clear that prior versions did not appear in archival proceedings?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No mention of prior shorter versions.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>No prior workshop version declared.</td>
 </tr>
 <tr>
 <td>B40</td>
 <td>Does the paper avoid thin slicing of contributions that would make it incremental relative to other concurrent submissions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Introduces a novel formulation and comprehensive experiments; not a minor tweak.</td>
+<td>Introduces novel theoretical formulation and demonstrates notable gains.</td>
 </tr>
 <tr>
 <td>B41</td>
 <td>Are all experiments, datasets, proofs, and algorithms described in sufficient detail for reproducibility?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendices list hyper-parameters, training schedules, invariance proofs, and implementation details.</td>
+<td>Appendices list hyper-parameters, architecture, derivations, error bounds; code release announced.</td>
 </tr>
 <tr>
 <td>B42</td>
 <td>If supplementary material is included, is it clearly marked and uploaded as a single file or proper zipped archive?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendices integrated in same PDF per openreview format; clearly referenced.</td>
+<td>Appendices are integrated into the manuscript; implementation details referenced.</td>
 </tr>
 <tr>
 <td>B43</td>
-<td>If a reproducibility statement is included, does it reference where reproducibility details can be found in the paper or supplementary materials?</td>
+<td>If a reproducibility statement is included, does it reference where reproducibility details can be found?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Sections on training settings and architecture point to appendices for reproducibility.</td>
+<td>Training settings, data splits, and code URL are provided, satisfying reproducibility guidance.</td>
 </tr>
 </table>
 <h2>C. Soundness</h2>
@@ -513,302 +513,302 @@
 <tr>
 <td>C1</td>
 <td>Are theorems, lemmas, or key theoretical results clearly stated?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Paper provides mathematical derivation but no formal theorem/lemma statements requiring proof.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Derivation of pseudo-finite attention and convergence bound are framed as equations with referenced appendices.</td>
 </tr>
 <tr>
 <td>C2</td>
 <td>For each theoretical result, is the full set of assumptions clearly stated?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No formal theorems.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Assumes Gaussian decay and bounded σ; stated before convergence proof.</td>
 </tr>
 <tr>
 <td>C3</td>
 <td>Is a complete proof provided for each theoretical result, either in the main text or supplementary material?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No formal proofs needed.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Appendix 8 & 9 contain algebraic transformations and error bounds proofs.</td>
 </tr>
 <tr>
 <td>C4</td>
-<td>If proofs are deferred to an appendix or supplement, is an informative proof sketch included in the main paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td>If proofs are deferred to an appendix, is an informative proof sketch included in the main paper?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Section 3.1 outlines rewrite; details deferred to appendix.</td>
 </tr>
 <tr>
 <td>C5</td>
 <td>Are theorems, formulas, and proofs properly numbered for easy reference?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Equations are numbered and referenced (e.g., Eq (3)).</td>
+<td>Equations and appendices are numbered (e.g., Eq. (3), Appendix 8).</td>
 </tr>
 <tr>
 <td>C6</td>
 <td>Are theorems, formulas, and proofs consistently cross-referenced where they are used?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Main text references Eq. numbers when deriving pseudo-finite attention.</td>
+<td>Text references Eq. numbers and appendix sections.</td>
 </tr>
 <tr>
 <td>C7</td>
 <td>Are theoretical tools or prior results used in proofs properly cited?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Relative-position attention and Ewald summation concepts are cited.</td>
+<td>Ewald summation and Gaussian integral identities are cited; relevant math references included.</td>
 </tr>
 <tr>
 <td>C8</td>
 <td>Do the mathematical arguments appear correct and rigorous?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Rewrite from infinite sum to log-sum-exp is algebraically sound; convergence bounds provided in appendix.</td>
+<td>Derivations follow standard lattice summation to log-sum-exp; no obvious flaws.</td>
 </tr>
 <tr>
 <td>C9</td>
 <td>Are theoretical claims demonstrated or validated empirically where appropriate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Periodic invariance and efficiency claims are supported by experiments and ablations.</td>
+<td>Ablation studies validate necessity of β and reciprocal-space variant supports long-range claim.</td>
 </tr>
 <tr>
 <td>C10</td>
 <td>Is the experimental methodology clearly described?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Datasets, splits, optimizer settings, epoch counts, and SWA use are specified.</td>
+<td>Datasets, splits, optimizer, LR schedule, batch sizes, epochs all specified.</td>
 </tr>
 <tr>
 <td>C11</td>
 <td>Is the motivation for using the chosen datasets clearly explained?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Materials Project and JARVIS-DFT are standard benchmarks with DFT-calculated properties.</td>
+<td>Materials Project and JARVIS-DFT are standard for crystal property prediction; stated as per prior work.</td>
 </tr>
 <tr>
 <td>C12</td>
 <td>Are the datasets used adequately described (including source, size, and key characteristics)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Section 5 names dataset sizes and property targets; references original papers.</td>
+<td>Counts (e.g., 69,239 materials) and target properties listed in Section 5.</td>
 </tr>
 <tr>
 <td>C13</td>
 <td>For novel datasets, are they included in a data appendix or supplemental material?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No novel dataset.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No novel datasets introduced.</td>
 </tr>
 <tr>
 <td>C14</td>
 <td>Will all novel datasets be made publicly available under a research-appropriate license?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No new dataset.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Not applicable.</td>
 </tr>
 <tr>
 <td>C15</td>
 <td>Are datasets from the literature properly cited?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Materials Project and JARVIS citations provided.</td>
+<td>Citations provided for Materials Project, JARVIS-DFT.</td>
 </tr>
 <tr>
 <td>C16</td>
 <td>Are datasets from the literature publicly available?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Both datasets are publicly accessible.</td>
+<td>Both benchmarks are public databases.</td>
 </tr>
 <tr>
 <td>C17</td>
 <td>For non-public datasets, is a detailed description provided along with a justification for their use?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
 <td>All datasets are public.</td>
 </tr>
 <tr>
 <td>C18</td>
 <td>Are the data splits (e.g., training, validation, test) clearly specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Train/val/test counts listed in result tables.</td>
+<td>Numbers of train/val/test for each task provided in tables.</td>
 </tr>
 <tr>
 <td>C19</td>
 <td>Are evaluation metrics clearly defined?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Mean Absolute Error (MAE) specified; units indicated in tables.</td>
+<td>Mean absolute error (MAE) used; units noted in tables.</td>
 </tr>
 <tr>
 <td>C20</td>
 <td>Is the choice of evaluation metrics well motivated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>MAE is standard for regression of material properties.</td>
+<td>MAE is standard for regression of physical properties.</td>
 </tr>
 <tr>
 <td>C21</td>
 <td>Are baseline methods appropriate and relevant to the research question?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Comparisons include top GNN models and prior Transformers like Matformer.</td>
+<td>Includes leading GNNs (ALIGNN, PotNet) and Transformer (Matformer).</td>
 </tr>
 <tr>
 <td>C22</td>
 <td>Are implementation details of baseline methods either provided or properly referenced?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Results sourced from AIRS benchmark papers; M3GNet rerun described.</td>
+<td>Most baseline results taken from prior reproducible leaderboard; M3GNet re-run details stated.</td>
 </tr>
 <tr>
 <td>C23</td>
 <td>Are all relevant hyperparameters reported?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Learning rate schedule, batch size, epochs, weight decay, gradient clipping, model depth given.</td>
+<td>Model dimension, heads, learning rate, decay schedule, batch size, σ bounds specified.</td>
 </tr>
 <tr>
 <td>C24</td>
-<td>Is the procedure for hyperparameter selection clearly described (e.g., search space, selection criteria)?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Hyper-parameters appear fixed; selection rationale not detailed.</td>
+<td>Is the procedure for hyperparameter selection clearly described?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Hyper-parameters follow prior work or empirical tuning; details in Appendix 15.</td>
 </tr>
 <tr>
 <td>C25</td>
 <td>Does the paper state the number and range of values tried for each hyperparameter?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No hyperparameter sweep information.</td>
+<td>Grid search ranges not enumerated; only final chosen values listed.</td>
 </tr>
 <tr>
 <td>C26</td>
-<td>Is the optimizer used clearly specified (e.g., Adam, SGD)?</td>
+<td>Is the optimizer used clearly specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Adam with decoupled weight decay, β values, scheduler is detailed.</td>
+<td>Adam with decoupled weight decay; β parameters given.</td>
 </tr>
 <tr>
 <td>C27</td>
-<td>Are other training details provided (e.g., learning rate, batch size, number of epochs, initialization)?</td>
+<td>Are other training details provided (e.g., learning rate, batch size, epochs, initialization)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Initialization via T-Fixup, learning-rate formula, epoch counts, SWA window explained.</td>
+<td>Section 5.1 and Appendix list them, including T-Fixup initialization.</td>
 </tr>
 <tr>
 <td>C28</td>
 <td>Are all training and test details needed to interpret the results specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Dataset splits, hardware, model size, and run-time are provided.</td>
+<td>GPU type, training time, and inference time given.</td>
 </tr>
 <tr>
 <td>C29</td>
 <td>If algorithms depend on randomness, is the method for setting random seeds clearly described?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Random seed handling is not mentioned.</td>
+<td>Seed setting not mentioned.</td>
 </tr>
 <tr>
 <td>C30</td>
-<td>Is the computing infrastructure used (e.g., hardware, memory, OS, software libraries) clearly specified?</td>
+<td>Is the computing infrastructure used clearly specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Runtime comparison states NVIDIA RTX A6000 and single CPU core.</td>
+<td>RTX A6000 GPU and single CPU core described in efficiency comparison.</td>
 </tr>
 <tr>
 <td>C31</td>
 <td>Are the number of algorithm runs used to compute each reported result clearly stated?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Paper does not say whether results are single run or average across seeds.</td>
+<td>Single-run vs. multi-run not explicitly noted.</td>
 </tr>
 <tr>
 <td>C32</td>
 <td>Are the main experimental results clearly presented?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Tables summarize MAE for nine tasks with boldface best scores.</td>
+<td>Tables with bold/best MAEs and underlines supplied.</td>
 </tr>
 <tr>
 <td>C33</td>
 <td>Are results compared fairly against the baselines?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Same data splits used; some baseline numbers sourced from prior benchmark using identical protocol.</td>
+<td>Same data splits and metrics; baseline numbers from identical splits.</td>
 </tr>
 <tr>
 <td>C34</td>
 <td>Are ablation studies conducted to isolate the impact of different components?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Ablations remove ψ-encoding and vary number of blocks; impact on performance measured.</td>
+<td>Ablations on ψ removal, blocks count, reciprocal heads performed.</td>
 </tr>
 <tr>
 <td>C35</td>
 <td>Are error bars, confidence intervals, or other measures of variability reported for key results?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Only point MAE values are reported, no variance statistics.</td>
+<td>Only point estimates of MAE reported.</td>
 </tr>
 <tr>
 <td>C36</td>
 <td>Is the method for computing statistical significance or variability clearly described?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Statistical testing not performed.</td>
+<td>No statistical tests performed.</td>
 </tr>
 <tr>
 <td>C37</td>
 <td>Are the sources of variation (e.g., random seeds, data splits) clearly stated?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Sources of variation not detailed.</td>
+<td>Split is fixed, but seeds not discussed.</td>
 </tr>
 <tr>
 <td>C38</td>
 <td>Does the analysis include distributional information, not just summary statistics?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Only aggregate MAE reported.</td>
+<td>Only aggregated MAE values shown.</td>
 </tr>
 <tr>
 <td>C39</td>
 <td>Is statistical significance assessed using appropriate tests?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No significance tests performed.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No significance testing.</td>
 </tr>
 <tr>
 <td>C40</td>
 <td>Is the analysis of results insightful and supported by evidence?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Discussion links architectural choices to observed gains and supports claims with ablation data.</td>
+<td>Authors link improvements to periodic encodings and potential summations; ablations support claims.</td>
 </tr>
 <tr>
 <td>C41</td>
 <td>Does the paper disclose all resources (code, data, scripts) necessary to reproduce the main experimental results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors state code is released online; repo link provided in Experiments section.</td>
+<td>Code repository link promised; datasets public.</td>
 </tr>
 <tr>
 <td>C42</td>
 <td>Will the source code be made publicly available under a suitable license?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Code release is promised but license not stated, so suitability unclear.</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Paper states "We release our code online"; license unspecified but availability promised.</td>
 </tr>
 <tr>
 <td>C43</td>
 <td>Will any novel datasets introduced be made publicly available under a suitable license?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No novel datasets.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>No new datasets.</td>
 </tr>
 <tr>
 <td>C44</td>
 <td>Is code for data preprocessing included or referenced?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Implementation details reference AIRS codebase that includes loaders; authors note adaptive cutoff logic.</td>
+<td>Implementation built on AIRS OpenMat which handles dataset loaders; referenced.</td>
 </tr>
 <tr>
 <td>C45</td>
 <td>Is source code for conducting and analyzing experiments included or referenced?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Public repository mentioned; timing scripts referenced.</td>
+<td>Public repo to be released.</td>
 </tr>
 <tr>
 <td>C46</td>
 <td>Does the implementation code include comments referencing the paper sections they relate to?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Cannot verify; code not in PDF.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Cannot verify without code.</td>
 </tr>
 <tr>
 <td>C47</td>
-<td>Are all new assets (e.g., datasets, models, code) introduced in the paper properly documented?</td>
+<td>Are all new assets introduced in the paper properly documented?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Crystalformer architecture and hyper-parameters documented; code presumably includes README.</td>
+<td>Periodic encodings and σ parameterization detailed in appendices.</td>
 </tr>
 <tr>
 <td>C48</td>
 <td>Are all creators or owners of external assets properly credited, including license and terms of use?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Credits given, but licenses for datasets and code not enumerated.</td>
+<td>Credit given but licenses not enumerated.</td>
 </tr>
 <tr>
 <td>C49</td>
 <td>Does the paper distinguish between speculation, hypotheses, and verified claims?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Speculative extensions (reciprocal attention) are clearly marked as future work; verified claims are backed by results tables.</td>
+<td>Speculative future extensions are labeled as limitations/future work.</td>
 </tr>
 <tr>
 <td>C50</td>
 <td>Are pedagogical references provided to help less-experienced readers understand the background needed for replication?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Cites foundational works on Transformers, Ewald summation, and graph networks, aiding newcomer understanding.</td>
+<td>Background on Transformer, Ewald summation, and lattice theory cited; equations included.</td>
 </tr>
 </table>
 <h2>D. Presentation</h2>
@@ -818,187 +818,187 @@
 <td>D1</td>
 <td>Is the abstract a clear and concise summary of the paper’s content?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Abstract succinctly states motivation, method, key idea, and results.</td>
+<td>Contains motivation, methods, and key quantitative outcomes.</td>
 </tr>
 <tr>
 <td>D2</td>
 <td>Does the abstract include enough context for readers to understand the topic?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Introduces materials property prediction and periodic attention problem.</td>
+<td>Mentions materials property prediction and periodic structures.</td>
 </tr>
 <tr>
 <td>D3</td>
 <td>Does the introduction provide sufficient background and motivation?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Explains challenges in crystal encoding, prior approaches, and need for fully connected Transformer.</td>
+<td>Explains challenges of periodicity and positions work relative to GNNs/Transformers.</td>
 </tr>
 <tr>
 <td>D4</td>
 <td>Is the problem setup understandable and accessible to the target audience?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Defines notation for unit cell, periodicity, and attention; uses clear figures.</td>
+<td>Defines lattice notation and self-attention basics before proposing method.</td>
 </tr>
 <tr>
 <td>D5</td>
 <td>Is the paper organized in a logical and easy-to-follow manner?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Structure follows Introduction, Method, Experiments, Discussion, Conclusion.</td>
+<td>Abstract → Intro → Preliminaries → Method → Experiments → Discussion.</td>
 </tr>
 <tr>
 <td>D6</td>
 <td>Are section and subsection headings clear and descriptive?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Headings like ‘Infinitely connected attention as neural potential summation’ precisely convey content.</td>
+<td>Headings like "Infinitely connected attention as neural potential summation" are descriptive.</td>
 </tr>
 <tr>
 <td>D7</td>
 <td>Are paragraphs and sections well-structured and coherent?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Flow from motivation to derivation to implementation is coherent.</td>
+<td>Each section builds on prior concepts with transitional sentences.</td>
 </tr>
 <tr>
 <td>D8</td>
 <td>Is the narrative flow smooth across sections and transitions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Transitional sentences connect derivation to architecture and experiments.</td>
+<td>Preliminaries segue into method derivation naturally.</td>
 </tr>
 <tr>
 <td>D9</td>
 <td>Is the language clear, precise, and unambiguous?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Technical terminology is used correctly; definitions are provided.</td>
+<td>Technical terminology is used appropriately; math symbols defined.</td>
 </tr>
 <tr>
 <td>D10</td>
 <td>Is grammar, spelling, and punctuation correct throughout?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Minor typos are rare; overall writing is polished.</td>
+<td>Minor typos rare; generally polished.</td>
 </tr>
 <tr>
 <td>D11</td>
 <td>Is the writing style suitable for a technical conference?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Formal, concise, and citation-rich style.</td>
+<td>Formal academic tone with citations and equations.</td>
 </tr>
 <tr>
 <td>D12</td>
 <td>Are sentences concise and free of unnecessary jargon?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Explanations are dense but avoid superfluous jargon.</td>
+<td>Uses domain terms but explains them; avoids excessive verbosity.</td>
 </tr>
 <tr>
 <td>D13</td>
 <td>Is the paper accessible to readers not deeply familiar with the subfield?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Background on crystal periodicity and attention is provided; references guide deeper study.</td>
+<td>Provides background on Transformer self-attention and crystal lattices.</td>
 </tr>
 <tr>
 <td>D14</td>
 <td>Are mathematical notations clearly defined upon first use?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Notation for n-index, positions, and sums defined in Preliminaries.</td>
+<td>Symbols for positions, lattice vectors, σ, etc., defined in Preliminaries.</td>
 </tr>
 <tr>
 <td>D15</td>
 <td>Are notations used consistently throughout the paper?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>i, j, n indices and symbols are consistently referenced.</td>
+<td>Indices i,j and n maintained; bold denotes vectors consistently.</td>
 </tr>
 <tr>
 <td>D16</td>
 <td>Are acronyms and abbreviations defined at first use and used consistently?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>DFT, MHA, SWA, etc., are defined on first appearance.</td>
+<td>MHA, GNN, SE(3) defined early.</td>
 </tr>
 <tr>
 <td>D17</td>
 <td>Are all figures and tables essential and well-integrated into the text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Figures illustrate periodic attention, architecture; tables summarise results and ablations.</td>
+<td>Figures illustrate periodic attention; tables summarize results.</td>
 </tr>
 <tr>
 <td>D18</td>
 <td>Are figure and table captions informative and self-contained?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Captions describe what is plotted and why; include context.</td>
+<td>Captions explain content, e.g., Figure 2 summary of periodic encodings.</td>
 </tr>
 <tr>
 <td>D19</td>
 <td>Are axes labeled clearly, with units where appropriate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Result tables specify units (eV/atom, log GPa).</td>
+<td>Result plots mostly omitted; tables include units (eV/atom).</td>
 </tr>
 <tr>
 <td>D20</td>
 <td>Are font sizes in figures and tables readable?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Figures in PDF are legible.</td>
+<td>Resolution images in PDF appear readable.</td>
 </tr>
 <tr>
 <td>D21</td>
 <td>Are plots and diagrams visually clear and appropriate for the data?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Architecture diagram and attention schematic are clear line drawings.</td>
+<td>Matrix-tensor diagram and lattice figure convey concepts effectively.</td>
 </tr>
 <tr>
 <td>D22</td>
 <td>Are color, shape, or style distinctions clear in multi-series plots?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Colors differentiate interaction types in Figure 1.</td>
+<td>Color coding of atom types in Figure 1 is clear.</td>
 </tr>
 <tr>
 <td>D23</td>
 <td>Are legends provided when needed and easy to interpret?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Figure legends explain colored lines and nodes.</td>
+<td>Figure 1 includes legend mapping color to interaction type.</td>
 </tr>
 <tr>
 <td>D24</td>
 <td>Are all figures and tables correctly referenced and discussed in the text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Figures are cited (e.g., Fig. 1) when explaining concepts.</td>
+<td>Text references Figure 1, Figure 2, Table 1, etc.</td>
 </tr>
 <tr>
 <td>D25</td>
 <td>Are all references cited properly in the text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>In-line citations with author names and superscript numbers appear throughout.</td>
+<td>In-text citations with author years or numbers present.</td>
 </tr>
 <tr>
 <td>D26</td>
 <td>Are citations formatted consistently and according to guidelines?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Consistent citation style used across references.</td>
+<td>All citations follow the conference style with authors and years.</td>
 </tr>
 <tr>
 <td>D27</td>
 <td>Is the reference list complete and free of formatting issues?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Reference list is extensive and formatted uniformly.</td>
+<td>Large bibliography appears consistent.</td>
 </tr>
 <tr>
 <td>D28</td>
 <td>Does the paper adhere to standard formatting guidelines (e.g., margins, font size, length)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>PDF follows conference template; fits within page limit.</td>
+<td>Manuscript fits typical ICML/NeurIPS format; page count reasonable.</td>
 </tr>
 <tr>
 <td>D29</td>
 <td>Are all footnotes, equations, and lists properly formatted and placed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Equations numbered; footnotes rare and correctly placed.</td>
+<td>Equations numbered, footnotes minimal.</td>
 </tr>
 <tr>
 <td>D30</td>
 <td>Are any appendices, figures, or tables referenced correctly from the main text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendix numbers and table IDs are cited in main body.</td>
+<td>Main text cites Appendix 8, 9, etc.</td>
 </tr>
 <tr>
 <td>D31</td>
 <td>Are supplementary materials clearly labeled and easy to navigate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendix sections have headings and cross-references facilitating navigation.</td>
+<td>Appendix sections numbered and titled; tables inside labeled.</td>
 </tr>
 </table>
 </body>

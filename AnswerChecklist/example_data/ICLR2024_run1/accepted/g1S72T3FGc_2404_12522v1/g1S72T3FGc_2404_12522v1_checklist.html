@@ -3,7 +3,7 @@
 <head>
 <meta charset='UTF-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-<title>Checklist Review: {review.paper_title}</title>
+<title>Checklist Review: Neural Active Learning Beyond Bandits</title>
 <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 20px auto; padding: 0 15px; }
             h1, h2 { color: #111; border-bottom: 2px solid #eee; padding-bottom: 10px; }
@@ -21,10 +21,10 @@
 <h1>Neural Active Learning Beyond Bandits</h1>
 <p><strong>Paper Link:</strong> <a href='https://openreview.net/forum?id=g1S72T3FGc'>https://openreview.net/forum?id=g1S72T3FGc</a></p>
 <h2>Formatted Abstract</h2>
-<div class='abstract-section'><p><strong>Background and Objectives:</strong> Recent bandit-based neural active-learning methods provide theoretical guarantees but become inefficient as the number of classes K grows. This work asks how to retain principled exploration and guarantees while reducing the K-dependence.</p>
-<p><strong>Material and Methods:</strong> The authors design two neural-network-based algorithms—NeurOnAl-S (stream-based) and NeurOnAl-P (pool-based)—that use separate exploitation and exploration networks fed with the original d-dimensional instance and an end-to-end embedding, respectively.  They extend the loss to any bounded loss, avoid the bandit arm transformation, derive regret bounds under NTK theory, and propose an inverse-gap sampling rule for the pool setting.</p>
-<p><strong>Results:</strong> Regret upper bounds grow only √K (instead of up to √(mdK)) and label complexity is reduced.  Experiments on six public datasets show consistent accuracy gains and large runtime savings versus bandit baselines; ablations and pool-based comparisons confirm the advantages.</p>
-<p><strong>Conclusion:</strong> By moving beyond the bandit reduction, the proposed methods mitigate the curse of classes, achieve tighter guarantees, and empirically outperform state-of-the-art active-learning baselines in both stream and pool scenarios.</p></div>
+<div class='abstract-section'><p><strong>Background and Objectives:</strong> Recent bandit-based neural active-learning methods suffer performance and computational penalties that scale with the number of classes K. The paper asks how to curb this dependence while keeping principled exploration and guarantees.</p>
+<p><strong>Material and Methods:</strong> It proposes two algorithms (NeurONAl-S for stream-based, NeurONAl-P for pool-based) that use separate exploitation and exploration neural networks operating on the original d-dimensional input, introduce an end-to-end embedding for exploration, and a gap-inverse sampling rule for pools. Regret bounds are proved under NTK theory and low-noise or margin assumptions; empirical tests on six datasets compare accuracy and runtime.</p>
+<p><strong>Results:</strong> Theory shows regret and label-complexity growing more slowly in K than prior bandit approaches; in binary case dependence on effective dimension vanishes. Experiments show higher accuracy and much lower runtime than baselines across datasets, especially for large K.</p>
+<p><strong>Conclusion:</strong> Redesigning the model interface and exploration strategy removes the curse of K, yields tighter guarantees and faster, more accurate active learning in both stream and pool settings.</p></div>
 <h2>A. Compliance</h2>
 <table>
 <tr><th>ID</th><th>Question</th><th>Answer</th><th>Reasoning</th></tr>
@@ -32,53 +32,53 @@
 <td>A1</td>
 <td>Does the paper discuss potential positive societal impacts of the work?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No Broader-Impact or similar discussion is included.</td>
+<td>No dedicated section or sentences on positive societal impact are present.</td>
 </tr>
 <tr>
 <td>A2</td>
 <td>Does the paper discuss potential negative societal impacts or risks of the work?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No risks or misuse scenarios are mentioned.</td>
+<td>The manuscript does not mention negative impacts such as misuse or fairness harms.</td>
 </tr>
 <tr>
 <td>A3</td>
 <td>If negative societal impacts or risks are identified, does the paper discuss potential mitigation strategies?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No negative impacts are identified.</td>
+<td>No negative impacts were identified, so no mitigation is discussed.</td>
 </tr>
 <tr>
 <td>A4</td>
 <td>Does the paper describe safeguards for responsible release of data or models with high misuse risk?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Safeguards are not discussed; the models are not declared high-risk, but no measures are presented.</td>
+<td>No release or safeguards are mentioned.</td>
 </tr>
 <tr>
 <td>A5</td>
 <td>Are the creators or original owners of all used assets (e.g., code, data, models) properly credited in the paper?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>All public datasets and prior algorithms are cited in the References and experimental section.</td>
+<td>All public datasets and baseline methods are cited in Related Work and Experiments sections.</td>
 </tr>
 <tr>
 <td>A6</td>
 <td>Are the license and terms of use for all used assets explicitly mentioned and respected in the paper?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Dataset licenses are not stated.</td>
+<td>Licenses for datasets (e.g., UCI, Fashion-MNIST) are not stated.</td>
 </tr>
 <tr>
 <td>A7</td>
-<td>For research involving human subjects or participants (including crowdsourcing), does the paper indicate that informed consent was obtained from all participants, and/or a clear explanation provided?</td>
+<td>For research involving human subjects or participants, does the paper indicate that informed consent was obtained?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>The work uses only public benchmark datasets, not human subjects.</td>
+<td>Work uses public ML datasets; no human‐subject data collection.</td>
 </tr>
 <tr>
 <td>A8</td>
-<td>For research involving human subjects or participants, does the paper detail compensation, and was it ensured to be fair (e.g., at least the minimum wage in the data collector's country/region)?</td>
+<td>For research involving human subjects or participants, does the paper detail compensation and fairness?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No human subjects.</td>
+<td>No human data collection.</td>
 </tr>
 <tr>
 <td>A9</td>
-<td>For crowdsourcing experiments, does the paper include or provide access to the full text of instructions given to participants and relevant screenshots (if applicable)?</td>
+<td>For crowdsourcing experiments, does the paper include or provide access to full instructions?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>No crowdsourcing.</td>
 </tr>
@@ -86,163 +86,163 @@
 <td>A10</td>
 <td>Does the paper describe potential risks to study participants, if any?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No participants.</td>
+<td>No participants involved.</td>
 </tr>
 <tr>
 <td>A11</td>
-<td>Does the paper describe whether any identified risks to study participants were disclosed to them prior to their participation?</td>
+<td>Does the paper describe whether any identified risks to study participants were disclosed to them?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No participants.</td>
+<td>Not applicable.</td>
 </tr>
 <tr>
 <td>A12</td>
-<td>Does the paper describe whether Institutional Review Board (IRB) approvals (or an equivalent ethics review process based on institutional/national guidelines) were obtained for research with human subjects?</td>
+<td>Does the paper describe whether Institutional Review Board (IRB) approvals were obtained?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No human-subject research.</td>
+<td>No human subjects.</td>
 </tr>
 <tr>
 <td>A13</td>
-<td>Is the status of IRB approval (or equivalent ethics review) clearly stated in the paper?</td>
+<td>Is the status of IRB approval clearly stated?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td>Not required.</td>
 </tr>
 <tr>
 <td>A14</td>
-<td>If IRB approval (or equivalent ethics review) was not required or obtained for research involving human subjects, is a clear justification provided in the paper?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Not applicable.</td>
+<td>If IRB approval was not required, is a clear justification provided?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>The authors do not explicitly justify absence of IRB, though none is needed.</td>
 </tr>
 <tr>
 <td>A15</td>
-<td>Does the research avoid using datasets that are known to be deprecated or have been taken down by their original creators (unless the use is specifically for audit or critical assessment and this is justified)?</td>
+<td>Does the research avoid using datasets that are known to be deprecated or taken down?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>All datasets (Adult, Covertype, etc.) are still publicly hosted on UCI or similar repositories.</td>
+<td>All datasets (Adult, CovType, etc.) are public and widely used.</td>
 </tr>
 <tr>
 <td>A16</td>
-<td>If new datasets were collected or existing datasets were significantly modified, were appropriate measures taken to assess and communicate their representativeness for the intended population and task, as indicated in the paper?</td>
+<td>If new datasets were collected, were representativeness assessments conducted?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No new or modified datasets were introduced.</td>
+<td>No new datasets collected.</td>
 </tr>
 <tr>
 <td>A17</td>
-<td>Does the research avoid primarily aiming to develop or enhance the lethality of weapons systems?</td>
+<td>Does the research avoid primarily aiming to develop or enhance lethality of weapons systems?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>The work targets active learning for generic classification tasks, unrelated to weapons.</td>
+<td>Active learning for classification has no weapon focus.</td>
 </tr>
 <tr>
 <td>A18</td>
-<td>Has the research considered and addressed potential security vulnerabilities or risks of accidents if the developed system or technology were deployed in real-world scenarios?</td>
+<td>Has the research considered and addressed potential security vulnerabilities or risks of accidents if deployed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Security vulnerabilities are not discussed.</td>
+<td>Security aspects are not discussed.</td>
 </tr>
 <tr>
 <td>A19</td>
-<td>Has the research considered and addressed how the technology could be used to discriminate, exclude, or otherwise unfairly negatively impact individuals or groups, particularly those with protected characteristics?</td>
+<td>Has the research considered and addressed discrimination or unfair impacts?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Fairness impacts are not analysed.</td>
+<td>Fairness or demographic impacts are not analysed.</td>
 </tr>
 <tr>
 <td>A20</td>
-<td>If bulk surveillance data was used, was its collection, processing, and analysis compliant with all relevant local and international laws and ethical guidelines regarding surveillance and privacy?</td>
+<td>If bulk surveillance data was used, was collection compliant with privacy laws?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>No surveillance data used.</td>
 </tr>
 <tr>
 <td>A21</td>
-<td>Does the research avoid using surveillance data in ways that could predict protected characteristics or otherwise endanger individual well-being or rights?</td>
-<td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No surveillance data used.</td>
+<td>Does the research avoid using surveillance data to predict protected characteristics?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Datasets are standard ML benchmarks without surveillance purpose.</td>
 </tr>
 <tr>
 <td>A22</td>
-<td>Has the research considered and addressed the risk of the technology being used to facilitate deceptive interactions (e.g., creating deepfakes for disinformation), harassment, or fraud?</td>
+<td>Has the research considered risk of technology being used for deceptive interactions, harassment or fraud?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Misuse scenarios are not mentioned.</td>
+<td>No discussion of such misuse.</td>
 </tr>
 <tr>
 <td>A23</td>
-<td>Has the research considered and addressed potential significant negative environmental impacts stemming from the research process or its potential applications?</td>
+<td>Has the research considered potential significant negative environmental impacts?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Environmental impact is not discussed.</td>
+<td>Computation cost is discussed but environmental footprint not analysed.</td>
 </tr>
 <tr>
 <td>A24</td>
-<td>Does the research avoid building upon or facilitating any activities that are illegal under applicable laws?</td>
+<td>Does the research avoid building upon or facilitating illegal activities?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Work is a theoretical/empirical ML study with legal public data.</td>
+<td>Algorithms for active learning are lawful research.</td>
 </tr>
 <tr>
 <td>A25</td>
-<td>Does the research avoid applications that could foreseeably be used to deny people their fundamental human rights (e.g., freedom of speech, right to privacy, right to health, liberty, security)?</td>
+<td>Does the research avoid applications that could deny fundamental human rights?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>No such applications are proposed.</td>
+<td>No such applications are suggested.</td>
 </tr>
 <tr>
 <td>A26</td>
-<td>Have potential biases in the data, algorithms, models, or interpretation of results been carefully considered, investigated, and transparently discussed in the paper, especially concerning fairness and impacts on different demographic groups?</td>
+<td>Have potential biases in data, algorithms, or results been considered, especially fairness?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Bias or fairness analysis is not included.</td>
+<td>Bias or fairness analyses are absent.</td>
 </tr>
 <tr>
 <td>A27</td>
-<td>If data or models are released as part of the research, are licenses provided that clearly state the intended use, limitations, and any restrictions to prevent misuse?</td>
+<td>If data or models are released, are licenses provided that limit misuse?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>The paper does not announce code/model release or licences.</td>
+<td>No code/model release information.</td>
 </tr>
 <tr>
 <td>A28</td>
-<td>Were appropriate technical and organizational measures (e.g., anonymization, pseudonymization, encryption, secure storage, access controls) implemented to protect the privacy and security of data used or collected, especially for sensitive or personally identifiable information?</td>
+<td>Were measures implemented to protect privacy and security of data?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>Only public, already-anonymized datasets are used.</td>
+<td>Only public datasets used; no private data.</td>
 </tr>
 <tr>
 <td>A29</td>
-<td>If the research exposes a security vulnerability in an existing system or software, does the paper indicate that responsible disclosure procedures were followed in consultation with the owners or maintainers of that system/software?</td>
+<td>If a security vulnerability was exposed, was responsible disclosure followed?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No vulnerabilities are exposed.</td>
+<td>No vulnerabilities discussed.</td>
 </tr>
 <tr>
 <td>A30</td>
-<td>Has legal compliance with relevant local, national, and international laws and regulations (e.g., data protection acts like GDPR, copyright law, intellectual property rights) been ensured throughout the research process and in the paper's content?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Legal compliance is not explicitly addressed.</td>
+<td>Has legal compliance with relevant laws been ensured?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Uses public datasets; no legal conflicts noted.</td>
 </tr>
 <tr>
 <td>A31</td>
-<td>Does the paper accurately and honestly report all findings, including any limitations or negative results, without fabrication, falsification, or selective misrepresentation of data or outcomes?</td>
+<td>Does the paper accurately and honestly report all findings, including limitations?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Results include accuracy, running-time, ablations and theoretical limits; no signs of selective reporting.</td>
+<td>Empirical and theoretical results, limitations in computational assumptions are reported.</td>
 </tr>
 <tr>
 <td>A32</td>
-<td>Are all methods, experimental setups, and results presented in a clear, unambiguous, and transparent manner?</td>
+<td>Are all methods, setups, and results presented clearly?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Algorithms are described, pseudo-code given, datasets and hyper-parameters detailed in main text and appendix.</td>
+<td>Algorithms, proofs, and experiment details are given with tables and appendices.</td>
 </tr>
 <tr>
 <td>A33</td>
-<td>Are all external sources of information, ideas, data, code, or other materials appropriately and accurately cited and acknowledged in the paper?</td>
+<td>Are all external sources properly cited?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Prior bandit and active-learning works and datasets are cited.</td>
+<td>Related work cites previous papers extensively.</td>
 </tr>
 <tr>
 <td>A34</td>
-<td>Does the paper avoid misrepresenting, unfairly criticizing, or mischaracterizing competing or related work by other researchers?</td>
+<td>Does the paper avoid unfairly criticizing or mischaracterizing related work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Related work is cited respectfully and comparisons are empirical/theoretical.</td>
+<td>Comparisons are technical and cite limitations factually.</td>
 </tr>
 <tr>
 <td>A35</td>
-<td>Does the research avoid making unsubstantiated or exaggerated claims of diversity, universality, or general applicability for datasets, models, or findings?</td>
+<td>Does the research avoid unsubstantiated or exaggerated universality claims?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Claims are supported with theory and experiments; limitations w.r.t. assumptions are noted.</td>
+<td>Claims are scoped to K-class active learning; limitations noted.</td>
 </tr>
 <tr>
 <td>A36</td>
-<td>If the research involves elements that could intentionally cause harm (e.g., in security research like red-teaming), is the ethical justification for this approach clearly provided in the paper?</td>
+<td>If research could intentionally cause harm (e.g., red-teaming), is ethical justification provided?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No such elements included.</td>
+<td>No harmful experimentation conducted.</td>
 </tr>
 </table>
 <h2>B. Contribution</h2>
@@ -252,161 +252,161 @@
 <td>B1</td>
 <td>Are the main claims clearly stated in the abstract?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>The abstract explicitly lists the question addressed, the algorithms, theoretical guarantees, and empirical improvements.</td>
+<td>Abstract specifies new algorithms, better K-scaling, theory and experiments.</td>
 </tr>
 <tr>
 <td>B2</td>
 <td>Are the main claims clearly stated in the introduction?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>The introduction summarizes limitations of bandit methods and presents the four key contributions.</td>
+<td>Intro lists four main contributions including methodology, theory, pool setting, experiments.</td>
 </tr>
 <tr>
 <td>B3</td>
 <td>Do the claims in the abstract accurately reflect the paper's contributions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Methods, theory and experiments described in the body match the abstract.</td>
+<td>Body provides proposed algorithms, proofs, and empirical results promised.</td>
 </tr>
 <tr>
 <td>B4</td>
 <td>Do the claims in the introduction accurately reflect the paper's contributions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Later sections deliver the algorithms, proofs and empirical results promised.</td>
+<td>Subsequent sections develop each claimed contribution.</td>
 </tr>
 <tr>
 <td>B5</td>
 <td>Do the claims accurately reflect the scope and limitations of the work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Dependence on bounded loss, NTK and low-noise assumptions are acknowledged.</td>
+<td>Authors restrict theoretical results to NTK, low-noise/margin; note assumptions.</td>
 </tr>
 <tr>
 <td>B6</td>
 <td>Are the specific contributions clearly summarized?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Four bullet-style contributions are enumerated.</td>
+<td>Bullet list highlights key ideas (loss generalization, network redesign, pool algorithm, analysis, experiments).</td>
 </tr>
 <tr>
 <td>B7</td>
 <td>Is the novelty of the contributions clearly articulated relative to prior work?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors position their approach beyond bandit reductions and prior neural‐active methods.</td>
+<td>Explains difference from bandit transformation and from previous EE-Net/I-NeurAL.</td>
 </tr>
 <tr>
 <td>B8</td>
 <td>Is the significance of the contributions made clear?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Theory shows better K-scaling; experiments show accuracy/time gains.</td>
+<td>Shows multiplicative improvement in regret bound and big runtime gains.</td>
 </tr>
 <tr>
 <td>B9</td>
-<td>Do the claims match the presented theoretical results (if any)?</td>
+<td>Do the claims match the presented theoretical results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Regret/loss bounds stated in Section 5 correspond to claims.</td>
+<td>Theorems bound regret/label complexity with better K dependence as claimed.</td>
 </tr>
 <tr>
 <td>B10</td>
-<td>Do the claims match the presented experimental results (if any)?</td>
+<td>Do the claims match the presented experimental results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Tables show consistent empirical improvements claimed.</td>
+<td>Tables show higher accuracy and faster runtime which match claims.</td>
 </tr>
 <tr>
 <td>B11</td>
-<td>Is the potential for generalization of results discussed appropriately in relation to the claims?</td>
+<td>Is the potential for generalization of results discussed appropriately?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors discuss extensions to other NN architectures and pool setting.</td>
+<td>Paper notes method can replace fully-connected nets by other architectures, but limits proofs to FC.</td>
 </tr>
 <tr>
 <td>B12</td>
-<td>Are aspirational goals (if mentioned) clearly distinguished from the paper's achieved results?</td>
+<td>Are aspirational goals clearly distinguished from achieved results?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Future work is separated in conclusion; achievements are separately listed.</td>
+<td>Future extensions are separate; achieved results are specific.</td>
 </tr>
 <tr>
 <td>B13</td>
 <td>Does the paper explicitly discuss the limitations of the work performed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Dependence on NTK analysis, low-noise, and need for over-parameterization are mentioned.</td>
+<td>Mentions reliance on NTK infinite-width assumptions and bounded loss.</td>
 </tr>
 <tr>
 <td>B14</td>
 <td>Are the key assumptions underlying the work identified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Bounded loss, Assumption 1 (realizability) and low-noise/margin assumptions are stated.</td>
+<td>Assumptions on loss boundedness, low-noise, margin, NTK eigenvalue are specified.</td>
 </tr>
 <tr>
 <td>B15</td>
-<td>Is the robustness of the results to violations of assumptions discussed (if applicable)?</td>
+<td>Is robustness to violations of assumptions discussed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Little discussion of what happens if assumptions fail.</td>
+<td>No empirical stress test outside assumptions.</td>
 </tr>
 <tr>
 <td>B16</td>
-<td>Is the scope of the claims (e.g., tested datasets, number of runs) acknowledged as a potential limitation?</td>
+<td>Is scope of claims (datasets, runs) acknowledged as limitation?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Experiments limited to six tabular/image datasets; authors note benchmark scope.</td>
+<td>Experiments limited to six classification datasets; acknowledged due to space.</td>
 </tr>
 <tr>
 <td>B17</td>
-<td>Are factors that might influence the performance of the proposed method discussed?</td>
+<td>Are factors influencing performance discussed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Hyper-parameter γ, μ, label budget and K are analysed in ablations.</td>
+<td>Ablation on label budget, hyper-parameters provided.</td>
 </tr>
 <tr>
 <td>B18</td>
-<td>Is the computational efficiency and scalability of the proposed method discussed?</td>
+<td>Is computational efficiency and scalability discussed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Running-time tables and theoretical reduction from K times cost to 1 are provided.</td>
+<td>Time results and analysis of forward-prop counts versus K are detailed.</td>
 </tr>
 <tr>
 <td>B19</td>
-<td>Are potential limitations related to fairness discussed (if applicable)?</td>
+<td>Are potential limitations related to fairness discussed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Fairness is not covered.</td>
+<td>Fairness not addressed.</td>
 </tr>
 <tr>
 <td>B20</td>
-<td>Are potential limitations related to privacy discussed (if applicable)?</td>
+<td>Are potential limitations related to privacy discussed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Privacy is not addressed.</td>
+<td>Privacy not mentioned.</td>
 </tr>
 <tr>
 <td>B21</td>
 <td>Does the paper identify any new or enhanced applications enabled by the research?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Pool-based neural active learning is enabled via NeurOnAl-P.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Only standard classification tasks demonstrated.</td>
 </tr>
 <tr>
 <td>B22</td>
 <td>Are both potential positive and negative societal impacts discussed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Broader-impact section is absent.</td>
+<td>Societal impacts section absent.</td>
 </tr>
 <tr>
 <td>B23</td>
-<td>Are any significant uncertainties or limitations in the impact assessment acknowledged?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Impact assessment not provided.</td>
+<td>Are uncertainties or limitations in impact assessment acknowledged?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No impact assessment.</td>
 </tr>
 <tr>
 <td>B24</td>
-<td>Does the paper connect its contributions to broader technological or scientific trends?</td>
+<td>Does the paper connect contributions to broader technological or scientific trends?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Connects to surge in deep active learning and NTK theory.</td>
+<td>Connects NTK and neural-bandit lines, addresses scalability with class count.</td>
 </tr>
 <tr>
 <td>B25</td>
-<td>Does the paper identify specific stakeholders or entities likely to be affected by its outcomes?</td>
+<td>Does the paper identify specific stakeholders affected?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Stakeholders are not named.</td>
+<td>Stakeholders not discussed.</td>
 </tr>
 <tr>
 <td>B26</td>
-<td>Are ethical considerations related to the research methodology or data use addressed?</td>
+<td>Are ethical considerations in methodology or data use addressed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Ethical aspects are not discussed.</td>
+<td>Ethics not covered.</td>
 </tr>
 <tr>
 <td>B27</td>
-<td>Does the paper discuss the potential for feedback loops or unintended consequences?</td>
+<td>Does the paper discuss potential feedback loops or unintended consequences?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
 <td>No such discussion.</td>
 </tr>
@@ -414,97 +414,97 @@
 <td>B28</td>
 <td>Are suggestions provided for further work to improve or govern societal outcomes?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Future work focuses on technical extensions.</td>
+<td>Future work focuses on theory, not societal governance.</td>
 </tr>
 <tr>
 <td>B29</td>
-<td>Does the impact discussion go beyond vague generalities to mention tractable, neglected, or high-significance effects?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Impact discussion absent.</td>
+<td>Does the impact discussion mention tractable, neglected, or high-significance effects?</td>
+<td style="background-color: #f0f0f0; color: #555;">NA</td>
+<td>No impact discussion.</td>
 </tr>
 <tr>
 <td>B30</td>
-<td>Is there a plausible connection drawn between the research and its potential real-world implications?</td>
+<td>Is there a plausible connection between the research and real-world implications?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Improvements in annotation cost and runtime for ML pipelines are argued.</td>
+<td>Active learning efficiency can reduce labeling cost in practice; mentioned in intro though briefly.</td>
 </tr>
 <tr>
 <td>B31</td>
-<td>Is the broader impact statement meaningfully integrated into the paper, rather than treated as an afterthought?</td>
+<td>Is the broader impact statement meaningfully integrated?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No broader-impact statement.</td>
+<td>None provided.</td>
 </tr>
 <tr>
 <td>B32</td>
-<td>Are potential misuses or dual-use concerns of the research acknowledged?</td>
+<td>Are potential misuses or dual-use concerns acknowledged?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Not mentioned.</td>
+<td>Not discussed.</td>
 </tr>
 <tr>
 <td>B33</td>
-<td>Does the research focus on a topic related to machine learning and artificial intelligence ...?</td>
+<td>Does the research focus on a topic related to machine learning and AI?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Active learning and deep neural networks are core ML topics.</td>
+<td>Active learning with neural networks is core ML.</td>
 </tr>
 <tr>
 <td>B34</td>
-<td>If LLMs are used in the methodology, is their use clearly documented in the experimental setup or equivalent section?</td>
+<td>If LLMs are used, is their use documented?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>LLMs are not used.</td>
+<td>No LLMs used.</td>
 </tr>
 <tr>
 <td>B35</td>
 <td>Does the submission avoid plagiarism?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>No overlaps detected; proper citations provided.</td>
+<td>No overlap detected; cites prior art.</td>
 </tr>
 <tr>
 <td>B36</td>
-<td>Are all citations accurate, correct, and verified (no fabricated or hallucinated references)?</td>
+<td>Are all citations accurate and verified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>References correspond to real papers/datasets.</td>
+<td>References correspond to real papers.</td>
 </tr>
 <tr>
 <td>B37</td>
-<td>If citing contemporaneous work, does the paper cite and discuss it appropriately without omitting relevant related work?</td>
+<td>If citing contemporaneous work, is it discussed appropriately?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Recent 2021-2023 neural active-learning papers are cited and compared.</td>
+<td>Competing 2022 works like I-NeurAL are compared theoretically and empirically.</td>
 </tr>
 <tr>
 <td>B38</td>
-<td>Is there no evidence of dual submission to another peer-reviewed venue with proceedings or a journal?</td>
+<td>Is there no evidence of dual submission?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>No indication of dual submission.</td>
+<td>Paper cites itself as conference submission only.</td>
 </tr>
 <tr>
 <td>B39</td>
-<td>If the paper builds on prior workshop papers, is it clear that prior versions did not appear in archival proceedings?</td>
+<td>If building on workshop papers, is prior version non-archival?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Authors cite earlier conference work (NeurIPS 22) but claim new algorithms and bounds.</td>
+<td>No earlier archival version indicated.</td>
 </tr>
 <tr>
 <td>B40</td>
-<td>Does the paper avoid thin slicing of contributions that would make it incremental relative to other concurrent submissions?</td>
+<td>Does the paper avoid thin slicing of contributions?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Provides new pool-based algorithm, tighter theory, and extensive experiments.</td>
+<td>Introduces substantial new algorithms and theory beyond prior bandit methods.</td>
 </tr>
 <tr>
 <td>B41</td>
-<td>Are all experiments, datasets, proofs, and algorithms described in sufficient detail for reproducibility?</td>
+<td>Are experiments, datasets, proofs, algorithms described for reproducibility?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Pseudo-code, hyper-parameter grids, dataset sizes and proofs are supplied.</td>
+<td>Algorithm pseudocode, hyper-parameter grids, dataset details are in paper/appendix.</td>
 </tr>
 <tr>
 <td>B42</td>
-<td>If supplementary material is included, is it clearly marked and uploaded as a single file or proper zipped archive?</td>
+<td>If supplementary material is included, is it properly marked?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendices include additional proofs/figures.</td>
+<td>Appendix sections referenced for proofs, extra figures.</td>
 </tr>
 <tr>
 <td>B43</td>
-<td>If a reproducibility statement is included, does it reference where reproducibility details can be found in the paper or supplementary materials?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>A reproducibility section refers to appendices for hyper-parameters and code-like details.</td>
+<td>If a reproducibility statement is included, does it reference details?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Paper lacks formal reproducibility checklist statement.</td>
 </tr>
 </table>
 <h2>C. Soundness</h2>
@@ -514,259 +514,259 @@
 <td>C1</td>
 <td>Are theorems, lemmas, or key theoretical results clearly stated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Section 5 and appendix enumerate formally numbered theorems and lemmas.</td>
+<td>Theorems bounding regret and label complexity are numbered and stated.</td>
 </tr>
 <tr>
 <td>C2</td>
 <td>For each theoretical result, is the full set of assumptions clearly stated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Assumptions (realizability, low-noise, margin, NTK) precede the results.</td>
+<td>Assumptions on NTK eigenvalue, low-noise, margin etc. precede theorems.</td>
 </tr>
 <tr>
 <td>C3</td>
-<td>Is a complete proof provided for each theoretical result, either in the main text or supplementary material?</td>
+<td>Is a complete proof provided for each theoretical result?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Proof sketches in the paper with full derivations in the appendix.</td>
+<td>Appendix contains detailed proofs; sketches in main text.</td>
 </tr>
 <tr>
 <td>C4</td>
-<td>If proofs are deferred to an appendix or supplement, is an informative proof sketch included in the main paper?</td>
+<td>If proofs are deferred, is an informative sketch included?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Main paper explains key steps and dependence on K.</td>
+<td>Main text outlines proof intuition; full details in appendix.</td>
 </tr>
 <tr>
 <td>C5</td>
-<td>Are theorems, formulas, and proofs properly numbered for easy reference?</td>
+<td>Are theorems, formulas, and proofs properly numbered?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>They use numbered theorems and equation labels.</td>
+<td>They have numbered equations and theorem labels.</td>
 </tr>
 <tr>
 <td>C6</td>
-<td>Are theorems, formulas, and proofs consistently cross-referenced where they are used?</td>
+<td>Are theorems, formulas, and proofs consistently cross-referenced?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Text refers to Theorem 1, Lemma 2 etc.</td>
+<td>Text references Theorem 1, Eq. (3) etc.</td>
 </tr>
 <tr>
 <td>C7</td>
 <td>Are theoretical tools or prior results used in proofs properly cited?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>NTK results and prior lemmas are cited.</td>
+<td>Proofs cite Jacot et al. NTK, Cao & Gu lemmas, etc.</td>
 </tr>
 <tr>
 <td>C8</td>
 <td>Do the mathematical arguments appear correct and rigorous?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Logic follows NTK literature; no obvious gaps detected.</td>
+<td>Derivations follow standard NTK analyses; no obvious flaws.</td>
 </tr>
 <tr>
 <td>C9</td>
 <td>Are theoretical claims demonstrated or validated empirically where appropriate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Empirical speed/accuracy improvements match theoretical K-scaling claim.</td>
+<td>Empirical results match theoretical runtime and regret improvements.</td>
 </tr>
 <tr>
 <td>C10</td>
 <td>Is the experimental methodology clearly described?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Datasets, budgets, runs, metrics, grids stated.</td>
+<td>Datasets, budgets, metrics, baselines, hyper-parameter grid are given.</td>
 </tr>
 <tr>
 <td>C11</td>
-<td>Is the motivation for using the chosen datasets clearly explained?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Datasets cover varying K to illustrate class-scaling problem.</td>
+<td>Is motivation for using chosen datasets explained?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Datasets are standard but motivation not explicitly justified.</td>
 </tr>
 <tr>
 <td>C12</td>
-<td>Are the datasets used adequately described (including source, size, and key characteristics)?</td>
+<td>Are datasets adequately described?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Class counts and origin (UCI, EMNIST, Fashion) listed.</td>
+<td>Names, class counts, sizes referenced; sources cited.</td>
 </tr>
 <tr>
 <td>C13</td>
-<td>For novel datasets, are they included in a data appendix or supplemental material?</td>
+<td>For novel datasets, are they included in an appendix?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>No novel datasets.</td>
 </tr>
 <tr>
 <td>C14</td>
-<td>Will all novel datasets be made publicly available under a research-appropriate license?</td>
+<td>Will all novel datasets be made publicly available?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>No new dataset.</td>
 </tr>
 <tr>
 <td>C15</td>
-<td>Are datasets from the literature properly cited?</td>
+<td>Are datasets from literature properly cited?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Adult, Covertype, etc., each with citations.</td>
+<td>Each dataset citation (e.g., Dua 2017) listed.</td>
 </tr>
 <tr>
 <td>C16</td>
-<td>Are datasets from the literature publicly available?</td>
+<td>Are datasets publicly available?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>All used datasets are publicly downloadable.</td>
+<td>All are public benchmarks.</td>
 </tr>
 <tr>
 <td>C17</td>
-<td>For non-public datasets, is a detailed description provided along with a justification for their use?</td>
+<td>For non-public datasets, is description and justification provided?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>None used.</td>
+<td>All public.</td>
 </tr>
 <tr>
 <td>C18</td>
-<td>Are the data splits (e.g., training, validation, test) clearly specified?</td>
+<td>Are data splits clearly specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Stream setting uses 10 000 test points; pool uses 100 points per round.</td>
+<td>Stream setting T=10k, test 10k; pool batch 100×10 described.</td>
 </tr>
 <tr>
 <td>C19</td>
 <td>Are evaluation metrics clearly defined?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Accuracy, running-time and cumulative regret are defined.</td>
+<td>Test accuracy, cumulative regret, runtime defined.</td>
 </tr>
 <tr>
 <td>C20</td>
-<td>Is the choice of evaluation metrics well motivated?</td>
+<td>Is choice of evaluation metrics well motivated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Metrics directly measure learning effectiveness and computational cost.</td>
+<td>Regret and label efficiency are natural for active learning.</td>
 </tr>
 <tr>
 <td>C21</td>
-<td>Are baseline methods appropriate and relevant to the research question?</td>
+<td>Are baseline methods appropriate and relevant?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Latest neural bandit AL (NeurAL-NTK, I-NeurAL) and pool AL baselines included.</td>
+<td>Baselines include state-of-the-art neural and standard active learning methods.</td>
 </tr>
 <tr>
 <td>C22</td>
-<td>Are implementation details of baseline methods either provided or properly referenced?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Paper notes using authors' code but does not detail hyper-parameters for every baseline.</td>
+<td>Are implementation details of baselines provided or referenced?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Hyper-parameters and references given.</td>
 </tr>
 <tr>
 <td>C23</td>
 <td>Are all relevant hyperparameters reported?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Learning rates, batch sizes, γ, μ grids are described.</td>
+<td>Learning rate, epochs, batch size, gamma, mu specified.</td>
 </tr>
 <tr>
 <td>C24</td>
-<td>Is the procedure for hyperparameter selection clearly described (e.g., search space, selection criteria)?</td>
+<td>Is procedure for hyperparameter selection described?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Grid ranges and selection strategy are in Appendix 8.</td>
+<td>Grid search ranges listed.</td>
 </tr>
 <tr>
 <td>C25</td>
-<td>Does the paper state the number and range of values tried for each hyperparameter?</td>
+<td>Does the paper state number and range of values tried for each hyperparameter?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Lists values for learning rate, epochs, batch, γ, μ.</td>
+<td>Ranges {0.0001,0.0005,0.001}, etc. enumerated.</td>
 </tr>
 <tr>
 <td>C26</td>
-<td>Is the optimizer used clearly specified (e.g., Adam, SGD)?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>SGD is specified for both networks.</td>
+<td>Is the optimizer used clearly specified?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Optimizer (SGD/Adam) not explicitly stated.</td>
 </tr>
 <tr>
 <td>C27</td>
-<td>Are other training details provided (e.g., learning rate, batch size, number of epochs, initialization)?</td>
+<td>Are other training details provided (learning rate, batch size, epochs)?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Initialization (NTK random), LR=0.0001–0.001, epochs etc. given.</td>
+<td>Values included.</td>
 </tr>
 <tr>
 <td>C28</td>
-<td>Are all training and test details needed to interpret the results (e.g., data splits, optimizer, hyperparameters) specified?</td>
+<td>Are all training/test details needed to interpret results specified?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>All critical details appear in main text or appendix.</td>
+<td>Budgets, architectures (width 100, depth 2) specified.</td>
 </tr>
 <tr>
 <td>C29</td>
-<td>If algorithms depend on randomness, is the method for setting random seeds clearly described?</td>
+<td>If algorithms depend on randomness, is random seed handling described?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Seeds are not specified.</td>
+<td>Seeding not mentioned.</td>
 </tr>
 <tr>
 <td>C30</td>
-<td>Is the computing infrastructure used (e.g., hardware, memory, OS, software libraries) clearly specified?</td>
+<td>Is computing infrastructure specified?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Hardware/software stack not reported.</td>
+<td>Hardware not described.</td>
 </tr>
 <tr>
 <td>C31</td>
-<td>Are the number of algorithm runs used to compute each reported result clearly stated?</td>
+<td>Are the number of algorithm runs for each result stated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>10 independent runs; mean±std reported.</td>
+<td>Each experiment repeated 10 times; mean/std reported.</td>
 </tr>
 <tr>
 <td>C32</td>
-<td>Are the main experimental results clearly presented?</td>
+<td>Are main experimental results clearly presented?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Tables and plots show accuracy/time over datasets.</td>
+<td>Tables and plots with accuracy and regret.</td>
 </tr>
 <tr>
 <td>C33</td>
-<td>Are results compared fairly against the baselines?</td>
+<td>Are results compared fairly against baselines?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Same NN width/depth and label budgets used.</td>
+<td>Same budgets, network width/depth where applicable.</td>
 </tr>
 <tr>
 <td>C34</td>
-<td>Are ablation studies conducted to isolate the impact of different components?</td>
+<td>Are ablation studies conducted?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Ablations on label budget and μ/γ provided.</td>
+<td>Label budget ablation and hyper-parameter sensitivity presented.</td>
 </tr>
 <tr>
 <td>C35</td>
-<td>Are error bars, confidence intervals, or other measures of variability reported for key results?</td>
+<td>Are error bars or variability reported?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Mean ± standard deviation displayed.</td>
+<td>Mean ± std shown in tables.</td>
 </tr>
 <tr>
 <td>C36</td>
-<td>Is the method for computing statistical significance or variability clearly described (e.g., number of trials, standard deviation)?</td>
+<td>Is method for computing variability described?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>10 runs standard deviation; though no significance tests.</td>
+<td>Std dev over 10 runs.</td>
 </tr>
 <tr>
 <td>C37</td>
-<td>Are the sources of variation (e.g., random seeds, data splits) clearly stated?</td>
+<td>Are sources of variation (seeds, splits) stated?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Seeds/split randomization not detailed.</td>
+<td>Seeds not specified though multiple runs used.</td>
 </tr>
 <tr>
 <td>C38</td>
-<td>Does the analysis include distributional information, not just summary statistics?</td>
-<td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Only means and std dev; no full distributions.</td>
+<td>Does analysis include distributional information, not just summaries?</td>
+<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
+<td>Regret curves over rounds shown.</td>
 </tr>
 <tr>
 <td>C39</td>
-<td>Is statistical significance assessed using appropriate tests?</td>
+<td>Is statistical significance assessed?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No p-values or tests reported.</td>
+<td>No hypothesis testing.</td>
 </tr>
 <tr>
 <td>C40</td>
-<td>Is the analysis of results insightful and supported by evidence?</td>
+<td>Is analysis of results insightful and supported?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Links theory to improved scaling and observes runtime accuracy trends.</td>
+<td>Explains why runtime and accuracy improve with reduced K dependence.</td>
 </tr>
 <tr>
 <td>C41</td>
-<td>Does the paper disclose all resources (code, data, scripts) necessary to reproduce the main experimental results?</td>
+<td>Does the paper disclose all resources (code, data, scripts) for reproduction?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Code release is not stated.</td>
+<td>No code repository link.</td>
 </tr>
 <tr>
 <td>C42</td>
 <td>Will the source code be made publicly available under a suitable license?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>No code-release statement.</td>
+<td>No statement.</td>
 </tr>
 <tr>
 <td>C43</td>
-<td>Will any novel datasets introduced be made publicly available under a suitable license?</td>
+<td>Will any novel datasets introduced be made publicly available?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
-<td>No new dataset.</td>
+<td>None introduced.</td>
 </tr>
 <tr>
 <td>C44</td>
@@ -776,39 +776,39 @@
 </tr>
 <tr>
 <td>C45</td>
-<td>Is source code for conducting and analyzing experiments included or referenced?</td>
+<td>Is source code for conducting experiments included or referenced?</td>
 <td style="background-color: #ffe6e6; color: #a30000;">No</td>
-<td>Not provided.</td>
+<td>No link.</td>
 </tr>
 <tr>
 <td>C46</td>
-<td>Does the implementation code include comments referencing the paper sections they relate to?</td>
+<td>Does implementation code include comments referencing paper sections?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>Code not shared.</td>
 </tr>
 <tr>
 <td>C47</td>
-<td>Are all new assets (e.g., datasets, models, code) introduced in the paper properly documented?</td>
+<td>Are all new assets introduced properly documented?</td>
 <td style="background-color: #f0f0f0; color: #555;">NA</td>
 <td>No new assets.</td>
 </tr>
 <tr>
 <td>C48</td>
-<td>Are all creators or owners of external assets (e.g., datasets, code) properly credited, including license and terms of use?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Datasets and baseline authors cited.</td>
+<td>Are creators of external assets properly credited including license?</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>Creators credited but licenses not.</td>
 </tr>
 <tr>
 <td>C49</td>
-<td>Does the paper distinguish between speculation, hypotheses, and verified claims?</td>
+<td>Does the paper distinguish speculation, hypotheses, and verified claims?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Theoretical claims are proven; future extensions are labelled as future work.</td>
+<td>Verified theorems vs. future work clearly separated.</td>
 </tr>
 <tr>
 <td>C50</td>
-<td>Are pedagogical references provided to help less-experienced readers understand the background needed for replication?</td>
+<td>Are pedagogical references provided for less-experienced readers?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Background on NTK, active learning and bandits is cited with canonical papers.</td>
+<td>Background cites NTK, contextual bandits tutorials.</td>
 </tr>
 </table>
 <h2>D. Presentation</h2>
@@ -818,187 +818,187 @@
 <td>D1</td>
 <td>Is the abstract a clear and concise summary of the paper’s content?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Abstract states problem, approach, theory, and experiments explicitly.</td>
+<td>Abstract states problem, method, theory, experiments.</td>
 </tr>
 <tr>
 <td>D2</td>
-<td>Does the abstract include enough context for readers to understand the topic?</td>
+<td>Does the abstract include enough context?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Mentions active learning, bandit transformation and K-dependence.</td>
+<td>Mentions bandit approaches and K issue.</td>
 </tr>
 <tr>
 <td>D3</td>
 <td>Does the introduction provide sufficient background and motivation?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Explains stream vs pool settings and shortcomings of existing bandit AL.</td>
+<td>Explains active learning settings, bandit limitations.</td>
 </tr>
 <tr>
 <td>D4</td>
-<td>Is the problem setup understandable and accessible to the target audience?</td>
+<td>Is the problem setup understandable and accessible?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Definitions of regret, budgets, assumptions are provided.</td>
+<td>Defines stream vs pool, regret metrics.</td>
 </tr>
 <tr>
 <td>D5</td>
-<td>Is the paper organized in a logical and easy-to-follow manner?</td>
+<td>Is the paper organized logically?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Sections flow: intro, related work, problem, algorithms, theory, experiments.</td>
+<td>Sections flow: intro, related, problem, methods, theory, experiments.</td>
 </tr>
 <tr>
 <td>D6</td>
-<td>Are section and subsection headings clear and descriptive?</td>
+<td>Are headings clear and descriptive?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Headings reflect content (e.g., Proposed Algorithms, Regret Analysis).</td>
+<td>Headings like "Regret Analysis", "Experiments".</td>
 </tr>
 <tr>
 <td>D7</td>
-<td>Are paragraphs and sections well-structured and coherent?</td>
+<td>Are paragraphs and sections well-structured?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Each paragraph tackles a single idea with clear transitions.</td>
+<td>Each paragraph addresses single topic.</td>
 </tr>
 <tr>
 <td>D8</td>
-<td>Is the narrative flow smooth across sections and transitions?</td>
+<td>Is narrative flow smooth across sections?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Logical progression from motivation to methods to results.</td>
+<td>Transitions explain why next section follows.</td>
 </tr>
 <tr>
 <td>D9</td>
-<td>Is the language clear, precise, and unambiguous?</td>
+<td>Is language clear and unambiguous?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Technical terms are used correctly and defined.</td>
+<td>Technical writing mostly clear.</td>
 </tr>
 <tr>
 <td>D10</td>
-<td>Is grammar, spelling, and punctuation correct throughout?</td>
+<td>Is grammar, spelling, and punctuation correct?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Minor typos but overall grammatical.</td>
+<td>Minor typos but overall correct.</td>
 </tr>
 <tr>
 <td>D11</td>
 <td>Is the writing style suitable for a technical conference?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Formal scientific style throughout.</td>
+<td>Formal academic style.</td>
 </tr>
 <tr>
 <td>D12</td>
 <td>Are sentences concise and free of unnecessary jargon?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Sentences are mostly concise though dense technical content.</td>
+<td>Some jargon inevitable; generally concise.</td>
 </tr>
 <tr>
 <td>D13</td>
 <td>Is the paper accessible to readers not deeply familiar with the subfield?</td>
-<td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Provides background on NTK and active learning; still technical but explanatory.</td>
+<td style="background-color: #ffe6e6; color: #a30000;">No</td>
+<td>NTK and bandit concepts assumed; steep learning curve.</td>
 </tr>
 <tr>
 <td>D14</td>
 <td>Are mathematical notations clearly defined upon first use?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>All symbols (K, d, T, etc.) defined when introduced.</td>
+<td>x_t, y_t, K, etc., defined in Problem Definition.</td>
 </tr>
 <tr>
 <td>D15</td>
-<td>Are notations used consistently throughout the paper?</td>
+<td>Are notations used consistently?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Consistent use of K, d, T, regret, etc.</td>
+<td>Consistent throughout proofs.</td>
 </tr>
 <tr>
 <td>D16</td>
-<td>Are acronyms and abbreviations defined at first use and used consistently?</td>
+<td>Are acronyms defined at first use?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>NTK, UCB, AL, etc., defined at first appearance.</td>
+<td>NTK, UCB, etc., defined.</td>
 </tr>
 <tr>
 <td>D17</td>
-<td>Are all figures and tables essential and well-integrated into the text?</td>
+<td>Are all figures and tables essential and well-integrated?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Figures show regret curves; tables show accuracy/time; all referenced.</td>
+<td>Figures show regret curves; tables give accuracy/time.</td>
 </tr>
 <tr>
 <td>D18</td>
-<td>Are figure and table captions informative and self-contained?</td>
+<td>Are captions informative and self-contained?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Captions state dataset and metric clearly.</td>
+<td>Captions describe metrics and datasets.</td>
 </tr>
 <tr>
 <td>D19</td>
-<td>Are axes labeled clearly, with units where appropriate?</td>
+<td>Are axes labeled clearly with units where appropriate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Regret vs rounds; accuracy vs rounds labeled.</td>
+<td>Plots label x=rounds, y=regret.</td>
 </tr>
 <tr>
 <td>D20</td>
-<td>Are font sizes in figures and tables readable?</td>
+<td>Are font sizes in figures readable?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Plots and tables readable at print scale.</td>
+<td>Sample figures readable.</td>
 </tr>
 <tr>
 <td>D21</td>
-<td>Are plots and diagrams visually clear and appropriate for the data?</td>
+<td>Are plots and diagrams visually clear?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Lines distinguishable and legends provided.</td>
+<td>Distinct colors and line styles.</td>
 </tr>
 <tr>
 <td>D22</td>
-<td>Are color, shape, or style distinctions clear in multi-series plots?</td>
+<td>Are color/shape distinctions clear in multi-series plots?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Different colors and dash styles distinguish methods.</td>
+<td>Legend differentiates series.</td>
 </tr>
 <tr>
 <td>D23</td>
-<td>Are legends provided when needed and easy to interpret?</td>
+<td>Are legends provided and easy to interpret?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Legends list each method.</td>
+<td>Legends list method names.</td>
 </tr>
 <tr>
 <td>D24</td>
-<td>Are all figures and tables correctly referenced and discussed in the text?</td>
+<td>Are all figures and tables correctly referenced in the text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Main text refers to Table 1, Figure 3, etc.</td>
+<td>Figures referred by number.</td>
 </tr>
 <tr>
 <td>D25</td>
-<td>Are all references cited properly in the text?</td>
+<td>Are all references cited properly in text?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Citations appear with author-year keys.</td>
+<td>Citations with author-year tags present.</td>
 </tr>
 <tr>
 <td>D26</td>
 <td>Are citations formatted consistently and according to guidelines?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Bib-style consistent throughout.</td>
+<td>Consistent citation style.</td>
 </tr>
 <tr>
 <td>D27</td>
 <td>Is the reference list complete and free of formatting issues?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Comprehensive references; minor long list but formatted.</td>
+<td>Comprehensive list; minor formatting but acceptable.</td>
 </tr>
 <tr>
 <td>D28</td>
-<td>Does the paper adhere to standard formatting guidelines (e.g., margins, font size, length)?</td>
+<td>Does the paper adhere to standard formatting guidelines?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Fits conference template.</td>
+<td>Appears to follow conference template.</td>
 </tr>
 <tr>
 <td>D29</td>
-<td>Are all footnotes, equations, and lists properly formatted and placed?</td>
+<td>Are footnotes, equations, and lists properly formatted and placed?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Equations numbered and aligned; footnotes minimal.</td>
+<td>Equations numbered and centered.</td>
 </tr>
 <tr>
 <td>D30</td>
-<td>Are any appendices, figures, or tables referenced correctly from the main text?</td>
+<td>Are appendices, figures, or tables referenced correctly?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendix 8, Fig. 3, etc., referenced.</td>
+<td>Appendix sections referenced.</td>
 </tr>
 <tr>
 <td>D31</td>
 <td>Are supplementary materials clearly labeled and easy to navigate?</td>
 <td style="background-color: #e6ffed; color: #00611d;">Yes</td>
-<td>Appendix sections numbered and titled.</td>
+<td>Appendix numbered sections, tables, figures.</td>
 </tr>
 </table>
 </body>
