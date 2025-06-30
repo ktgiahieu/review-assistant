@@ -47,7 +47,7 @@ AZURE_API_KEY = os.environ.get("AZURE_OPENAI_KEY")
 AZURE_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
 AZURE_DEPLOYMENT_NAME = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME")
 
-CONTEXT_LENGTH_LIMIT = 200000  # The context limit of the model being used
+CONTEXT_LENGTH_LIMIT = 150000  # The context limit of the model being used
 TOKEN_BUFFER = 10000 # Buffer for system prompts, response format, etc.
 # --- Helper Functions & Classes ---
 
@@ -288,7 +288,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
         flaw_response = call_llm_with_retries(azure_client, flaw_extraction_prompt, FlawExtractionResponse, "Flaw Extraction")
 
         if not flaw_response or not flaw_response.critical_flaws:
-            tqdm.write(f"Worker {worker_id}: No critical flaws found or extracted for {openreview_id}.")
+            # tqdm.write(f"Worker {worker_id}: No critical flaws found or extracted for {openreview_id}.")
             return []
 
         results_for_global_csv = []
@@ -310,7 +310,7 @@ def process_paper(paper_md_path: Path, input_base_dir: Path, output_base_dir: Pa
                 mod_response = call_llm_with_retries(azure_client, modification_prompt, ModificationGenerationResponse, "Modification Generation")
 
                 if not mod_response or not mod_response.modifications:
-                    tqdm.write(f"Worker {worker_id}: LLM returned no modifications for flaw '{flaw.flaw_id}'. Not retrying for this flaw.")
+                    # tqdm.write(f"Worker {worker_id}: LLM returned no modifications for flaw '{flaw.flaw_id}'. Not retrying for this flaw.")
                     break 
 
                 # --- Attempt to apply the modifications ---
