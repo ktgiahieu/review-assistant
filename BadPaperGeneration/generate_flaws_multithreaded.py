@@ -120,7 +120,9 @@ def format_reviews_for_llm(note_details: dict) -> str:
                     output_text.append(f"## {key.replace('_', ' ').title()}\n{value.strip()}\n")
         elif 'comment' in content:
             output_text.append(f"--- Comment by {signatures} ---\n")
-            comment_value = content['comment'].get('value', content['comment'])
+            comment_value = content['comment']
+            if not isinstance(comment_value, str):
+                comment_value = comment_value.get('value', content['comment'])
             if isinstance(comment_value, str) and comment_value.strip():
                 output_text.append(f"{comment_value.strip()}\n")
 
