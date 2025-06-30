@@ -199,7 +199,7 @@ def process_markdown_file(
         for prompt_dict in prompts_list:
 
             current_prompt = prompt_dict["prompt"].get_prompt(paper_content_for_prompt)
-            content_list = [{"type": "text", "text": current_prompt}]
+            content_list = [{"type": "input_text", "text": current_prompt}]
 
             added_figures_count = 0
             if (max_figures is None or max_figures > 0) and Image is not None:
@@ -344,9 +344,9 @@ def process_markdown_file(
                                 mime_type = f"image/{image_ext[1:]}" 
                                 if image_ext == ".jpg": mime_type = "image/jpeg" 
                                 image_id_text = '/'.join(Path(found_abs_path).parts[-2:])
-                                content_list.append({"type": "text", "text": f"ID for the next image: {image_id_text}"})
+                                content_list.append({"type": "input_text", "text": f"ID for the next image: {image_id_text}"})
                                 if verbose: print(f"Worker {worker_id}: Adding image to API: {image_id_text} (Orig: {found_abs_path}, Final API size: {len(image_data_for_api_bytes) / (1024*1024):.2f}MB)")
-                                content_list.append({"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64_image}"}})
+                                content_list.append({"type": "input_image", "image_url": f"data:{mime_type};base64,{base64_image}"})
                                 added_figures_count += 1
                                 queued_image_abs_paths.add(str(found_abs_path))
                             elif verbose: _print_method(f"Worker {worker_id}: Failed to base64 encode image: {found_abs_path}")
