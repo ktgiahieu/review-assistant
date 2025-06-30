@@ -19,6 +19,8 @@ GenerateChecklistAnswers/*data*
 GenerateChecklistAnswers/*.zip
 log_*.txt
 
+BaselineErrorDetection/*data*
+
 BadPaperGeneration/*_flawed_papers*
 BadPaperGeneration/old
 
