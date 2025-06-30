@@ -11,8 +11,7 @@ class ConsensusExtractionPrompt:
         a) Promising to add the required analysis, data, or clarification to the final, camera-ready version of the paper.
         b) Explicitly agreeing that it is a major limitation of the current study's scope.
 3.  Do not include issues that the authors state will be addressed in separate "follow-up work" unless it is also clearly acknowledged as a critical limitation of the current paper.
-4.  You MUST obtain AT LEAST 1 crucial flaw. If there is no crucial flaw that satisfied the criteria above, try to summarize the main concerns by the reviewers as 1 flaw.
-5.  Your output MUST be a JSON object that conforms to the provided schema.**
+4.  Your output MUST be a JSON object that conforms to the provided schema.**
 
 Input review and rebuttal process:
 <BEGIN REVIEW PROCESS>
