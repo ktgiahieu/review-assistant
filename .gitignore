@@ -13,10 +13,10 @@ ExtractLatex/latex_copy.py
 openreview_account.json
 ExtractLatex/parsed_arxiv
 ExtractLatex/run_multithreaded_latex_debug*
-AnswerChecklist/filter.py
-AnswerChecklist/*data*
+GenerateChecklistAnswers/filter.py
+GenerateChecklistAnswers/*data*
 *.csv
-AnswerChecklist/*.zip
+GenerateChecklistAnswers/*.zip
 log_*.txt
 
 BadPaperGeneration/*_flawed_papers*
@@ -27,5 +27,24 @@ ReproduceCycleReviewer/LLM_Responses_Parsed/
 ReproduceCycleReviewer/review-5k-dataset/
 ReproduceCycleReviewer/keys.py
 ReproduceCycleReviewer/300_sampled_paper_ids.txt
+ReproduceCycleReviewer/100_sampled_paper_ids.txt
 
-Baselines/
+
+GenerateBadPapers/keys.py
+
+GenerateBadPapers/ICLR2024.zip
+GenerateBadPapers/ICLR2024/
+GenerateBadPapers/ICLR2024_Reviews_Processed/
+GenerateBadPapers/ICLR2024_Reviews_Raw/
+
+GenerateBadPapers/ICLR2025.zip
+GenerateBadPapers/ICLR2025/
+GenerateBadPapers/ICLR2025_Reviews_Processed/
+GenerateBadPapers/ICLR2025_Reviews_Raw/
+
+
+FeatureExtractionForBiasAnalysis/Data/
+
+.env
+GenerateChecklistAnswers/data/
+GenerateChecklistAnswers/checklists/

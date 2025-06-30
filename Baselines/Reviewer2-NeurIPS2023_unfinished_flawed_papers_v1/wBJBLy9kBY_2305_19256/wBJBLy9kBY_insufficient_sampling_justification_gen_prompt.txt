@@ -1,0 +1,5 @@
+1. What is the focus and contribution of the paper on diffusion models?
+2. What are the strengths of the proposed approach, particularly in terms of its ability to learn from corrupted data?
+3. What are the weaknesses of the paper, especially regarding the training process and the choice of the corruption matrix?
+4. Do you have any concerns about the experimental results and their significance?
+5. How does the reviewer assess the clarity, quality, novelty, and reproducibility of the paper's content?

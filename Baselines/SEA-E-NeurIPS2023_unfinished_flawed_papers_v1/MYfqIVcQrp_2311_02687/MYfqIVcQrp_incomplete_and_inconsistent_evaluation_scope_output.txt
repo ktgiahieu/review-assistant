@@ -1,0 +1,36 @@
+**Summary:**
+This paper investigates the behavior of graph contrastive learning (GCL) and challenges the reliance on positive samples and negative pairs, which are common components in vision-based contrastive learning. The authors reveal that GCL does not require positive samples for competitive performance and that it can function effectively without negative samples, which is contrary to the traditional understanding in CNNs for classification. The paper also explores how domain-agnostic noise perturbations can enhance GCL performance. The theoretical insights provided explain the mechanism by which Graph Convolution implicitly minimizes neighbor-induced alignment loss, which might replace alignment losses in GCL, and how ContraNorm prevents collapsing to a single point without uniformity loss. Despite the novelty, the paper's approach has been questioned for its experimental setup, the choice of GCN backbone, and the generalizability of findings across different GNN architectures.
+
+**Strengths:**
+- The paper provides a clear and concise motivation, with solid experimental results and theoretical analysis.
+- The identification of a novel design paradigm for GCL is an important and intriguing finding that could inspire the design of new algorithms or approaches for GCL.
+- The authors conduct both theoretical analysis and empirical analysis using multiple mainstream datasets in the field, and the experiments are conducted for several state-of-the-art GCL algorithms.
+- The authors discover that GCL can perform fine with random negative sampling and without domain-specific augmentation, and their theoretical analysis demonstrates the underlying mechanisms behind these phenomena.
+- The paper offers a comprehensive analysis of how GCL handles various pairs and the performance gains from augmentations, providing valuable insights and recommendations for designing effective self-supervised learning on graphs.
+
+**Weaknesses:**
+- The paper's experiments were performed mainly using the GCN architecture, which might limit the generalizability of the conclusions to other GNN architectures.
+- Some theoretical findings and explanations are difficult to follow, suggesting the need for further clarification or simplification.
+- The novelty of the ContraNorm method and the lack of broader evaluation across different model architectures are concerns that could affect the robustness and applicability of the findings.
+
+**Questions:**
+- Could the general phenomena observed in the paper be generalized to other model architectures? How might the findings apply in other domains beyond graph learning?
+- How would the introduction of negative samples to the graph classification task affect performance? Was this experiment considered?
+- Why does the paper not include node classification tasks when studying the effect of positive sampling?
+- In Figure 8 of the Appendix, how does the rank of node embedding change if we use both positive and negative? If positive samples are not required, how do we choose the hyperparameter k for contrastive learning?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+2 fair
+
+**Rating:**
+6 weak accept
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper presents a novel and intriguing set of observations regarding the behavior of graph contrastive learning, challenging traditional assumptions about the necessity of positive and negative pairs. The experimental results are supported by theoretical insights, providing a solid foundation for future work in this area. While the experimental setup and choice of GCN backbone could be improved, the paper is well-received for its innovative approach and potential impact on the field. The decision to accept aligns with the majority of reviewers, who have acknowledged the paper's originality and the interest it generates in further research.</s>

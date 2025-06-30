@@ -1,0 +1,5 @@
+1. What is the focus of the paper regarding radiance fields?
+2. What are the strengths of the proposed approach, particularly in terms of storage efficiency?
+3. What are the weaknesses of the paper, especially regarding the lack of experiments on dynamic scenes?
+4. How does the reviewer assess the novelty and significance of the proposed method compared to other works in the field?
+5. Are there any concerns or suggestions regarding the presentation and clarity of the paper's content?

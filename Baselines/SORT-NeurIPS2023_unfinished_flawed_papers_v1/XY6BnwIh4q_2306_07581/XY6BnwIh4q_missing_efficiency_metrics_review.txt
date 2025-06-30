@@ -1,0 +1,47 @@
+Review outline:
+
+1.  Significance and novelty
+
+    *   The paper introduces Binary Radiance Fields (BiRF), a novel approach to reduce the storage footprint of radiance fields using binary feature encoding.
+    *   The core idea of binarizing feature grids and using a 2D-3D hybrid structure appears novel in the context of radiance field compression.
+    *   The reported results showing comparable or better performance than existing methods with significantly lower storage are promising.
+    *   The potential impact of reducing the storage bottleneck for radiance fields could be substantial, making them more accessible and deployable on resource-constrained devices.
+
+2.  Potential reasons for acceptance
+
+    *   **Significant Storage Reduction:** The paper convincingly demonstrates a substantial reduction in storage space compared to existing state-of-the-art methods while maintaining competitive or superior reconstruction quality.  This is a crucial contribution for the practical deployment of radiance fields.
+    *   **Novel Binary Feature Encoding:** The application of binarization techniques from Binarized Neural Networks (BNNs) to radiance field feature encoding is a novel and promising approach. The straight-through estimator (STE) enables effective training of binary parameters.
+    *   **Effective Hybrid Architecture:** The proposed 2D-3D hybrid grid architecture effectively balances computational efficiency and feature representation, addressing the limitations of purely 3D grid structures.
+    *   **Strong Experimental Results:** The extensive experimental evaluation on standard benchmarks (Synthetic-NeRF, Synthetic-NSVF, Tanks & Temples) demonstrates the effectiveness of BiRF and validates the claims made in the paper.  The quantitative results are compelling.
+
+3.  Potential reasons for rejection
+
+    *   **Limited novelty in binarization technique:**
+
+        *   While binarization in radiance fields is novel, the binarization technique itself (sign function and STE) is borrowed from existing BNN literature.  The contribution might be perceived as primarily an application of existing techniques to a new domain.
+        *   The paper may need to better articulate what modifications or adaptations were required to successfully apply the BNN binarization techniques within the radiance field context, rather than merely stating its application.
+
+    *   **Justification of hybrid 2D-3D feature grid is weak**:
+
+        *   The rationale behind the specific choice of a hybrid 2D-3D grid structure is not sufficiently motivated with comprehensive ablation studies. It's unclear if the combination of 3 orthogonal 2D planes is optimal.  A comparison with different 2D plane configurations (e.g. fewer planes, different orientations) is missing.  Why not 1D or just 3D grids.
+        *   The claim that 2D grids alleviate hash collisions is asserted, but not empirically proven. The paper needs a direct analysis (e.g., hash collision rates) to support this claim. An ablation study testing solely 3D grids with varying hash table sizes is needed.
+
+    *   **Limited analysis of training and inference performance:**
+
+        *   The paper mentions a slightly longer training time compared to Instant-NGP, but provides insufficient details about the computational overhead introduced by the binarization process. A more thorough analysis of training time, memory consumption during training, and inference speed is needed.
+        *   The conclusion mentioning it's not intended for real-time rendering raises concerns. A real-time or at least faster version would be more compelling. The relative performance of BiRF compared to other real-time methods needs clarification.
+
+    *   **Lack of ablation on bitwidth:**
+
+        * The "binary" nature is the most important aspect of this paper. There should be ablation studies of different bits representations of the data grid such as 2-bit or 4-bit representations, in order to test the lower bound needed to reconstruct the same scene.
+        * Since binary representations can be converted into integer representations without losing memory footprint, what will be the performance difference (if any) on inference and training.
+
+4.  Suggestions for improvement
+
+    *   **Strengthen the novelty argument:** Elaborate on the challenges and adaptations required to apply binarization techniques from BNNs to the radiance field context. Highlight the specific contributions beyond a simple application of existing methods.
+
+    *   **Provide stronger justification for the hybrid architecture:**  Conduct a more comprehensive ablation study to justify the choice of the 2D-3D hybrid grid.  Compare different 2D plane configurations and analyze hash collision rates to support the claim that 2D grids alleviate collisions.
+
+    *   **Expand the performance analysis:** Provide a more detailed analysis of training time, memory consumption during training, and inference speed. Quantify the computational overhead of binarization and compare the performance of BiRF to other methods. If possible, try and optimize it for a real-time setting.
+
+    *  **Include a discussion on limitations:** Discuss the potential limitations of the binarization approach, such as its sensitivity to noise or specific scene characteristics. Compare the robustness of BiRF to other compression methods in the presence of noisy input data or challenging scenes.

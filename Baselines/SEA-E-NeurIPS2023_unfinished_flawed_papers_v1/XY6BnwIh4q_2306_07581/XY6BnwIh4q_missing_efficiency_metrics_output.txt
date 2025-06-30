@@ -1,0 +1,42 @@
+**Summary:**
+The paper introduces binary radiance fields (BiRF), a novel method for representing neural radiance fields using binary feature encoding, which significantly reduces storage requirements. This approach represents both the geometry and color radiance fields using a hybrid of hash- encoded voxel grids and 2D feature planes. The method's compact storage makes it applicable to various NeRF variants and is compared against several state-of-the-art NeRF variants, demonstrating superior quality and reduced storage needs. However, concerns about the novelty of the approach and the complexity of implementation compared to existing methods like 0.5bit NeRF are highlighted.
+
+**Strengths:**
+- The paper effectively demonstrates the value of efficient compact representations for neural radiance fields, which is crucial for scalability and practicality in real-world applications.
+- The method introduces a novel approach by using binary radiance fields to reduce storage space without compromising performance, presenting a significant improvement over existing methods.
+- The methodology is sound, clearly presented, and includes good comparisons against alternative methods, highlighting the simplicity of the approach compared to others.
+- The paper addresses an important and practical issue in the field, namely the storage inefficiency of neural radiance fields, and proposes a solution that significantly reduces storage space while maintaining quality.
+- The proposed method shows significant storage reduction, which is a notable achievement in a field where storage efficiency is crucial.
+
+**Weaknesses:**
+- The novelty of the paper is questionable as it appears to be a direct adaptation of the 0.5bit compressor from NeRF-W, with minor modifications and poorer performance.
+- The implementation of binary encoding adds complexity to the network architecture, potentially reducing network performance.
+- The paper does not sufficiently evaluate or compare the rendering speed and memory usage during inference, which could be important given the focus on saving storage.
+- There is a lack of discussion on the computational cost of binary feature encoding, which could be significant due to the binarization of large feature vectors.
+- The method's reliance on a sparsity loss for compactness raises questions about the optimization process, particularly if this parameter is learned or manually set.
+- The paper does not fully justify why the binarization strategy is superior to directly compressing the NeRFs via conventional encoders like VQ-VAE on parameter grids.
+- The presentation could be improved, especially in the feature encoding process, where the number of channels is not mentioned, leading to confusion about the representation.
+
+**Questions:**
+- Could the authors clarify how the multi-resolution design of the 2D/3D grids influences the model's performance? This could include a potential ablation study on this design.
+- How does the paper address potential biases or distortions introduced by the binarization of features or parameters?
+- Could the authors clarify how the sparsity loss is implemented and optimized, especially in terms of learning parameters versus manual settings?
+- How does the storage usage scale with the resolution change, and what are the implications for the accuracy and fidelity of the reconstruction?
+- Could the authors elaborate on the novelty of their work compared to prior methods, particularly how their approach differs from existing methods in terms of implementation and performance?
+- The manuscript lacks crucial details for reproduction. Can the authors provide more information regarding hyper-parameters, hash sizes, and other specifics needed for replication?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+2 fair
+
+**Rating:**
+5 marginally below the acceptance threshold
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper addresses a critical issue in the field by proposing a compact storage solution for neural radiance fields. While there are concerns regarding the novelty and direct application of existing methods, the reviewers acknowledge the method's potential and encourage the authors to address the raised issues in future iterations. The ACs have suggested a thorough revision to enhance the novelty of the contributions and improve the presentation. The decision to accept is based on the paper's timely relevance and its potential to advance the field, despite its current shortcomings.</s>

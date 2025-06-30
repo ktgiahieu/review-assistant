@@ -1,0 +1,37 @@
+**Summary:**
+The paper introduces a novel method for learning the clean data distribution from noisy samples, utilizing a strategy that generates additional noise and treats it as real data. This approach allows for training a diffusion model on inpainted images, showing competitive performance in various tasks such as inpainting and out-of-distribution sampling. The theory supporting the approach is well-developed, with the results demonstrating promising performance on benchmarks. Despite the impressive performance, concerns are raised about the practicality of the method, particularly in scenarios with high noise levels, and the complexity of generating high-quality masks for training.
+
+**Strengths:**
+- The paper is well-written, including detailed motivations and comprehensive supporting theories for the approach.
+- The performance of the proposed approach holds up well against benchmarks.
+- The core idea of introducing additional noise beyond what is initially given is innovative in enhancing the quality of reconstruction from corrupted data.
+- The authors provide a solid theoretical argument for their method, supported by clear explanations and simple notation throughout the paper.
+
+**Weaknesses:**
+- The paper lacks an ablation study on the effectiveness of adding additional noise and the selection of hyperparameters such as masking and further corruption probabilities.
+- More clarity is needed in the presentation and figures in the supplementary material.
+- It is unclear how the training process would scale in real-world scenarios with high noise levels, which have more severe masks.
+- Minor issues in presentation, such as potential errors in the title and the organization of the paper.
+
+**Questions:**
+- How can high-quality masks be generated for training the generative model?
+- Is there a more general method to train a generative model on clean data, assuming access to only a single image with severe corruption?
+- Is the proposed approach limited to inpainting data? How does it compare with noise-only corruptions?
+- What is the difference between this and previous methods that treat all corrupted data as missing parts?
+- In Figure 4, what are the sources of the original and predicted MRI images?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+3 good
+
+**Rating:**
+7 accept
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper introduces an interesting and unique approach to learning the clean data distribution from noisy samples, which is both theoretically sound and empirically validated. The authors have extensively addressed the concerns raised during the review process, providing additional experiments and clarifications which have significantly improved the paper. All reviewers have agreed to accept the paper, recommending it for presentation at the conference. The method's novelty, the soundness of the theoretical and experimental results, and the potential for application in various domains contribute to its acceptance.</s>

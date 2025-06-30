@@ -1,0 +1,15 @@
+Summary Of The Paper
+This paper introduces a new radiance field representation that is efficient in terms of storage. It is based on a binary feature grid that encodes local features using binary encoding parameters. The method is trained with a binarization-aware training scheme and binary feature encoding. It is demonstrated to achieve superior performance compared to prior efficient and lightweight methods.
+
+Strengths And Weaknesses
+Strengths:
+The paper is well-written and easy to follow.
+The proposed method is efficient in terms of storage and achieves better performance compared to other methods.
+Weaknesses:
+The paper does not include any experiments on dynamic scenes.
+
+Questions
+None.
+
+Limitations
+None.

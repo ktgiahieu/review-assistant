@@ -1,0 +1,43 @@
+Review outline:
+
+1.  Significance and novelty:
+
+    *   The paper presents a systematic and comprehensive empirical study of graph contrastive learning (GCL) methods, challenging several commonly held beliefs inherited from visual contrastive learning (VCL).
+    *   The counter-intuitive findings regarding the dispensability of positive samples, irrelevance of negative samples for graph-level tasks, and sufficiency of crude noise perturbations are novel and potentially impactful.
+    *   The theoretical insights connecting graph convolution with neighbor-induced alignment and ContraNorm with neighbor-induced uniformity provide a valuable contribution to understanding the implicit mechanisms in GCL.
+    *   The paper successfully argues that GCL has distinct characteristics compared to VCL and should be treated as a self-contained paradigm.
+
+2.  Potential reasons for acceptance:
+
+    *   **Strong empirical validation:** The paper provides extensive experimental results across multiple GCL methods and benchmark datasets, supporting the claims with convincing evidence.
+    *   **Clear and well-written:** The paper is well-organized, easy to follow, and explains the concepts clearly. The introduction effectively motivates the research and highlights the key contributions.
+    *   **Theoretical grounding:** The paper offers theoretical insights to explain the observed phenomena, providing a deeper understanding of the underlying mechanisms in GCL.
+    *   **Impactful findings:** The findings have the potential to reshape the design and understanding of GCL methods, paving the way for more efficient and effective approaches.
+
+3.  Potential reasons for rejection:
+
+    *   **Limited scope of theoretical analysis:** While the theoretical insights are valuable, they are primarily focused on explaining the observed phenomena in the context of GCN and ContraNorm.
+        *   The theoretical analysis might not be generalizable to all types of GNN architectures or GCL methods.
+        *   The connection between the theorems and the experimental results should be further strengthed and explained.
+    *   **Lack of ablation studies on specific augmentation methods.** The experiments show that random gaussian noise is enough to achieve competitive results with the state-of-the-art methods on graph datasets.
+        *   However, there lacks experiments showing the impact of random guassian noise in conjunction with the state-of-the-art domain specific augmentation methods.
+        *   There might be a combination of domain specific augmentation methods together with domain-agnostic augmentations that works best.
+    *   **Potential oversimplification of GCL complexities:** The paper argues that architectural inductive bias is more important than empirical benchmarking. However, real-world graph datasets are often high dimensional and complicated, so it might not be a fair assessment.
+        *   Oversimplifying the role of other factors (e.g., specific loss functions, augmentation strategies) in GCL performance.
+        *   The findings may not hold across all types of graph datasets or downstream tasks.
+    *   **Missing comparisons with other self-supervised learning paradigms:** The paper focuses primarily on contrastive learning and does not adequately compare it with other self-supervised learning approaches for graphs, such as masked graph modeling.
+        *   The introduction could benefit from a broader discussion of different self-supervised learning paradigms for graphs and how they relate to contrastive learning.
+        *   The conclusion should also acknowledge the limitations of focusing solely on contrastive learning and suggest future research directions exploring other SSL paradigms.
+
+4.  Suggestions for improvement:
+
+    *   **Expand the theoretical analysis:** Generalize the theoretical insights to a broader range of GNN architectures and GCL methods. Investigate the conditions under which the theorems hold and identify potential limitations.
+    *   **Conduct more ablation studies:** Perform ablation studies to evaluate the impact of different components of the GCN architecture and ContraNorm on the observed phenomena.
+        *   Investigate the role of different layers in GCN and the specific parameters in ContraNorm.
+        *   Perform more controlled experiments by carefully selecting the domain-agnostic parameters.
+    *   **Address the generalizability concerns:** Acknowledge the limitations of the findings and discuss the potential challenges of generalizing them to more complex graph datasets and downstream tasks.
+        *   Add a section explaining why the authors believe the findings can be generalizable in the discussion section.
+        *   Perform experiments with more GNN models.
+    *   **Broaden the scope of the comparison:** Include a discussion of other self-supervised learning paradigms for graphs, such as masked graph modeling, and compare their performance with GCL under different conditions.
+        *   Perform experiments and compare with other self-supervised learning paradigms for graphs, such as masked graph modeling
+        *   Clarify the advantages and disadvantages of different approaches for different types of graphs and tasks.

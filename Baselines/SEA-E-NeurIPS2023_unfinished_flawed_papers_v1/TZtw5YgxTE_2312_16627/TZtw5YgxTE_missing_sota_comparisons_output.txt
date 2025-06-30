@@ -1,0 +1,40 @@
+**Summary:**
+The paper explores the dataset distillation problem by proposing a novel framework that maximizes the Mutual Information (MI) between synthetic and real data distributions. This approach is based on a contrastive loss function that pulls real and synthetic data close for positively labeled data and pushes them apart for negatively labeled data. The methodology converts the MI maximization between synthetic and real data into maximizing MI between the activations of the same layer of models trained on these datasets. Despite its innovative approach, the paper's empirical results show only marginal improvements over existing methods, and the method's implementation details, particularly the hyperparameter settings, are not adequately discussed.
+
+**Strengths:**
+- The proposed approach is novel, effectively leveraging mutual information theory to formalize dataset distillation as a mutual information maximization problem.
+- The paper provides mathematical proofs, which are rigorous and thorough, offering a strong theoretical foundation for the proposed method.
+- Empirical results demonstrate the superior effectiveness of the proposed method over existing state-of-the-art (SOTA) methods, with marginal improvements compared to certain baselines like MTT, indicating the potential for significant practical benefits.
+- The paper's clarity and organization are highlighted as strengths, making it easy to follow and understand the proposed methods and their theoretical underpinnings.
+- The idea of formulating dataset distillation as a mutual information maximization problem is innovative and provides a new perspective on the problem.
+
+**Weaknesses:**
+- The empirical results, while showing improvements, are not as significant as claimed, with marginal improvements reported in the main paper and no comparisons with other baselines using full datasets.
+- The paper’s implementation depends on hyperparameters, but the sensitivity analysis for these hyperparameters (such as λ in λ * LMIM4DD) is limited, which could impact the reproducibility and comprehensibility of the results.
+- The paper's figures and supplementary material are inadequately discussed or shown, particularly Figures 3, 5, and 6, which are critical for understanding the results and comparisons with other methods.
+- There is a lack of explanation and justification for why contrastive loss is essential for dataset distillation, and the paper does not sufficiently distinguish its approach from previous works.
+- Improvements in performance are not impressive, and the paper lacks comprehensive experimental setups, including comparisons with other distillation approaches like BatchNormalization distillation, model parallel distillation, and other state-of-the-art methods.
+ text, and the formulation of the dataset distillation problem is not well-aligned with the actual method presented.
+
+**Questions:**
+- Could the authors provide a more detailed analysis of the hyperparameters and their impact on the performance of the method?
+- How does the proposed method compare with other potential baselines like those referenced in the paper but not included in the main results?
+- Can the method be applied to other tasks or datasets, and what would be the expected outcomes?
+- How does the use of a larger value of γ in the model affect the performance, particularly in terms of computational resources and the balance between NCE loss and dataset distillation loss?
+- In the experiments, how many images are used in the datasets, and how are the comparative experiments performed with the results of MTT+MI4DD and MTT+IM4DD stated in Table 1?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+3 good
+
+**Rating:**
+5 marginally below the acceptance threshold
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper addresses an important and relevant problem within the field of dataset distillation by introducing a novel approach that maximizes mutual information between synthetic and real datasets. The methodology is innovative and theoretically sound, providing a clear mathematical framework for the problem. Despite some concerns about the empirical results and the paper's presentation, the strengths outweigh the weaknesses. The decision to accept is supported by the paper's originality, methodological soundness, and potential impact on the sub-area of dataset distillation. However, the paper would benefit from improved clarity, more comprehensive experimental validation, and a deeper exploration of the theoretical implications of the proposed method.</s>

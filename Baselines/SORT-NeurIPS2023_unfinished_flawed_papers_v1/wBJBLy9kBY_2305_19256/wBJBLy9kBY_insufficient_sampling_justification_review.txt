@@ -1,0 +1,50 @@
+**Review outline:**
+
+**Overall Recommendation:** Borderline Accept
+
+**Summary:**
+
+This paper introduces Ambient Diffusion, a novel diffusion-based framework for learning generative models from severely corrupted data. The key innovation lies in approximating the Tweedie integral with a surrogate conditional expectation based on corrupted observations and introducing a deterministic correction step for improved sample quality. The authors demonstrate state-of-the-art performance in image generation and inverse problem solving across various datasets, even with high levels of data corruption. They also show reduced memorization compared to standard diffusion models.
+
+**1. Significance and novelty:**
+
+*   The problem of learning generative models from corrupted data is practically relevant due to limitations in data acquisition and privacy concerns.
+*   The proposed Ambient Diffusion framework offers a surprisingly effective approach to this problem, achieving strong empirical results with a simple, approximation-based method.
+*   The technique provides a potential method for better balancing memorization with fidelity in diffusion models.
+
+**2. Potential reasons for acceptance:**
+
+*   **Strong Empirical Results:** The paper demonstrates superior performance compared to existing methods for learning from corrupted data, including AmbientGAN, and achieves comparable or better results than standard diffusion models for inverse problems despite training solely on corrupted data.
+*   **Simplicity and Efficiency:** The proposed method is relatively simple to implement and computationally efficient, requiring only a single prediction step for inverse problems.
+*   **Reduced Memorization:** The paper presents compelling evidence suggesting that Ambient Diffusion can mitigate memorization of training data, a significant concern for generative models.
+*   **Practical Applicability:** The finetuning experiments demonstrate the practical potential of Ambient Diffusion for adapting foundation models to new domains with limited, corrupted data.
+*   **Theoretical grounding:** The authors offer a theoretical basis for their method and offer proof that the minimizer of the training objective has the desired properties.
+
+**3. Potential reasons for rejection:**
+
+*   **Lack of Rigorous Theoretical Justification:** While the paper provides a theoretical analysis of the training objective, it lacks a rigorous justification for the direct mean substitution used in the sampling process. The empirical success is not fully explained by the theory, and questions remain about the approximation's validity and limitations.
+
+    *   The connection between minimizing the objective J^corr and the ultimate sampling performance seems loose. A deeper investigation into how well J^corr minimizes the KL divergence between learned and true data distributions is missing.
+    *   There is an absence of explicit error bounds for the approximation of E[x0 | x_t] by E[x0 | A x_t, A]. A quantified assessment of how accurate this approximation is under different corruption scenarios would strengthen the theoretical grounding.
+
+*   **Limited Novelty in Sampling Technique:** The sampling procedure relies heavily on a direct mean substitution with a heuristic mean-shift term, which lacks strong theoretical motivation. It is not clear how this approach compares to more established diffusion sampling methods.
+
+    *   The paper acknowledges the absence of "heavy theory" behind the sampling approach. Given the focus on carefully-chosen approximations, a thorough comparison with, and justification against more established sampling techniques is missing.
+    *   The lack of ablation experiments on the sampling procedure itself weakens the contribution. Examining various Tweedie integral approximation strategies beyond simple direct mean substitution would be valuable.
+
+*   **Trade-off between Quality and Corruption Robustness:** The paper acknowledges a trade-off between generator quality and the level of corruption. However, this trade-off is not thoroughly investigated or characterized.
+
+    *   A more systematic analysis of this trade-off is needed. Specifically, an examination of how the corruption level affects metrics such as FID score, Inception score, and sample diversity would be beneficial.
+    *   The paper would benefit from analyzing the effect of *δ* parameter (the additional corruption) more systematically and how it interacts with the overall level of corruption (*p*).
+
+*   **Limited Scope of Corruption Models:** The paper primarily focuses on random inpainting as the corruption model. The generalization of Ambient Diffusion to other types of corruptions, such as blurring, noise, or adversarial attacks, is not thoroughly explored.
+
+    *   Extending the method and demonstrating its effectiveness with different types of corruption beyond random inpainting is crucial for establishing its broader applicability and usefulness.
+    *   The paper lacks a discussion of the limitations of Ambient Diffusion for specific corruption models. Addressing how the method may need to be adapted or refined to handle different types of corruptions would be valuable.
+
+**4. Suggestions for improvement:**
+
+*   **Provide a more detailed theoretical analysis of the sampling procedure:** Investigate the properties of the direct mean substitution and mean-shift correction, and compare them to existing diffusion sampling methods.
+*   **Conduct a more thorough evaluation of the trade-off between quality and corruption robustness:** Systematically analyze the impact of corruption level on generator performance and diversity.
+*   **Extend the method to other types of corruption models:** Explore the applicability of Ambient Diffusion to blurring, noise, adversarial attacks, and other types of data corruptions.
+*   **Investigate alternative objective functions or training strategies:** Explore whether other training objectives or strategies could improve the performance or robustness of Ambient Diffusion. For instance, using a regularizer based on Stein's Unbiased Risk Estimate (SURE) could potentially improve performance in cases with high levels of corruption.

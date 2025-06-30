@@ -1,0 +1,4 @@
+1. What is the main contribution of the paper regarding diffusion models?
+2. What are the strengths and weaknesses of the proposed approach, particularly in terms of its theoretical analysis and experimental results?
+3. Do you have any concerns or suggestions regarding the methodology or results presented in the paper?
+4. How does the reviewer assess the clarity, quality, novelty, and reproducibility of the paper's content?

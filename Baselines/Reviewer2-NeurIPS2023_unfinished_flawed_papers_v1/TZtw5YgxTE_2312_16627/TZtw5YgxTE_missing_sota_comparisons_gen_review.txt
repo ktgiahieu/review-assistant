@@ -1,0 +1,16 @@
+Summary Of The Paper
+This paper introduces a new framework for dataset distillation, which is to maximize the mutual information between the real and synthetic data. The proposed method can be seen as a contrastive learning framework. The authors provide a theoretical formulation and an implementation method. The experiments show that the proposed method can outperform the existing methods.
+
+Strengths And Weaknesses
+Strengths
+The paper is well written. The proposed method is interesting.
+The authors provide a theoretical formulation and an implementation method.
+The experiments show that the proposed method can outperform the existing methods.
+Weaknesses
+The paper does not compare with other works.
+
+Questions
+The paper does not compare with other works.
+
+Limitations
+The authors do not provide the detailed implementation details.

@@ -1,0 +1,39 @@
+**Summary:**
+The paper introduces binary radiance fields (BiRF), a novel method for representing NeRF feature grids using binary values, achieving significant storage efficiency while maintaining high performance metrics. By binarizing the weight and biases of MLPs and applying hash tables to encode the resulting feature grid, the storage costs are reduced to a fraction of traditional methods. Extensive experiments on synthetic datasets demonstrate that BiRF outperforms other baselines in various metrics, including storage efficiency and quality of rendered images. The method is supported by a comprehensive evaluation, comparing BiRF with several baselines, and shows promising results, despite some concerns about the novelty and the limited applicability to real-world datasets.
+
+**Strengths:**
+- The paper is well-written with a clear motivation and comprehensive evaluations, including quantitative results that show a significant improvement in storage size while maintaining the performance quality.
+- Comprehensive figures and tables are provided, allowing for a clear representation of the model's capabilities and performance.
+- The proposed method, BiRF, is effective in both storage efficiency and performance, with a comparative analysis showing that it outperforms other approaches like TensoRF-VM and NGP-like baselines.
+- The use of hash encoding in the feature grid helps improve performance and reduce memory usage, which is a valuable aspect for both training and inference phases.
+- The methodology is technically sound, showcasing a simple yet effective approach to encoding the learned density and color for a NeRF scene, making it a significant contribution to the field.
+
+**Weaknesses:**
+- The novelty of the proposed method is questioned, as methods like hash table encoding and binarization have been discussed in previous studies, reducing the perceived originality of the approach.
+- The paper lacks ablation studies and comparisons with relevant models like NGP, K-planes, and mip-NeRF, which are essential for understanding the impact of different components of the BiRF model.
+- The qualitative results are not consistently impressive, and there are discrepancies in the renderings that do not meet the high standards expected for publication.
+- The application of the method to dynamic scenes and real-world datasets is not explored, which is necessary for validating the effectiveness of the BiRF model in practical scenarios.
+- The paper does not adequately explain some aspects of the model's implementation, such as the use of a Cauchy loss and the specifics of how the density MLPs operate.
+
+**Questions:**
+- Could the authors provide some examples or explain more about how they handle non-empty spaces/objects in the binarized radiance field?
+- Why is occupancy not used in the loss function, and instead, binarized weights are used? How are the non-empty grid areas handled in this case?
+- How is the interp(x, sign(Φθ)) defined? Is it a hash table based interpolation, as suggested by the method's similarity to Instant-NGP?
+- Could the authors provide more details on the implementation of the Cauchy loss and the use of sinusoidal position encoding in the model?
+- Have you considered testing BiRF on real-world datasets like the Tanks & Temples dataset to assess its generalizability to different types of data?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+3 good
+
+**Rating:**
+6 marginally above the acceptance threshold
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper introduces a novel method in binary radiance fields (BiRF) that demonstrates significant storage efficiency while maintaining high performance metrics. The method's novel approach to binarizing feature grids and utilizing hash tables for efficient encoding shows promising results in various experimental setups. Despite some concerns about the novelty and limited applicability to real-world datasets, the paper's overall contribution to the field of NeRF representation is substantial. The methodology is technically solid, and the presentation is clear, making it a valuable contribution to the field.</s>

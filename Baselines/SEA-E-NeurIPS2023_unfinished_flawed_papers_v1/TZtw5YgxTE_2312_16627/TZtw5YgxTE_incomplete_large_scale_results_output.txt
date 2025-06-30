@@ -1,0 +1,40 @@
+**Summary:**
+The paper introduces Mutual Information Maximization for Dataset Distillation (MIM4DD), a novel method that leverages mutual information to optimize synthetic datasets. By integrating mutual information objectives into the loss function of dataset distillation, the authors propose a method that can be applied to various model architectures while maintaining good performance. The approach uses a novel objective based on Mutual Information and contrastive learning to maximize the MI between real and synthetic data, demonstrating state-of-the-art results across several benchmarks. Despite the practical limitations and the incremental nature of the approach, the paper is well-received for its theoretical formulation and its contribution to the field of model-agnostic dataset distillation.
+
+**Strengths:**
+- The idea of using mutual information (MI) to measure the quality of synthetic datasets is both novel and well-executed, especially in the context of model-agnostic dataset distillation.
+- The paper presents a strong theoretical foundation, with Theorem 1 providing a natural and theoretically sound solution to the problem formulation.
+- MIM4DD is shown to be a practical and effective method, outperforming other state-of-the-art techniques on various benchmarks.
+- The experimental results are compelling, demonstrating the method's effectiveness across different datasets, architectures, and tasks.
+- The manuscript's clarity and coherence make it accessible and easy to understand, which is crucial for scientific communication.
+- The concept of mutual information (MI) is introduced effectively, providing a theoretical insight that enhances the understanding of the proposed method.
+
+**Weaknesses:**
+- The paper lacks a clear demonstration of the practical benefits of MIM4DD, particularly in terms of reduced training costs and computational efficiency compared to other methods like contrastive KD, which also employ synthetic data.
+- The reliance on hand-selected contrastive pairs for synthetic datasets could limit the method’s effectiveness in scenarios with much larger datasets, making it difficult to scale up the technique.
+- Some parts of the presentation could be better organized and explained more thoroughly, such as the discussion in Section 3.2.
+- The paper's claims about dataset distillation as a data compression problem need more substantiation.
+- The manuscript could benefit from better figure legibility, particularly in Section 4, where figures are hard to read due to overlapping labels.
+
+**Questions:**
+- Could the authors provide more detailed experimental results to illustrate the practical benefits of MIM4DD, such as reduced training costs, faster convergence, or more efficient resource utilization?
+- What are the specific advantages of MIM4DD over alternative methods like contrastive KD, particularly in terms of dataset size and computational efficiency?
+- Could the authors clarify the methodology behind the reliance on hand-selected contrastive pairs and discuss potential limitations in large datasets with extensive synthesized data?
+- Is there a possibility to extend the synthesized data using incremental synthetic data, and if so, what are the implications for the efficiency and effectiveness of the MIM4DD?
+- Could the authors consider a more principled approach to select informative contrastive pairs, potentially using MI of activations for positive/negative pair selection?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+3 good
+
+**Rating:**
+6 weak accept
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper presents a novel method for dataset distillation using mutual information maximization, which is well-received for its theoretical formulation and experimental results. The approach has shown state-of-the-art performance across various benchmarks, demonstrating its effectiveness and applicability. While there are concerns about the incremental nature of the contribution and the practical limitations, the consensus leans towards acceptance due to the paper's clarity, soundness, and its potential impact on the field. The metareview highlights that despite some doubts about the novelty and potential limitations, the paper's performance metrics and clarity are strong selling points. The decision to accept is based on the aggregate positive reception and the potential impact of the work in advancing the understanding and application of dataset distillation.</s>

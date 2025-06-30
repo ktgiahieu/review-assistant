@@ -1,0 +1,17 @@
+Summary Of The Paper
+This paper investigates the positive-free and negative-free behaviors of graph contrastive learning (GCL) without using any explicit positive or negative samples. The authors find that the intriguing properties of positive samples in GCL encourage us to explore the underlying reasons behind this phenomenon. The authors show that all the GCL methods analyzed above adopt message-passing graph neural networks (GNNs) like GCN as backbone encoders. They demonstrate that these GNNs inherently possess an implicit regularization effect that facilitates the aggregation of positive samples. This finding helps elucidate why GCL can achieve satisfactory performance without explicitly incorporating an alignment objective.
+
+Strengths And Weaknesses
+Strengths:
+The paper is well-written and easy to follow.
+The theoretical analysis is well-organized and well-justified.
+The empirical validation is convincing.
+Weaknesses:
+The paper is limited to the GCN-based GCL.
+The paper is limited to the node classification task.
+
+Questions
+Yes, I have read the authors' response.
+
+Limitations
+Yes, I have read the authors' response.

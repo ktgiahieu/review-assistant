@@ -1,0 +1,19 @@
+Summary Of The Paper
+This paper studies the problem of training diffusion models from corrupted data. The authors propose a training algorithm that involves a diffusion process that is trained on corrupted samples. The algorithm is shown to work well for a variety of corruption processes.
+
+Strengths And Weaknesses
+Strengths:
+The paper is well written and the results are good.
+The paper is novel.
+Weaknesses:
+The theoretical analysis is not very strong.
+The experimental results are not very convincing.
+
+Questions
+I have a few questions:
+1. How does the algorithm work in the presence of measurement noise?
+2. What is the theoretical guarantee for the algorithm?
+3. What is the theoretical guarantee for the algorithm?
+
+Limitations
+The authors mention that the algorithm is not guaranteed to work for all distributions.

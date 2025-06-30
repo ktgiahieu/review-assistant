@@ -1,0 +1,4 @@
+1. What is the focus and contribution of the paper on graph contrastive learning?
+2. What are the strengths of the proposed approach, particularly in its theoretical analysis and empirical validation?
+3. What are the weaknesses of the paper, especially regarding its limitations in scope and practicality?
+4. How does the reviewer assess the clarity, quality, novelty, and reproducibility of the paper's content?

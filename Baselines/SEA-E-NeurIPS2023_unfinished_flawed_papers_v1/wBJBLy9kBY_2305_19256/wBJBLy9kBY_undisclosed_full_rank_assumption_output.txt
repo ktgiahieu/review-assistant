@@ -1,0 +1,39 @@
+**Summary:**
+The paper introduces a novel diffusion process that enables training of generative models directly on corrupted data, effectively bypassing the need for access to clean samples. This allows for recovery of the full image from an observed corrupted version, which could be crucial for applications where obtaining clean data is difficult or unrealistic. The approach leverages existing diffusion models by training on a diffusion process that "corrupts" the data further, thus enabling unconditional sampling from the data distribution without requiring clean original data. Theoretical guarantees and empirical results demonstrate the effectiveness of this method across various datasets and corruption scenarios. However, concerns about the computational complexity and potential practicality of the proposed method arise, especially in large-scale applications.
+
+**Strengths:**
+- The training of generative models on corrupted data is a timely and relevant topic, and the paper addresses a pressing need in the field.
+- The paper is well-organized, easy to follow, and provides a theoretical result that is both insightful and solid.
+- Experiments are solid and well-articulated, supporting the theory and demonstrating the effectiveness of the proposed method.
+- The results suggest that fine-tuning larger models with the proposed corrupted data training method results in a model that still generates meaningful results at high corruption levels.
+
+**Weaknesses:**
+- The paper primarily utilizes synthetic and small scale datasets, raising concerns about the validity of the results when applied to larger and more diverse datasets.
+- The computational complexity of the fixed mask sampling step is a major bottleneck, especially for larger image sizes and as corruption probabilities approach 1.
+- The paper does not address how to sample from the learned distribution, which is a crucial aspect for generating results.
+- The method assumes a full knowledge of the corruption matrix A, which might not be practical in real-world scenarios involving different types of corruption.
+- The novelty of the results is limited, as the proposed training method seems to be a straightforward modification of existing inpainting pretraining methods.
+- The paper does not adequately address the practical implications of the computational requirements, which could limit the scalability of the proposed method in realistic applications.
+
+**Questions:**
+- How does the proposed method perform when the corruption masks are random and not uniform in size?
+- If access to clean data is still possible, could direct pretraining based on a combination (A + ε/β)x0 + γη be a viable alternative?
+- Can you clarify what "reconstruction guidance" entails and how it is implemented in practice?
+- Does the proposed method only work for linear measurement noise A and linear noise η, or is it effective for more complex noise types?
+- Is there a practical way to find the corruption matrix A in the unsupervised corruption problem?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+3 good
+
+**Rating:**
+6 marginally above the acceptance threshold
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper presents a novel approach that effectively enables training of generative models on corrupted data, which is a significant advancement in the field. Although there are concerns regarding the practicality and computational complexity, these issues do not detract from the theoretical contributions and empirical validations provided by the research. Moreover, the reviewers have suggested potential improvements such as simplifying the training pipeline and applying the method to larger and more diverse datasets. These suggestions could enhance the applicability and impact of the proposed method. Overall, the paper deserves acceptance, and it should be highlighted for its innovative approach and promising results.</s>

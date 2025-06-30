@@ -1,0 +1,15 @@
+Summary Of The Paper
+This paper proposes a new radiance field representation that requires only a small storage space by adopting binary feature grids.
+
+Strengths And Weaknesses
+Strengths:
+The paper presents a new radiance field representation that requires only a small storage space by adopting binary feature grids.
+The paper shows that the proposed method achieves superior reconstruction performance compared to prior efficient and lightweight methods.
+Weaknesses:
+The paper lacks clarity and technical soundness.
+
+Questions
+I have no questions.
+
+Limitations
+The authors have addressed my concerns.

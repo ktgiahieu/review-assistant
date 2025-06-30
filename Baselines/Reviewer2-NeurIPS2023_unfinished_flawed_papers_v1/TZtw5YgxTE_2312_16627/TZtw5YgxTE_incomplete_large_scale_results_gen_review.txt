@@ -1,0 +1,14 @@
+Summary Of The Paper
+This paper introduces a new method for dataset distillation, Mutual Information Maximization for Dataset Distillation (MIM4DD). The method is based on the idea of maximizing the mutual information between the real and synthetic data. The authors show that by maximizing the mutual information, the heterogeneity in the generated images can be enhanced, which further improves the performance of the DD method. The authors also show that their method can be implemented as an add-on module for existing SoTA DD methods.
+
+Strengths And Weaknesses
+Strengths:
+The paper is well written and easy to follow.
+The paper is technically sound.
+The paper introduces a new method for dataset distillation.
+Weaknesses:
+The paper is a bit limited in terms of the applications. The paper is mainly focused on image classification tasks. The paper does not discuss any other applications of the proposed method.
+The paper does not compare with other works on dataset distillation.
+
+Questions
+Yes, the authors are willing to answer questions.

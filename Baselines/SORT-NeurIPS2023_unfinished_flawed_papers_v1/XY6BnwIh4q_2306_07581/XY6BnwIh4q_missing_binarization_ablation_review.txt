@@ -1,0 +1,48 @@
+Review outline:
+
+**Overall Recommendation:** Weak Reject
+
+**Review:**
+
+1.  **Significance and novelty:**
+
+    *   The paper introduces Binary Radiance Fields (BiRF), a novel approach to compressing radiance field representations using binarized feature grids. This is a highly relevant and important area of research, as it addresses the significant storage and computational costs associated with NeRF models, which hinders their deployment in resource-constrained environments.
+    *   The core novelty lies in the binarization-aware training scheme coupled with a hybrid 2D-3D grid structure. While binarization in neural networks is not entirely new, its application within radiance fields and the specific training techniques employed represent a non-trivial contribution. The hybrid grid aims to balance fine-grained detail with overall scene structure.
+    *   The results showing significant storage reduction while maintaining competitive or even superior performance compared to other compression methods are compelling and suggest the potential of the proposed approach.
+
+2.  **Potential reasons for acceptance:**
+
+    *   **High storage efficiency:** The paper demonstrates a dramatic reduction in storage size compared to existing radiance field representations, addressing a critical bottleneck in the field. The claimed 0.5MB model size is impressive and could enable deployment on devices with limited memory.
+    *   **Competitive or superior performance:** The paper claims PSNR values comparable or superior to existing methods, even with the reduced storage footprint. This suggests that the binarization process does not significantly degrade the quality of the reconstructed scenes.
+    *   **Clear and well-written:** The paper is generally well-written and easy to follow. The authors provide a good overview of related work and clearly explain their approach.
+    *   **Strong empirical results:** The paper presents a thorough evaluation of the proposed method on various benchmark datasets, providing strong evidence for its effectiveness.
+
+3.  **Potential reasons for rejection:**
+
+    *   **Limited novelty in binarization technique:**
+
+        *   While the application to radiance fields is novel, the binarization-aware training scheme relies heavily on Straight-Through Estimators (STE) which are a well-established technique in binarized neural networks. The paper could benefit from a more detailed discussion and justification of why this particular choice of binarization technique is optimal for this problem, compared to other more sophisticated binarization methods.
+        *   The claim that binarization is "sufficient for high-fidelity view synthesis" might be overstated. While BiRF achieves impressive results, it is unclear if this is solely due to binarization or if other architectural choices (e.g., the 2D-3D hybrid grid) play a more significant role. The ablation studies need to be more extensive and isolate the impact of each component.
+
+    *   **Lack of detailed analysis of the limitations:**
+
+        *   The paper does not adequately address the potential limitations of BiRF. Are there specific types of scenes or viewing conditions where the binarized representation struggles? Does the performance degrade significantly for highly complex scenes or scenes with specular reflections? A more thorough discussion of these limitations is needed.
+        *   The paper needs to explore if quantization method affects training. Binarization methods might be highly sensitive to hyperparameter choices and could be unstable to train. The paper does not provide details about the stability of BiRF training or the sensitivity to hyperparameter settings.
+
+    *   **Insufficient ablation studies and justifications for design choices:**
+
+        *   The ablation study regarding the feature grid design is cursory. The paper should provide a more detailed breakdown of the performance gains from each component (3D Grid, 2D XY plane, 2D XZ plane, 2D YZ Plane), including combinations, with specific parameter budgets. The ablation study should include parameter budget and parameter efficiency analysis.
+        *    The 2D/3D grid selection should be justified by visual inspection (e.g. the authors can provide a visualization or intuitive description when to use which grid).
+        *   The choice of hash table size is presented empirically, but the paper should also justify it from theoretical aspect. The theoretical aspect should address to what extent hash collision is mitigated, and it is better to compare different collision handling and mitigation approaches.
+
+    *   **Concerns about generalization and scalability:**
+
+        *   The experiments primarily focus on synthetic datasets and a limited set of real-world scenes. It is unclear how well BiRF would generalize to more complex and diverse real-world environments with varying lighting conditions, textures, and geometries.
+        *   The paper needs to explore how BiRF would scale to larger scenes. The memory saving is significant when models are tiny, but for big scenes, there might be challenges with memory management and training efficiency. The experiments need to be performed on bigger data with discussions regarding memory and training efficiency.
+
+4.  **Suggestions for improvement:**
+
+    *   **Strengthen the novelty claim:** Provide a more detailed comparison of BiRF with existing binarization techniques in the context of neural networks. Discuss why the chosen STE method is optimal for radiance fields and explore alternative approaches.
+    *   **Conduct more comprehensive ablation studies:** Perform a more thorough analysis of the contribution of each component of BiRF, including the 2D-3D hybrid grid, the sparsity loss, and the hash table size. Isolate the impact of each element to better understand their respective roles.
+    *   **Address limitations and discuss failure cases:** Discuss the potential limitations of BiRF, including the types of scenes where it may struggle. Provide examples of failure cases and explain why the binarized representation is insufficient in these situations.
+    *   **Improve the generalizability and scalability experiments:** Include experiments on more diverse and complex real-world datasets. Explore the scalability of BiRF to larger scenes and discuss any potential challenges with memory management or training efficiency.

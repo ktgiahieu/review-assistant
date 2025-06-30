@@ -1,0 +1,40 @@
+**Review outline:**
+
+**1. Significance and novelty**
+
+*   This paper addresses a very important and practical problem: learning generative models from corrupted data, which is a common scenario in many real-world applications.
+*   The proposed "Ambient Diffusion" framework is novel in its ability to learn from highly-corrupted samples *without ever seeing clean data* and is generally applicable to a wide range of corruptions, which is a significant improvement over existing methods that often require specific knowledge about the corruption process.
+*   The theoretical analysis, providing a mild condition for perfect recovery, is a valuable contribution that supports the empirical findings.
+*   Demonstrating the applicability to fine-tuning foundation models with corrupted datasets, while also reducing memorization, is a very compelling result.
+
+**2. Potential reasons for acceptance**
+
+*   **Strong theoretical justification:** The paper provides a clear and concise theoretical analysis that supports the proposed method, with a mild randomness condition that is easily satisfied in practice.
+*   **Empirical validation:** The paper demonstrates strong empirical results on several datasets, consistently outperforming existing baselines like AmbientGAN and even achieving comparable performance to diffusion models trained on clean data for restoration tasks, even when the corruption is extreme.
+*   **Practical applicability:** The method addresses a practical problem with a solution that can be readily applied to various domains, including scientific imaging and foundation model fine-tuning.
+*   **Memorization Reduction:** Showing memorization can be minimized by training on corrupted data is itself a very useful outcome.
+
+**3. Potential reasons for rejection**
+
+*   **Limited exploration of alternative sampling strategies:**
+    *   The paper presents two sampling strategies, but a more thorough exploration of alternative sampling methods, potentially leveraging the learned conditional expectation in more sophisticated ways, could strengthen the results. For example, other restoration or denoising algorithms could be considered.
+
+    *   The paper states that it is possible to reconstruct `p_0(x_0)` from the learned conditional expectations, but it does not present a practical algorithm to do so.
+
+*   **Trade-off between corruption level and generative quality is not fully characterized:**
+    *   The paper acknowledges a trade-off between the level of corruption and the quality of the generated samples, but this trade-off is not precisely characterized, and further investigation is needed.
+    *   It is unclear whether this trade-off is intrinsic to the method, or whether it can be mitigated through careful hyperparameter tuning or architecture choices. Specifically, what values of delta give optimal FID/IS/PrecisionRecall?
+*   **Limited novelty in the diffusion formulation:**
+    *   While the application of diffusion models to learning from corrupted data is novel, the underlying diffusion formulation itself does not introduce significant technical innovations.
+    *   The method builds upon existing diffusion techniques, with the core contribution being the novel training objective and the theoretical analysis.
+*   **Limited scope of corruptions in experiments:**
+    *   The experimental evaluation primarily focuses on random inpainting. It is important to investigate other types of corruptions, such as blurring, noise, or combinations thereof.
+    *   The section on "New domains and different corruption" only refers to block obfuscation for MRI scans. More results are needed.
+    *   Although the theoretical analysis covers a broader range of corruptions, empirical validation across these different corruption types is needed to demonstrate the robustness and generality of the method.
+
+**4. Suggestions for improvement**
+
+*   **Explore and ablate alternative sampling strategies:** Investigate more sophisticated sampling methods that can effectively leverage the learned conditional expectation to improve the quality and diversity of generated samples. Provide an ablation study that compares different sampling strategies.
+*   **Provide a more detailed analysis of the trade-off between corruption level and generative quality:** Conduct experiments to systematically investigate the relationship between the level of corruption, hyperparameter settings, and the quality of the generated samples. Characterize this trade-off quantitatively using relevant metrics.
+*   **Expand the scope of corruptions in the experimental evaluation:** Include experiments with a wider range of corruption types to demonstrate the robustness and generality of the method. Focus on relevant corruptions for different application domains.
+*   **Evaluate memorization through additional metrics:** While the DINO similarity metric is helpful, consider using other memorization metrics, such as those based on training data reconstruction, to provide a more comprehensive assessment of memorization. Further analyze how different hyperparameters (e.g., the amount of additional corruption) affect memorization and generative quality.

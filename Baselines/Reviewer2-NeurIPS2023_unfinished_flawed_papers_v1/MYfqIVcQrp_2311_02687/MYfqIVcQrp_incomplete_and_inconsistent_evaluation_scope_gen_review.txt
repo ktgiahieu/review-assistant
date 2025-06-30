@@ -1,0 +1,16 @@
+Summary Of The Paper
+This paper studies the contrastive learning of graph data. It shows that the positive samples are not necessary for GCL. The paper also shows that the negative samples are not necessary for GCL.
+
+Strengths And Weaknesses
+Strengths:
+The paper is well-written and easy to follow.
+The paper is well-organized.
+The paper is novel.
+Weaknesses:
+The paper is not very significant.
+
+Questions
+The paper is not very significant.
+
+Limitations
+The paper is not very significant.

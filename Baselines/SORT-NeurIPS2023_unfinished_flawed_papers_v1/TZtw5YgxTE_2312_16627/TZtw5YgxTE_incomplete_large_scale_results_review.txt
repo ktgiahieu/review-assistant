@@ -1,0 +1,51 @@
+Review outline:
+
+**1. Significance and novelty:**
+
+*   The paper tackles an important problem in machine learning: dataset distillation. The ability to train performant models on extremely small datasets is highly valuable, especially in resource-constrained environments or when dealing with sensitive data.
+*   The idea of using Mutual Information (MI) as a guiding principle for dataset distillation is novel and theoretically sound. Existing methods rely on heuristics, whereas the proposed approach attempts to directly maximize information preservation.
+*   The use of contrastive learning to achieve MI maximization is a clever approach to overcome the computational challenges of directly estimating MI.
+*   The claim of plug-and-play applicability and performance boosts over state-of-the-art (SoTA) methods, if substantiated, would be a significant contribution.
+
+**2. Potential reasons for acceptance:**
+
+*   **Sound theoretical foundation:** The paper provides a clear justification for using MI and derives a practical loss function based on contrastive learning. Theorem 1 establishing the invariance of mutual information under smooth invertible transformations provides a strong theoretical backbone.
+*   **Empirical validation:** The paper claims strong experimental results across a range of datasets and IPC settings, demonstrating the effectiveness of MIM4DD.
+*   **Plug-and-play applicability:** If the experimental results back the authors' claim, the authors provided a valuable contribution to the community by making the method a plug-and-play solution.
+*   **Clarity and presentation:** The paper is well-written and clearly explains the proposed method and its motivation. The figures (e.g., Fig. 1 illustrating the MI motivation and Fig.3 showing the contrastive learning pipeline) are helpful in understanding the approach.
+
+**3. Potential reasons for rejection:**
+
+*   **Lack of clarity on the practical implementation of the contrastive learning component:**
+    *   The paper defines positive and negative pairs based on class labels. However, it lacks detailed explanation on how the large number of negative pairs are handled in practice. The exact batch size and sampling strategies for negative pairs is not sufficiently specified.
+    *   The discriminator network d(.,.) and the embedding function g_phi(.) are only briefly mentioned. The architecture, input/output dimensions, and training details of these networks are missing, making reproducibility challenging.
+
+*   **Limited ablation studies and sensitivity analysis:**
+    *   While the paper mentions ablation studies in Appendix C, the main text lacks thorough exploration of the key hyper-parameters, such as lambda (weight of the contrastive loss) and beta (weight decay scalar), which needs to be thoroughly discussed. The included ablation study in the figure is not enough to convince reviewers for acceptance.
+    *   It's important to analyze the effect of temperature parameter `tau` in the critic and report it in supplementary material with detailed discussion.
+
+*   **Lack of detailed description of the training details of the distilled models.**
+    *   The paper mentioned the three-layer ConvNet architecture, but fails to explain its hyperparameter settings (e.g., learning rate, optimizers, regularization) in the experiments for training on the distilled data.
+    *   The distillation performance can be sensitive to these details, and not reporting them undermines reproducibility.
+
+*   **Overclaims of plug-and-play improvement.**
+    *   Although, it is great to augment SoTA methods with the proposed modules, the magnitude of the gains needs to be carefully assessed and discussed. If improvements are marginal or inconsistent, the plug-and-play claim can be weakened.
+    *   The "Plug-and-Play Gains" evaluation needs to be presented with details on the settings and the parameter settings involved when incorporating the MIM4DD to SoTA baselines.
+    *   The presentation of results needs to include confidence intervals and statistical significance test between SoTA and SoTA+MIM4DD.
+
+**4. Suggestions for improvement:**
+
+*   **Provide comprehensive implementation details:**
+    *   Elaborate on the handling of negative pairs in the contrastive learning component. Specify batch sizes, sampling strategies, and any approximations used to manage computational costs.
+    *   Include the architecture of the discriminator and embedding functions, as well as their training parameters.
+
+*   **Conduct more extensive ablation studies:**
+    *   Explore the sensitivity of the results to lambda, beta, and other relevant hyper-parameters. Provide insights into how these parameters affect the performance of MIM4DD.
+    *   Ablate different layers for applying the MI maximization to investigate how the layer selection affects the outcome.
+
+*   **Specify the experimental training setup:**
+    *   Provide complete details on the training setup used for models trained on the distilled datasets, including the architecture, optimizer, learning rate schedule, and regularization techniques.
+
+*   **Present robust results and rigorous statistical analysis:**
+    *   Include confidence intervals or standard deviations for the reported accuracy values to indicate the variability of the results.
+    *   Perform statistical significance tests to compare MIM4DD with the baselines and to validate the claim of plug-and-play improvement. Discuss the limitations of the improvement and potential challenges in integrating MIM4DD to other existing approaches.

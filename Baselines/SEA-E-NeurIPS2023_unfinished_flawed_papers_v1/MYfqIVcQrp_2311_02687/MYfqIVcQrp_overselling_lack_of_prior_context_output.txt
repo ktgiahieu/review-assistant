@@ -1,0 +1,43 @@
+**Summary:**
+This paper explores the graph contrastive learning setting, focusing on the role of Graph Neural Networks (GNNs) in enhancing performance without relying on explicit positive pairs or negative pairs. The study reveals that GNNs can function effectively with just Graph Convolution or ContraNorm layers, and simple data augmentations like Gaussian noise are sufficient. This research further uncovers how GCL can be successful despite the absence of positives or negatives, challenging conventional wisdom. Despite the paper's strengths in proposing an intriguing perspective and presenting intriguing experiments, the analysis regarding the role of negative samples is lacking, and there are concerns about the paper's clarity and overall contribution to the field.
+
+**Strengths:**
+- The paper introduces an intriguing perspective on Graph Contrastive Learning (GCL) by demonstrating that without positives, it still retains its performance, and negative samples are also dispensable for node-level tasks.
+- The experiments conducted are quite comprehensive, covering most widely used GCL methods and commonly used datasets, providing a strong foundation for the claims made.
+- The paper is well-written, clear, and the ideas are presented in a logical and coherent manner, which aids understanding and application of the concepts.
+- The authors propose ContraNorm as an effective replacement for negative samples, which is backed by promising experimental results.
+- The simplicity of the findings, such as the effectiveness of graph convolution and simple Gaussian augmentation, is an appealing takeaway with significant contributions to the GCL domain.
+
+**Weaknesses:**
+- Some parts of the manuscript are not clearly presented, suggesting the need for better explanation and justification for the hypotheses and outcomes.
+- The paper's arguments regarding the role of negative samples in VCL and GCL seem to conflict, requiring a more careful and consistent discussion.
+- There are minor grammatical errors and potential improvements in the writing to enhance readability and comprehension.
+- Some aspects of the experimental results and their interpretation are not convincingly clear, particularly tables and figures that do not adequately support the claims made.
+- The theoretical analysis connecting graph contrastive learning with graph convolution and contrastNorm needs further discussion to be fully persuasive.
+
+**Questions:**
+- Could you elaborate on the experimental results in Table 2, especially the NO Pos and NO Neg of GraphCL using different numbers of positive pairs?
+- In Figure 2, why do positive pairs not appear in the no-positive setting for both alignment loss and alignment loss with ContraNorm?
+- How do the features collapse with or without project heads, and what is the root cause of this collapse?
+- Can you provide more empirical evidence or detailed explanations on how the GCL performs without positives or negatives, especially in a GNN without message-passing like GAT?
+- In Theorem 1, why is the distribution P_G(x,x+) used to define the alignment loss? Is it consistent across different types of encoders?
+- The term "implicit regularization" might be misleading. Could you clarify what is meant by this term and how it relates to the theoretical contributions of your work?
+- How does the proposed regularization mechanism compare with other regularization mechanisms in Graph Neural Networks (GNNs)?
+- Is the main challenge in the absence of positive and negative samples specifically for graph data? Does this argument also apply to visual contrastive learning?
+- Could you provide explanations for the experiments in Tables 3 and 4, particularly the differences in test accuracy between contrastive learning and uniformity loss?
+
+**Soundness:**
+3 good
+
+**Presentation:**
+3 good
+
+**Contribution:**
+2 fair
+
+**Rating:**
+5 marginally below the acceptance threshold
+
+**Paper Decision:**
+- Decision: Accept
+- Reasons: The paper provides significant insights into the dynamics of graph contrastive learning, showing that GNNs can function effectively without traditional graph-level tasks, such as positive pairs. This finding challenges conventional wisdom and offers new angles for practical applications. Although the presentation could be improved for better clarity and the contribution is seen as fair, the paper's novelty and the interest it generates from reviewers tip the decision towards acceptance. It is recommended that the authors address minor presentation issues and clarify certain ambiguities for the final version of the paper.</s>

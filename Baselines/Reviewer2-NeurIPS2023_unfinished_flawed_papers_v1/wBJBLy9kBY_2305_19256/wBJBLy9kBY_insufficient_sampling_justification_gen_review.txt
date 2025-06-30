@@ -1,0 +1,15 @@
+Summary Of The Paper
+This paper proposes a new approach to train diffusion models from corrupted data. The authors first show that the score function can be learned from corrupted samples, and then use the learned model to predict the original clean data.
+
+Strengths And Weaknesses
+Strengths
+The paper is well written and easy to follow.
+The paper is novel and interesting.
+Weaknesses
+The paper has some limitations. The paper only considers the case of random inpainting. It is unclear whether the proposed method can be applied to other domains. The authors do not provide a theoretical guarantee on the privacy of the training samples. The authors do not provide the training details.
+
+Questions
+What is the training process? What is the choice of the corruption matrix?
+
+Limitations
+The paper has some limitations. The paper only considers the case of random inpainting. It is unclear whether the proposed method can be applied to other domains. The authors do not provide a theoretical guarantee on the privacy of the training samples. The authors do not provide the training details.

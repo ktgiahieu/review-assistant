@@ -1,0 +1,5 @@
+1. What is the focus and contribution of the paper regarding dataset distillation?
+2. What are the strengths of the proposed approach, particularly in its ability to maximize mutual information?
+3. What are the weaknesses of the paper, especially regarding the comparison with other works?
+4. How does the reviewer assess the clarity, quality, novelty, and reproducibility of the paper's content?
+5. Are there any questions or concerns regarding the experimental results and their comparison with other works?
