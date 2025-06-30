@@ -400,7 +400,10 @@ def process_markdown_file(
                 if verbose: print(f"Worker {worker_id}: API call for {markdown_file_path} successful. Tokens: {current_tokens_used} (P: {response_obj.usage.prompt_tokens}, C: {response_obj.usage.completion_tokens}).")
             elif verbose: print(f"Worker {worker_id}: API call for {markdown_file_path} successful. Token usage not available.")
 
-            review_json_content = response_obj.output[0].content
+            print(response_obj)
+            print(response_obj.model_dump_json(indent=2))
+            print(response_obj.output_text)
+            review_json_content = response_obj.output_text
             try:
                 review_json_content_parsed = json.loads(review_json_content)
             except json.JSONDecodeError as e:
