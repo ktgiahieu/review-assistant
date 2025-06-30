@@ -21,6 +21,8 @@ log_*.txt
 
 BaselineErrorDetection/*data*
 
+EvaluateErrorDetectionResults/*data*
+
 BadPaperGeneration/*_flawed_papers*
 BadPaperGeneration/old
 
