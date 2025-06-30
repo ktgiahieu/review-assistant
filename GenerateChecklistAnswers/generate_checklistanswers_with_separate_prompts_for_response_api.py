@@ -366,16 +366,17 @@ def process_markdown_file(
             # Completion Arguments for Azure API Call
             completion_args = {
                 "model": deployment_name,
-                "messages": [{"role": "user", "content": content_list}],
+                "input": [{"role": "user", "content": content_list}],
                 "timeout": 600.0,
             }
+            
             if max_tokens_completion is not None: completion_args["max_tokens"] = max_tokens_completion
                 
             response_obj = None; last_exception = None
             for attempt in range(MAX_RETRIES):
                 try:
                     if verbose: print(f"Worker {worker_id}: Attempt {attempt + 1}/{MAX_RETRIES} to call API for {markdown_file_path}")
-                    response_obj = openai_client.beta.chat.completions.parse(**completion_args)
+                    response_obj = openai_client.responses.create(**completion_args)
                     if verbose: print(f"Worker {worker_id}: API call successful on attempt {attempt + 1} for {markdown_file_path}")
                     break 
                 except Exception as e:
@@ -399,7 +400,7 @@ def process_markdown_file(
                 if verbose: print(f"Worker {worker_id}: API call for {markdown_file_path} successful. Tokens: {current_tokens_used} (P: {response_obj.usage.prompt_tokens}, C: {response_obj.usage.completion_tokens}).")
             elif verbose: print(f"Worker {worker_id}: API call for {markdown_file_path} successful. Token usage not available.")
 
-            review_json_content = response_obj.choices[0].message.content
+            review_json_content = response_obj.output[0].content
             try:
                 review_json_content_parsed = json.loads(review_json_content)
             except json.JSONDecodeError as e:
