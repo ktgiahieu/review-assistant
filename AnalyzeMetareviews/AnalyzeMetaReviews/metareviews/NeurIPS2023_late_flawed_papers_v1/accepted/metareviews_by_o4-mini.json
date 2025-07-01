@@ -1,0 +1,14 @@
+{
+  "PAPER_NEURIPS_2": [
+    {
+      "flaw_id": "f1",
+      "is_flaw_mentioned": true,
+      "is_reasoning_correct": true
+    },
+    {
+      "flaw_id": "f2",
+      "is_flaw_mentioned": true,
+      "is_reasoning_correct": true
+    }
+  ]
+}

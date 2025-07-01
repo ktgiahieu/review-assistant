@@ -1,0 +1,59 @@
+{
+  "UW5nO9NGjt_2309_02870": [
+    {
+      "flaw_id": "lack_of_rigorous_theoretical_analysis",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review actually praises the paper for providing “the first formal definitions and propositions” and refers to a “novel theoretical lens.”  Its only criticism is that some proofs are missing or rely on simplifying assumptions, not that the purported ‘theoretical analysis’ is merely qualitative.  It never states or even alludes to the central issue that the paper’s Section 3 lacks any real formal theory while still being labeled as theoretical.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not recognise the gap between the claimed theoretical contribution and the absence of a real formal analysis, it neither discusses nor reasons about the true flaw.  Consequently, there is no reasoning to evaluate against the ground-truth description."
+    }
+  ],
+  "k2dVVIWWho_2402_07471": [
+    {
+      "flaw_id": "limited_empirical_comparison",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review explicitly notes: \"Gossip was averaged over only two runs due to time constraints, raising questions on statistical robustness of empirical comparisons.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only points out that the gossip baseline was averaged over merely two runs (exactly matching the planted flaw) but also explains the consequence—lack of statistical robustness—mirroring the ground-truth criticism that the empirical comparison is weak. Although the review does not specifically mention absence of a mean-squared-error analysis, it correctly captures the core issue (insufficient repetitions leading to weak statistics) and ties it to reliability of the results, which aligns with the ground truth."
+    },
+    {
+      "flaw_id": "poor_performance_on_low_connectivity_graphs",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review never points out degraded privacy/utility guarantees or poor performance on sparsely-connected graphs such as paths or trees. In fact it claims the experiments show “consistent privacy gains” on those topologies, so the planted limitation is entirely absent.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not acknowledge the algorithm’s weakness on low-connectivity graphs, it offers no reasoning about that flaw. Consequently it cannot correctly explain why the limitation matters."
+    }
+  ],
+  "ScIHQoTUjT_2310_02932": [
+    {
+      "flaw_id": "ai_assistance_bias",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review notes: \"Evidence bias: Restricting AI assistance to Wikipedia may skew epistemic judgments and overlook domain-specific sources or non-English content.\" This explicitly references bias introduced by the AI-generated assistance used in the evaluation.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "While the reviewer acknowledges that the AI assistance could introduce bias, the explanation is limited to the assistance drawing only on Wikipedia and therefore possibly skewing judgments. It does not identify the deeper concern that the AI assistance itself might selectively highlight issues, mislead raters, differ across models, or that the authors lack any framework to measure or mitigate such influence—points central to the planted flaw. Hence the reasoning does not align with the ground-truth description."
+    },
+    {
+      "flaw_id": "limited_rater_reliability",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"**Subjectivity in issues:** Despite careful design, some dimensions (e.g., tone) and issue categories remain subjective, with moderate inter-rater agreement.\" This directly references the moderate inter-rater agreement and lingering subjectivity.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "The reviewer correctly notes the existence of subjectivity and only moderate inter-rater agreement, which matches the planted flaw. However, the review does not discuss the absence of a gold-standard calibration set, nor does it explain how this limited reliability \"threatens the statistical rigor of system-level comparisons\" or undermines the authors’ conclusions. Thus, while the flaw is identified, the reasoning lacks the depth and specific implications emphasized in the ground-truth description."
+    }
+  ],
+  "GcW9pg4P9x_2405_01327": [
+    {
+      "flaw_id": "missing_approximation_justification",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review lists as a weakness: \"Approximation validity: Relies heavily on first-order approximations (Equation 7) and small trust-region radius δ; higher-order error terms and practical radius selection are under-explored.\"",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "The reviewer does point out that the paper relies on the first-order approximation in Equation 7 and complains that its validity is \"under-explored.\" However, the reviewer does not state that the paper fails to provide a formal proof of the approximation’s accuracy, nor that this gap undermines the theoretical guarantees to the extent that the work is not publishable. The critique is therefore shallow and does not capture the core severity described in the ground truth."
+    },
+    {
+      "flaw_id": "insufficient_experimental_comparison",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Limited baselines: Only compares to one robust constrained algorithm (Mankowitz et al. 2020), omitting standard constrained or risk-sensitive baselines.\" and \"Experimental scope: Evaluations are limited to a handful of MuJoCo tasks without investigating more challenging safety domains.\" These comments directly address the paucity of baselines and the use of relatively easy tasks.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only flags the absence of sufficient baseline comparisons but also explains that the evaluation is restricted to a small, less-challenging set of tasks. Both points align with the ground-truth flaw that the experiments lack rigorous baseline comparisons and are run on easy environments. While the reviewer does not explicitly note the absence of standard deviation reporting, the core rationale—that the empirical evidence is insufficiently comprehensive to validate the paper’s claims—is correctly captured."
+    }
+  ]
+}

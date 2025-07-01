@@ -1,0 +1,249 @@
+{
+  "qNfEkSuGKk_2407_07058": [
+    {
+      "flaw_id": "poor_parallel_scalability",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review actually praises the algorithm’s parallel scalability (calling it “trivially parallelisable” with “near-linear scaling”) and nowhere notes any difficulty or limitation in parallelization. Thus the planted flaw is absent.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review never acknowledges that Algorithm 4 is hard to parallelize, it cannot possibly provide correct reasoning about this limitation. Instead, it incorrectly asserts the opposite, so no alignment with the ground-truth flaw exists."
+    }
+  ],
+  "NYlKnjmYJB_2411_00230": [
+    {
+      "flaw_id": "limited_scalability_evidence",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Only one problem class (TFIM) and very small physical sizes (≤6 real qubits) are tested.\" and \"The text asserts ... near-linear empirical scaling to 'future 1121-qubit devices', but provides only heuristic arguments and synthetic data. No rigorous complexity analysis or large-scale simulation backs the claim.\" These sentences directly refer to the restricted experimental scope and lack of convincing scaling evidence.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only points out that experiments are limited to very small qubit counts but also explains the consequence: scaling claims are unsupported because they rely on heuristics and synthetic data without rigorous large-scale validation. This aligns with the ground-truth flaw that the paper lacks quantitative evidence for scalability beyond tiny (2–3-qubit) instances. Hence, the reasoning accurately captures why this limitation undermines the manuscript’s core claim."
+    }
+  ],
+  "6RNBm37sVe_2501_19378": [
+    {
+      "flaw_id": "unclear_novelty_boundary",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Conceptual novelty moderate. The individual ideas (sub-table extraction, table verbalisation, adaptive textual vs. program reasoning) exist in prior work (e.g., Dater, Chain-of-Table, PoT). The contribution is mainly an integration and empirical study rather than a fundamentally new algorithm.\" This directly addresses that the paper’s novelty is doubtful and overlaps with prior table-understanding work.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only notes that the paper’s ideas already appear in earlier works but also explains that the paper seems to be an integrative effort rather than providing fundamentally new algorithms. This mirrors the planted flaw’s essence: the work does not clearly separate its contributions from prior research, which raises questions about novelty. Hence, the reviewer’s reasoning aligns with the ground-truth flaw."
+    }
+  ],
+  "EMQfiikGRJ_2411_02158": [
+    {
+      "flaw_id": "missing_qp_and_multistart_baselines",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review never states that explicit convex QP solver baselines or standard multi-start (random / grid / Latin hypercube) baselines are absent. Instead, it praises the paper for having “extensive ablations” and enumerates other baselines that were included. No wording alludes to the specific omission detailed in the ground truth.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not mention the missing QP or multi-start baselines at all, it obviously cannot provide any reasoning about why their absence would be problematic. Hence the reasoning does not align with the ground truth flaw."
+    }
+  ],
+  "XyudeZXHn3_2501_03821": [
+    {
+      "flaw_id": "limited_experimental_scope",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review explicitly notes: \"**Scope of Experiments** – Real-world benchmarks are all small-to-medium (<7 k features). It would be helpful to see a large sparse-text or genomics data set where p≈10^5 to confirm scalability and effect sizes.\" It also earlier states that the \"Real-data section, though small, shows qualitative agreement with synthetic findings.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only points out that the real-world experiments are limited to small/medium datasets but also explains why this is problematic, arguing that larger, high-dimensional data are needed \"to confirm scalability and effect sizes.\" This matches the ground-truth flaw that the empirical evaluation fails to test claims on truly large, high-dimensional real-world problems. Hence, the reasoning aligns with the ground truth."
+    }
+  ],
+  "JtsxqKYOIC_2411_13479": [
+    {
+      "flaw_id": "limited_experiments",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"**Limited empirical scope**: Only one real data set (two stations, five chargers) is used; comparison to more diverse hierarchies (retail, tourism, energy) or to non-Gaussian/heavy-tail cases is missing.\" This directly criticises the small experimental section and lack of diverse datasets.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer recognises that the empirical evaluation is too small, pointing out that only one real-world dataset is used and that experiments on more diverse hierarchies are absent. This matches the ground-truth flaw, which notes the need for additional real-world IID datasets and larger synthetic hierarchies to support the efficiency claims. The reviewer not only observes the paucity of experiments but also explains that broader hierarchies and distributional settings are necessary to validate the method, aligning with the rationale in the planted flaw."
+    },
+    {
+      "flaw_id": "missing_baseline_comparisons",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review never criticises the paper for omitting comparisons with other multivariate conformal predictors. Instead, it states that the experiments include “several baselines (Direct, OLS, WLS, MinT, Combi, Oracle MinT)” and raises concerns only about data-set diversity and distributional assumptions. No sentence points out the absence of CopulaCPTS, Zhou et al., or similar methods.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not mention the lack of key baseline comparisons at all, it provides no reasoning—correct or otherwise—about this flaw. Therefore the reasoning cannot align with the ground truth."
+    }
+  ],
+  "F3hjbhyyRI_2502_13482": [
+    {
+      "flaw_id": "unclear_private_initialization",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Weakness 2 – Step size depends on R = max_i‖∇f_i(x⁰)‖, which is unknown in practice and may be large; empirical section silently tunes γ instead, sidestepping the issue.\" This explicitly brings up the constant R and complains that its value is unknown and problematic for the guarantees.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Although the reviewer flags the constant R as unknown and potentially large, they mis­characterise R (they omit the subtraction of g_i⁰) and do not discuss the crucial point that R depends on the privately initialised memory vectors g_i⁰, whose selection could violate privacy and must shrink with n for the theoretical bounds to hold. Consequently, the review fails to recognise the privacy/initialisation aspect and the need for R to vanish; it only notes practical uncertainty in choosing a stepsize. Hence the reasoning does not align with the full, planted flaw."
+    }
+  ],
+  "Z87hDhsU5X_2502_00140": [
+    {
+      "flaw_id": "invalid_uat_lemma_proofs",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review criticises the proofs for a \"Questionable theoretical rigor\" and specifically states: \"The proof relies on invoking the Universal Approximation Theorem to collapse *any* stack of σ(W∘A) compositions into a single σ ... [UAT] does **not** imply that the same point-wise activation applied after A^k can mimic *all* possible layer-wise nonlinearities ... In particular, the leap from Lemma 7/8 (linear case) to the final 'one-layer suffices' claim is not justified.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The ground-truth flaw is that the paper mis-uses the Universal Approximation Theorem: the derivations rely only on linear transformations, yet UAT requires a non-linearity, so the core expressiveness claim is unproven. The review explicitly flags this misuse, noting that UAT cannot justify collapsing multiple σ(W∘A) layers into a single σ, and highlights that the cited lemmas treat only the linear case. Although the reviewer additionally discusses width blow-up and lack of error bounds, these points do not conflict with the ground truth and the central criticism—misapplication of UAT leading to an unjustified equivalence claim—matches the planted flaw."
+    }
+  ],
+  "yK6yb16vRe_2410_07550": [
+    {
+      "flaw_id": "limited_scope_mnar",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review never discusses the assumptions about missing-data mechanisms (MAR vs. MNAR) or any limitation regarding Missing-Not-At-Random scenarios. It focuses instead on derivations, computational efficiency, baselines, and presentation issues.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not mention the paper’s reliance on the MAR assumption or its inability to handle MNAR data, it provides no reasoning—correct or otherwise—about this flaw."
+    },
+    {
+      "flaw_id": "missing_theoretical_proof",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"**Missing or incomplete derivations.**  The central Eq.(12) is asserted to follow from 'standard variational calculus' but no derivation, assumptions, or regularity conditions are given... Without a derivation readers cannot verify optimality.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly points out that Equation (12) lacks a derivation and stresses that this omission prevents verification of the claimed optimality—mirroring the ground-truth description that Equation (12) underpins the method yet is missing a proof, leaving the manuscript without essential theoretical justification. This demonstrates correct identification and reasoning about the flaw’s significance."
+    }
+  ],
+  "ZCcIah9IZo_2406_09079": [
+    {
+      "flaw_id": "limited_environment_diversity",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review explicitly states: \"**Limited domains.** All tasks are Atari from pixels. Absence of continuous control, language, or real-world RL leaves questions about generality.\" It also asks: \"Have the authors tested HR on continuous-control benchmarks (DM-Control, MuJoCo)…?\" and notes \"the narrow scope of Atari\" in the limitation section.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only points out that experiments are confined to Atari but also explains the consequence—uncertainty about the method’s generality to other domains such as continuous-control tasks (MuJoCo). This matches the ground-truth flaw, which highlights that restricting evaluation to Atari obscures when the method is actually beneficial and necessitates broader testing."
+    }
+  ],
+  "6vsAh1qBJb_2503_04138": [
+    {
+      "flaw_id": "incomplete_baseline_evaluation",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"**Limited baselines & ablations** – Comparisons are mainly against (i) single-likelihood models and (ii) heuristic pseudo-data. **No quantitative comparison to multitask/LMC models, heterogeneous-output GPs ...** This makes it hard to isolate the benefit of *mixing* versus simply adding more latent functions.\" It also asks: \"Could the authors provide a quantitative benchmark where an LMC model with task-specific likelihoods is forced to share latent structure…?\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer directly identifies the absence of critical baselines—specifically multi-output GP and heterogeneous-output models—exactly matching the ground-truth flaw. They further articulate why this omission is problematic: without these comparisons, one cannot judge whether the proposed mixed-likelihood approach truly adds value, thereby questioning the sufficiency of the empirical evidence supporting the paper’s claims. This aligns with the ground truth’s emphasis that, until such baselines are included, the evidence is insufficient."
+    }
+  ],
+  "4x83oH6Oy6_2412_09758": [
+    {
+      "flaw_id": "channel_flexibility_clarity",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review does touch on the channel-CLS attention mechanism (e.g., \"Channel-CLS attention exchanges information every other block …\"), but it does not complain about missing methodological details on how NormWear deals with previously unseen channels or with scenarios involving more than ten channels. Instead, it even praises the approach as \"easy to deploy with arbitrary channel counts.\" Therefore the specific flaw regarding insufficient detail and practical limitations is absent.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review never raises the issue that the paper lacks clarity on handling unseen or many sensor channels, it cannot provide correct reasoning about that flaw. The brief comment about lack of analysis of attention patterns is unrelated to the ground-truth flaw."
+    },
+    {
+      "flaw_id": "baseline_preprocessing_specification",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review criticises the treatment of baselines: “Baselines are run ‘with default parameters’ and without hyper-parameter search; Chronos and TF-C typically require tuning the input length and patch size, and may be under-optimised here.”  It also notes metric-reporting issues: “Performance is mainly reported as AUC-ROC… precision–recall curves or clinical metrics would be more informative.”  These remarks directly point to missing/insufficient hyper-parameter settings and evaluation-metric specification for the baselines, which is the essence of the planted flaw.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only notes that baseline hyper-parameters are absent (‘run with default parameters’) but also explains the consequence—baselines may be under-optimised and the comparison unfair. They further argue that relying on a single metric (AUC-ROC) is inadequate, echoing the ground-truth concern about providing proper modality-specific evaluation metrics. Although the review does not explicitly mention the preprocessing pipeline, its discussion of missing hyper-parameters and metric choices aligns with two of the three components (hyper-parameters, evaluation metrics) highlighted in the planted flaw and gives correct reasoning about their impact."
+    }
+  ],
+  "xCrgcGytLR_2505_21742": [
+    {
+      "flaw_id": "insufficient_empirical_evaluation",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review repeatedly criticises the narrowness of the experiments: \"Limited experimental scope – All real-image results are confined to 32×32 resolutions…\"; \"Baselines missing – No comparison to…\"; \"Adversarial evaluation is weak – Robustness claims rely mainly on one-step FGSM…\".",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only notes the lack of breadth in the empirical study but specifies exactly what is missing—larger-scale datasets, stronger multi-step attacks, and comparisons to other robustness methods—mirroring the planted flaw’s description. They also articulate why these omissions undermine the robustness claims, demonstrating an accurate and sufficiently deep understanding of the flaw."
+    }
+  ],
+  "vkltBcQgrL_2504_05349": [
+    {
+      "flaw_id": "unfair_experimental_comparisons",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"All baselines are trained from scratch, whereas Hyperflows fine-tunes high-quality pretrained checkpoints. This conflates the benefit of 'better initialization' with the benefit of the pruning algorithm. A fair study should (i) provide scratch results for Hyperflows and (ii) fine-tune pretrained checkpoints with each baseline.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly identifies that Hyperflows and the baselines use different training setups (pretrained checkpoints vs. scratch), matching the ground-truth issue of unfair experimental comparisons. The reasoning also explains why this is problematic— it conflates initialization benefits and thus prevents an apples-to-apples evaluation— which aligns with the ground truth’s concern that the empirical claims are not properly supported."
+    }
+  ],
+  "BjjerMYL3F_2506_19834": [
+    {
+      "flaw_id": "insufficient_empirical_evaluation",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"(–) Single-dataset focus. Primary conclusions rest almost exclusively on GEOM-DRUGS; GEOM-QM9 results are added later but saturated, and GEOM-XL evaluation is very brief.\" This explicitly points out that the empirical evaluation is largely confined to GEOM-DRUGS and is therefore limited.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "While the reviewer correctly observes that the evaluation is concentrated on a single dataset (GEOM-DRUGS), they do not note the omission of key baselines such as DMCG, which is a central component of the planted flaw description. Thus the reasoning only partially captures the insufficiency of the empirical evaluation and does not fully align with the ground-truth explanation."
+    }
+  ],
+  "haEAhTexqm_2502_03609": [
+    {
+      "flaw_id": "missing_baseline_comparisons",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review lists some weaknesses (e.g., incremental novelty, missing discussion of alternative PIT constructions, lack of conditional coverage analysis, no significance tests) but nowhere criticises the paper for omitting important baseline methods such as VQR or other multivariate conformal approaches. Thus the specific flaw is absent.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review never brings up the lack of baseline comparisons, it obviously cannot supply correct reasoning about that flaw."
+    },
+    {
+      "flaw_id": "lacking_conditional_coverage_guarantee",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Theoretical scope: Conditional (x-wise) coverage and asymptotic efficiency are not analysed.\" and asks in Question 1: \"can the authors characterise when OT-CP attains approximate **x-conditional coverage** … or give a negative result?\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly notes that conditional (x-wise) coverage is not analysed or guaranteed, i.e., there is no finite-sample conditional coverage result. This aligns with the planted flaw, which is that the paper lacks a rigorous conditional coverage guarantee. Although the reviewer does not point out that the authors *claim* such coverage, they accurately identify the substantive deficiency (absence of a finite-sample conditional guarantee) and explain its importance (‘Without such results, the superiority … remains empirical’). Hence the reasoning matches the essence of the ground-truth flaw."
+    }
+  ],
+  "GOWRex7nOA_2502_06577": [
+    {
+      "flaw_id": "ambiguous_policy_definition",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review does not raise any concern about ambiguity in the formal definition of the policy g, how μ_a depends on g, or the possibility that constant policies collapse to atomic interventions. Its comments on clarity focus only on dense notation and missing figures, not on the specific definitional issue.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review never identifies the ambiguity around the definition of conditional interventions or the role of g, it provides no reasoning that could be evaluated for correctness relative to the ground-truth flaw."
+    }
+  ],
+  "dY44CURN4v_2501_18879": [
+    {
+      "flaw_id": "unclear_assumptions_in_main_text",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states that \"Proof sketch outlines how regularity and boundedness assumptions are used; full proofs are deferred to the appendix\" and criticises that \"Several crucial definitions (regular set, stability constant Γ) appear only informally in the main text.\" It also notes that the assumptions are \"strong and only partially justified\" and therefore difficult to check.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly points out that key assumptions/definitions are not fully presented in the main text and are instead deferred or only informally given, which makes them hard to justify or verify. This matches the planted flaw’s essence: theoretical guarantees cannot be properly evaluated until the formal assumptions are moved into the main text. The reviewer also explains the consequence (difficulty of justification/verification), aligning with the ground-truth reasoning."
+    }
+  ],
+  "90ghmFUwIT_2408_08533": [
+    {
+      "flaw_id": "objective_derivation_unclear",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The generated review does not state or suggest that the derivation of the ACT objective is missing from the main text. It actually notes \"Detailed proofs are provided in the appendix,\" which implies the reviewer did not perceive any omission.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Since the review never points out the absence of the objective’s full derivation in the main text, it neither discusses nor reasons about this flaw. Consequently, it cannot be assessed as correct with respect to the ground-truth flaw."
+    },
+    {
+      "flaw_id": "unbiasedness_proof_missing",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review never discusses whether the sample-level loss is an unbiased estimator of the population risk, nor does it comment on any missing or added proof addressing that issue.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Since the review fails to mention the unbiasedness question or the absence/presence of its proof, no reasoning is provided and therefore it cannot be correct with respect to the planted flaw."
+    },
+    {
+      "flaw_id": "lambda_choice_unjustified",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review explicitly states: \"No ablation on the regularization coefficient λ...\" and asks: \"How sensitive is ACT to the choice of λ ... Please provide ablations...\"—clearly pointing out that the choice of λ is not principled or empirically justified.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only flags the absence of analysis for λ but also explains why this is problematic (lack of sensitivity study, potential variance, need for ablations). This matches the ground-truth flaw that the paper originally lacked a principled justification for the regularization weight λ."
+    },
+    {
+      "flaw_id": "lipschitz_property_omitted",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review briefly refers to “strong Lipschitz and norm constraints on the network” as part of the assumptions, but it never states that the paper failed to prove or justify these constraints. There is no mention of an omitted proof for the bounded product of layer norms (the κ condition) or of any gap the authors promised to fill.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not identify the missing justification for the Lipschitz property or the unproven κ-bounded product condition, it neither flags the specific flaw nor provides reasoning about its consequences. Hence the reasoning cannot be considered correct with respect to the ground-truth flaw."
+    }
+  ],
+  "NtxVmqPYJ8_2502_07273": [
+    {
+      "flaw_id": "missing_complete_proofs",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review does not mention missing or incomplete proofs at all. It even praises the derivations for being \"clean, transparent and easy to verify\" and only criticizes the approximation for deep nets, not the absence of full proofs.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review never identifies the absence of full, rigorous proofs for the main theorems, it provides no reasoning—correct or otherwise—about why such an omission undermines the paper's theoretical soundness. Consequently, it fails to address the planted flaw."
+    }
+  ],
+  "ReLY5VHNEZ_2406_04814": [
+    {
+      "flaw_id": "inadequate_empirical_evaluation",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review criticises the empirical evaluation: \"Benchmark limitations – Bouncing Balls and 3D Maze are fully synthetic, low-resolution, and highly repetitive; PLAICraft is compressed ... Real-world video ... is absent.\" and \"Methodological omissions – No comparisons with stronger CL baselines ...\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer pinpoints exactly the issues highlighted in the planted flaw: the experiments rely mainly on a couple of small synthetic datasets and lack comparisons with stronger/State-of-the-Art baselines. The reviewer also explains why this matters (low diversity, absence of real-world footage, weak baselines mean the conclusions may not generalise). This aligns with the ground-truth description that broader, more realistic and competitive evaluation is necessary."
+    }
+  ],
+  "jFC8SS8kWU_2501_18015": [
+    {
+      "flaw_id": "unexplained_size_performance_gap",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"Improvement margins for 3-13 B models are clear (≈ 5–15 % relative PPL); for 70 B gains are small and not always consistent, raising questions on scalability of *quality* vs. *cost*.\" This directly notes the inconsistent behaviour on the 70 B model compared with smaller ones.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only points out the inconsistent results on the 70 B model but also explains that this casts doubt on the method’s scalability (\"raises questions on scalability\"). This aligns with the ground-truth flaw that the unexplained performance gap undermines the generality of the paper’s empirical claim. Although the review does not explicitly say that the authors provide no explanation, it identifies the performance gap and states why it is problematic (questions scalability and cost justification), which matches the essence of the planted flaw."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "PAPER_ICLR_1": [
+    {
+      "flaw_id": "f1",
+      "is_flaw_mentioned": false,
+      "is_reasoning_correct": false
+    },
+    {
+      "flaw_id": "f2",
+      "is_flaw_mentioned": true,
+      "is_reasoning_correct": false
+    }
+  ]
+}

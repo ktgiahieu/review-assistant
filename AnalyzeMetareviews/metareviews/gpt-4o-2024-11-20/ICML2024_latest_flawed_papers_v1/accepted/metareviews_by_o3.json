@@ -1,0 +1,59 @@
+{
+  "GcW9pg4P9x_2405_01327": [
+    {
+      "flaw_id": "missing_approximation_justification",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review discusses the paper’s first-order approximation but states that it is already \"rigorously justified\" and \"well-justified\". It never claims that a proof or justification is missing; thus the planted flaw (lack of justification) is not acknowledged.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review fails to recognize that the formal proof of accuracy for the first-order approximation is absent, it neither mentions nor reasons about the true flaw. Consequently, there is no correct reasoning regarding the flaw."
+    },
+    {
+      "flaw_id": "insufficient_experimental_comparison",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review explicitly notes: \"Limited Baseline Comparison ... relying heavily on Mankowitz et al. (2020) as the primary baseline diminishes the breadth of consistent comparisons.\" It also says \"Including more challenging environments (e.g., Safe HalfCheetah) would further validate scalability and robustness\" and \"The justification for omitting error bars in Fig. 4 ... Even near-zero deviations should be reported for completeness and transparency.\" All three points directly reference missing baselines, easier tasks, and lack of standard-deviation reporting.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only flags the omissions but explains their implications: limited baselines weaken comparative validity; harder tasks are needed to demonstrate scalability/robustness; error bars are required for transparency. These justifications mirror the ground-truth concern that comprehensive experiments (more baselines, harder environments, reporting means±std) are essential to substantiate the paper’s practical claims. Thus the reasoning aligns with the planted flaw’s rationale."
+    }
+  ],
+  "k2dVVIWWho_2402_07471": [
+    {
+      "flaw_id": "limited_empirical_comparison",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"The empirical results are insufficiently robust due to limited runs (e.g., privacy evaluations averaged over only two runs for Gossip). Such a setup raises concerns about statistical significance and the reliability of conclusions.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly notes that results are averaged over only two runs and argues this undermines statistical significance and reliability, which matches the ground-truth criticism that the evaluation is statistically weak because it uses only two runs. Although the reviewer does not specifically mention the absence of a mean-squared-error analysis, they correctly identify the core flaw (too few runs, weak statistics) and articulate its negative impact on the strength of the conclusions, aligning with the planted flaw’s rationale."
+    },
+    {
+      "flaw_id": "poor_performance_on_low_connectivity_graphs",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review references sparse graphs but only to praise that the paper 'robustly extends to sparsely connected graphs, such as paths and trees.' It does not raise any concern or limitation about poor performance on low-connectivity graphs; hence the planted flaw is absent from the review.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not identify the degradation of privacy/utility bounds on low-connectivity graphs, it neither mentions nor explains the flaw. Consequently, no reasoning about the flaw’s implications is provided."
+    }
+  ],
+  "UW5nO9NGjt_2309_02870": [
+    {
+      "flaw_id": "lack_of_rigorous_theoretical_analysis",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review states: \"While the theoretical analysis is constructive, it lacks deep mathematical rigor. The claims would benefit from additional formal proofs or derivations to substantiate the stated propositions further.\" This directly points to the insufficiency of the supposed theoretical analysis.",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer not only flags that the paper’s ‘theoretical analysis’ is weak but also specifies that it lacks formal proofs and mathematical rigor—exactly the issue described in the ground-truth flaw (the paper only offers qualitative discussion while claiming theory). This matches the flaw’s essence: an over-stated contribution that needs stronger formal treatment. Hence the reasoning aligns with the ground truth."
+    }
+  ],
+  "ScIHQoTUjT_2310_02932": [
+    {
+      "flaw_id": "ai_assistance_bias",
+      "is_flaw_mentioned": false,
+      "mention_reasoning": "The review references the paper’s “AI-assisted rating pipeline,” but only praises it (e.g., claiming it “reduces bias”). It never states or alludes to the possibility that the AI assistance itself could bias or mislead raters, nor that the authors lack a framework to measure/mitigate such effects.",
+      "is_reasoning_correct": false,
+      "reasoning_analysis": "Because the review does not acknowledge the potential for AI-induced bias or the absence of mitigation measures, it neither identifies the planted flaw nor provides reasoning aligned with the ground truth. Instead, it presents the AI assistance as a strength, the opposite of the flaw."
+    },
+    {
+      "flaw_id": "limited_rater_reliability",
+      "is_flaw_mentioned": true,
+      "mention_reasoning": "The review notes: \"Despite efforts to reduce rater variance, limitations in inter-rater agreement, especially on complex epistemological dimensions like ‘uncertainty,’ suggest residual subjectivity.\"",
+      "is_reasoning_correct": true,
+      "reasoning_analysis": "The reviewer explicitly points out the same issue as the planted flaw—limited inter-rater agreement leading to lingering subjectivity. While they do not use the exact wording about ‘threatening statistical rigor,’ they clearly identify the core problem (insufficient control of subjectivity due to only medium agreement) and flag it as a weakness that can affect evaluation reliability. This aligns with the ground-truth description."
+    }
+  ]
+}
