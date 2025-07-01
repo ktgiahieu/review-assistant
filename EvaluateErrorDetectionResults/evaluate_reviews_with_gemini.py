@@ -14,7 +14,7 @@ from google.api_core import exceptions as google_exceptions
 from dotenv import load_dotenv
 
 # Import the prompts and Pydantic model for evaluation
-from evaluation_prompts import FlawEvaluation, EvaluationPrompts
+from gemini_evaluation_prompts import FlawEvaluation, EvaluationPrompts
 
 # --- Environment & API Configuration ---
 # Load environment variables from a .env file
@@ -38,13 +38,31 @@ _RETRYABLE_EXCEPTIONS = (
     google_exceptions.GatewayTimeout,
 )
 
-def _sanitize_json_string(json_str):
-    """A simple function to clean common JSON errors from LLM output."""
-    # Removes trailing commas before closing braces or brackets
-    json_str = re.sub(r',\s*(?=[}\]])', '', json_str)
-    # Strips markdown code block fences
-    json_str = json_str.strip().strip("```json").strip("```")
-    return json_str
+def _sanitize_json_string(json_str: str) -> str:
+    """
+    A robust function to clean common JSON errors from LLM output.
+    It finds the main JSON object within a string that might contain extra text
+    by locating the first '{' and the last '}'.
+    """
+    try:
+        # Find the first opening curly brace
+        start_index = json_str.find('{')
+        # Find the last closing curly brace
+        end_index = json_str.rfind('}')
+        
+        # If a valid JSON object is likely present, extract it
+        if start_index != -1 and end_index != -1 and end_index > start_index:
+            json_str = json_str[start_index : end_index + 1]
+        else:
+            # If no valid braces are found, return original string for error logging
+            return json_str
+
+        # Remove trailing commas before closing braces or brackets, a common LLM error
+        json_str = re.sub(r',\s*(?=[}\]])', '', json_str)
+        return json_str
+    except Exception:
+        # In case of any unexpected error, return the original string
+        return json_str
 
 def evaluate_single_flaw(
     gemini_model,
@@ -55,70 +73,81 @@ def evaluate_single_flaw(
 ):
     """
     Calls the Gemini API to evaluate a single flaw against a review.
-
-    Args:
-        gemini_model: The configured generative model instance from the Gemini API.
-        review_content (dict): The content of the review.
-        flaw_id (str): The ID of the flaw being evaluated.
-        flaw_description (str): The description of the flaw.
-        verbose (bool): If True, prints detailed logs.
-
-    Returns:
-        A dictionary containing the validated evaluation data or an error message.
+    If a validation error occurs, it makes a second attempt with a corrective prompt.
     """
-    MAX_RETRIES = 3
+    MAX_API_RETRIES = 3
     INITIAL_BACKOFF_SECONDS = 2
     _print_method = tqdm.write if not verbose else print
-    
-    # Get the prompt and the Pydantic model schema for structured output
-    evaluation_schema = FlawEvaluation.model_json_schema()
+
+    # Initial prompt for the first attempt
     prompt = EvaluationPrompts.get_evaluation_prompt(
         review_text=json.dumps(review_content, indent=2),
         flaw_id=flaw_id,
         flaw_description=flaw_description,
-        json_schema=evaluation_schema
     )
 
-    # Configure the generation settings to force a JSON response
+    # Configure the generation settings to strictly enforce a JSON response
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
-        # response_schema=FlawEvaluation.model_json_schema()
+        response_schema=FlawEvaluation
     )
 
     last_exception = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            # Call the Gemini API
-            response_obj = gemini_model.generate_content(
-                contents=prompt,
-                generation_config=generation_config
+    
+    # We make up to two main attempts: one initial, and one corrective if the first fails validation.
+    for attempt in range(2):
+        # If this is the second attempt, create a corrective prompt.
+        if attempt == 1:
+            if verbose: _print_method(f"Initial attempt failed for flaw {flaw_id}. Retrying with corrective prompt.")
+            error_message = str(last_exception)
+            # Create a new prompt that includes the error message from the previous failed attempt.
+            prompt = (
+                f"Your previous response failed with a validation error. Please correct your mistake.\n\n"
+                f"ERROR: {error_message}\n\n"
+                f"Please provide a new response that is ONLY a single, valid JSON object matching the required schema. "
+                f"Do not include any other text, thoughts, or explanations outside of the JSON object.\n\n"
+                f"Here is the original request again for your reference:\n\n{prompt}"
             )
-            
-            # The API should return a JSON string in response.text
-            raw_json_content = response_obj.text
-            
-            # Clean the JSON string before validation
-            cleaned_json = _sanitize_json_string(raw_json_content)
-            
-            # Validate the JSON structure and types with the Pydantic model
-            validated_evaluation = FlawEvaluation.model_validate_json(cleaned_json)
-            return validated_evaluation.model_dump()
 
-        except Exception as e:
-            last_exception = e
-            if isinstance(e, _RETRYABLE_EXCEPTIONS):
-                wait_time = INITIAL_BACKOFF_SECONDS * (2 ** attempt)
+        # Inner loop for handling retryable API errors (e.g., rate limits, network issues)
+        for api_retry_attempt in range(MAX_API_RETRIES):
+            try:
+                # Call the Gemini API
+                response_obj = gemini_model.generate_content(
+                    contents=prompt,
+                    generation_config=generation_config
+                )
+                
+                raw_json_content = response_obj.text
+                cleaned_json = _sanitize_json_string(raw_json_content)
+                
+                # Validate the JSON structure and types with Pydantic
+                validated_evaluation = FlawEvaluation.model_validate_json(cleaned_json)
+                return validated_evaluation.model_dump() # Success!
+
+            except _RETRYABLE_EXCEPTIONS as e:
+                last_exception = e
+                wait_time = INITIAL_BACKOFF_SECONDS * (2 ** api_retry_attempt)
                 if verbose: _print_method(f"Retryable API error ({type(e).__name__}). Retrying in {wait_time}s...")
                 time.sleep(wait_time)
-            else:
-                # Handle other exceptions, like validation errors, as non-retryable
-                if verbose: _print_method(f"Non-retryable error during evaluation: {type(e).__name__} - {e}")
+                # Continue the inner loop to retry the API call
+
+            except Exception as e:
+                # This is a non-retryable error (like a ValidationError).
+                last_exception = e
+                if verbose:
+                    _print_method(f"Attempt {attempt + 1} failed with non-retryable error: {type(e).__name__}")
+                # Break the inner loop to proceed to the corrective attempt (if any).
                 break
-    
-    # If all retries fail, return an error dictionary
+        
+        # If the inner loop completed all its retries for a retryable error, we break the outer loop too.
+        if isinstance(last_exception, _RETRYABLE_EXCEPTIONS):
+            break
+
+    # If we've exhausted all attempts (initial and corrective), return the final error.
     return {
         "flaw_id": flaw_id,
-        "error": f"Failed to get a valid evaluation from LLM after {MAX_RETRIES} attempts.",
+        "error": f"Failed to get a valid evaluation from LLM after a corrective attempt.",
         "last_exception": str(last_exception)
     }
 
@@ -132,10 +161,6 @@ def process_review_evaluation(
     """
     Processes a single review file, evaluating it against all flaws in its corresponding CSV.
     """
-    # Use a unique identifier for logging in a multi-threaded context
-    worker_id = concurrent.futures.thread.get_ident() if hasattr(concurrent.futures.thread, 'get_ident') else os.getpid()
-    _print_method = tqdm.write if not verbose else print
-
     try:
         review_path = Path(review_json_path)
         paper_id = review_path.parent.name
