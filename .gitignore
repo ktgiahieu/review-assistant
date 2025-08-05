@@ -21,10 +21,14 @@ log_*.txt
 
 BaselineErrorDetection/*data*
 
+./data/
+
 EvaluateErrorDetectionResults/*data*
 
 BadPaperGeneration/*_flawed_papers*
 BadPaperGeneration/old
+
+AnalyzeMetareviews/data
 
 ReproduceCycleReviewer/LLM_Responses/
 ReproduceCycleReviewer/LLM_Responses_Parsed/
