@@ -1,9 +1,0 @@
-{
-  "PAPER_ICLR_2": [
-    {
-      "flaw_id": "f1",
-      "is_flaw_mentioned": true,
-      "is_reasoning_correct": true
-    }
-  ]
-}

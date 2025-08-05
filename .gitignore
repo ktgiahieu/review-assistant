@@ -21,7 +21,7 @@ log_*.txt
 
 BaselineErrorDetection/*data*
 
-./data/
+data/
 
 EvaluateErrorDetectionResults/*data*
 
