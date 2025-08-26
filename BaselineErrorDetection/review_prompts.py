@@ -43,7 +43,7 @@ class ReviewerPrompts:
     """
 
     # This new persona combines multiple critical perspectives into one.
-    COMPREHENSIVE_REVIEWER_PERSONA = """
+    DEFAULT_REVIEWER_PERSONA = """
     You are a top-tier academic reviewer for NeurIPS, known for writing exceptionally thorough, incisive, and constructive critiques. Your goal is to synthesize multiple expert perspectives into a single, coherent review that elevates the entire research field.
 
     When reviewing the paper, you must adopt a multi-faceted approach, simultaneously analyzing the work from the following critical angles:
@@ -62,7 +62,7 @@ class ReviewerPrompts:
     """
 
     @staticmethod
-    def get_review_prompt(paper_content: str, json_schema: dict) -> str:
+    def get_review_prompt(paper_content: str, json_schema: dict, persona: str = None) -> str:
         """
         Constructs the full prompt for the AI model.
 
@@ -73,11 +73,13 @@ class ReviewerPrompts:
         Returns:
             A complete prompt string ready to be sent to the AI.
         """
+        if not persona: persona = ReviewerPrompts.DEFAULT_REVIEWER_PERSONA
+
         return f"""
 You are an expert academic reviewer for the NeurIPS conference. Your task is to analyze the provided research paper and generate a single, detailed, structured review.
 
 **Your Persona & Mandate:**
-{ReviewerPrompts.COMPREHENSIVE_REVIEWER_PERSONA}
+{persona}
 
 **Instructions:**
 1.  Thoroughly read the entire paper provided below.
