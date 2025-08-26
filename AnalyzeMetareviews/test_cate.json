@@ -1,0 +1,792 @@
+{
+  "XTHfNGI3zT_2310_01188": {
+    "inconsistent_end_to_end_experiments": "A2"
+  },
+  "3d0OmYTNui_2310_16960": {
+    "insufficient_statistical_rigor": "A4"
+  },
+  "NLevOah0CJ_2404_08828": {
+    "missing_confidence_intervals": "A4"
+  },
+  "mL8Q9OOamV_2307_05222": {
+    "missing_bias_fairness_evaluation": "B"
+  },
+  "uWvKBCYh4S_2404_13628": {
+    "missing_nlp_support": "A3"
+  },
+  "QuIiLSktO4_2404_06280": {
+    "prediction_count_miscalculation": "A1"
+  },
+  "3QLkwU40EE_2403_13684": {
+    "unsupported_part_focus": "A3"
+  },
+  "oOGqJ6Z1sA_2008_03738": {
+    "missing_bandwidth_selection": "C"
+  },
+  "NSIVHTbZBR_2401_03349": {
+    "methodology_clarity_and_replication": "C"
+  },
+  "iAYIRHOYy8_2401_09352": {
+    "missing_formal_contractivity_proof": "A1"
+  },
+  "hI18CDyadM_2306_14268": {
+    "missing_ablation_no_pruning": "A4"
+  },
+  "jTSKkcbEsj_2402_06171": {
+    "unproven_simplex_etf_assumption": "A1"
+  },
+  "QzTpTRVtrP_2405_18765": {
+    "inappropriate_phase_loss": "A1"
+  },
+  "TTrzgEZt9s_2310_13863": {
+    "requires_strong_convexity": "A2"
+  },
+  "FHqAzWl2wE_2310_03695": {
+    "algorithmic_clarity_missing_pseudocode": "C"
+  },
+  "30aSE3FB3L_2405_19206": {
+    "undefined_convolution_layer": "A1",
+    "insufficient_baseline_evaluation": "A4"
+  },
+  "ZKEuFKfCKA_2306_03401": {
+    "time_independent_participation_assumption": "A2"
+  },
+  "2cRzmWXK9N_2309_16240": {
+    "limited_experimental_scale": "A4"
+  },
+  "TzoHLiGVMo_2310_05573": {
+    "missing_transformer_baseline_comparison": "A4",
+    "incomplete_recent_baseline_coverage": "A4"
+  },
+  "eiC4BKypf1_2306_03917": {
+    "limited_baseline_comparison": "A4"
+  },
+  "5ep85sakT3_2312_07145": {
+    "incorrect_failure_probability": "A1"
+  },
+  "3bq3jsvcQ1_2310_06117": {
+    "missing_decomposition_baseline": "A4"
+  },
+  "pAVJKp3Dvn_2310_18882": {
+    "missing_theoretical_analysis_of_generalization": "A1"
+  },
+  "sllU8vvsFF_2311_04400": {
+    "missing_quantitative_comparison": "A4",
+    "blurred_occluded_regions": "A2"
+  },
+  "tsE5HLYtYg_2307_07176": {
+    "limited_statistical_significance": "A4",
+    "missing_hyperparameter_and_baseline_details": "C"
+  },
+  "juE0rWGCJW_2310_01015": {
+    "misleading_scope_title": "A3",
+    "inconsistent_deepwalk_feature_reporting": "C"
+  },
+  "JORAfH2xFd_2310_00429": {
+    "insufficient_experimental_repeats": "A4"
+  },
+  "gkfUvn0fLU_2310_04373": {
+    "reliance_on_ground_truth": "A2"
+  },
+  "dsUB4bst9S_2307_03381": {
+    "baseline_mismatch_delimiter": "A2"
+  },
+  "igfDXfMvm5_2310_02687": {
+    "static_scene_only": "A4"
+  },
+  "r65xfUb76p_2308_03279": {
+    "missing_supervised_baseline": "A4",
+    "inadequate_dataset_processing_transparency": "C"
+  },
+  "Xz13DtbOVW_2310_20673": {
+    "no_generalization_to_test_data": "A4",
+    "lack_of_convergence_and_feasibility_guarantees": "A1"
+  },
+  "qCUWVT0Ayy_2309_09506": {
+    "missing_unconditional_generation_eval": "A4",
+    "inadequate_training_and_implementation_details": "C"
+  },
+  "MEGQGNUfPx_2402_11733": {
+    "lack_of_theoretical_foundation": "A1"
+  },
+  "HhfcNgQn6p_2309_14563": {
+    "missing_baseline_comparison": "A4"
+  },
+  "NSDszJ2uIV_2310_00115": {
+    "missing_equiformer_baseline": "A4",
+    "missing_confdss_discussion": "A4"
+  },
+  "z7K2faBrDG_2310_11759": {
+    "limited_natural_texture_experiments": "A4",
+    "insufficient_fisher_information_computation_details": "C"
+  },
+  "jOm5p3q7c7_2310_08833": {
+    "missing_numerical_validation": "A3",
+    "insufficient_exposition_of_key_technical_insights": "A1"
+  },
+  "HMe5CJv9dQ_2403_08917": {
+    "insufficient_main_body_content": "C"
+  },
+  "EanCFCwAjM_2402_14817": {
+    "limited_dataset_evaluation": "A4"
+  },
+  "mZn2Xyh9Ec_2307_08691": {
+    "missing_ablation": "A4",
+    "missing_performance_counters": "A4"
+  },
+  "sNFLN3itAd_2302_00890": {
+    "missing_theoretical_comparison_with_sf_then_mpnn": "A1"
+  },
+  "AXC9KydyZq_2310_18444": {
+    "missing_baseline_comparison": "A4",
+    "pseudo_label_sensitivity_unexplored": "A4"
+  },
+  "sTYuRVrdK3_2406_13864": {
+    "incomplete_downstream_baselines": "A4"
+  },
+  "mhyQXJ6JsK_2401_10216": {
+    "insufficient_background_and_notation": "C",
+    "missing_inference_time_comparison": "A4"
+  },
+  "3TO3TtnOFl_2310_01329": {
+    "missing_diverse_encoder_models": "A4"
+  },
+  "oXYZJXDdo7_2402_17532": {
+    "scalability_of_phrase_index": "A4",
+    "dependency_on_syntactic_parsing": "A4"
+  },
+  "ArpwmicoYW_2310_05055": {
+    "binary_only_scope": "A4"
+  },
+  "kOBkxFRKTA_2305_02299": {
+    "no_training_acceleration_evidence": "A3"
+  },
+  "TskzCtpMEO_2402_11025": {
+    "inaccurate_novelty_claims": "A3"
+  },
+  "PQbFUMKLFp_2308_10547": {
+    "missing_step_size_assumptions": "A1"
+  },
+  "UHjE5v5MB7_2310_13061": {
+    "missing_training_dynamics_analysis": "A4",
+    "limited_generalization_beyond_synthetic_tasks": "A4"
+  },
+  "LJWizuuBUy_2310_04918": {
+    "missing_convergence_analysis": "A1"
+  },
+  "sehRvaIPQQ_2310_06272": {
+    "missing_validation": "A4",
+    "missing_confidence_intervals": "A4"
+  },
+  "TjGJFkU3xL_2309_12819": {
+    "no_inference_asymptotic_normality": "A1"
+  },
+  "GH2LYb9XV0_2310_16441": {
+    "inadequate_related_work_comparison": "A3",
+    "limited_scope_beyond_linear_models": "A2"
+  },
+  "zSxpnKh1yS_2506_10629": {
+    "missing_demonstration_wsep_outperforms_misl": "A3",
+    "unclear_core_definitions": "A1"
+  },
+  "YrXHEb2qMb_2310_03054": {
+    "sensitivity_to_operator_and_noise": "A4",
+    "evaluation_metric_gap_for_high_dimensional_posteriors": "A4"
+  },
+  "C61sk5LsK6_2303_04947": {
+    "unclear_benefit_of_loss_based_selection": "A4"
+  },
+  "djM3WzpOmK_2310_15003": {
+    "unstated_loss_function": "C",
+    "missing_complexity_scalability_analysis": "A4"
+  },
+  "3w6xuXDOdY_2312_05742": {
+    "missing_theoretical_explanation": "A1",
+    "inadequate_hyperparameter_tuning_reporting": "A4"
+  },
+  "zb3b6oKO77_2310_17191": {
+    "multi_token_attribute_limitation": "A4",
+    "non_universal_mechanism": "A2"
+  },
+  "xIHi5nxu9P_2310_00724": {
+    "missing_training_cost_analysis": "A4"
+  },
+  "jznbgiynus_2309_10668": {
+    "lack_public_models_and_code": "C"
+  },
+  "ByR3NdDSZB_2308_02585": {
+    "limited_experimental_scope": "A4",
+    "scalability_hessian_complexity": "A4"
+  },
+  "kXHEBK9uAY_2401_02644": {
+    "missing_key_baseline_and_architecture_comparison": "A4",
+    "insufficient_ood_evaluation": "A4"
+  },
+  "qHGgNyQk31_2303_14897": {
+    "limited_video_length": "A4"
+  },
+  "pOoKI3ouv1_2402_10877": {
+    "restricted_to_unmediated_tasks": "A4",
+    "limited_shift_scope": "A4"
+  },
+  "xhCZD9hiiA_2310_02012": {
+    "expectation_only_bounds": "A1",
+    "simplifying_assumptions_linear_bn": "A2"
+  },
+  "yuy6cGt3KL_2211_01939": {
+    "limited_random_seeds": "A4",
+    "no_deep_learning_estimators": "A4"
+  },
+  "jxpsAj7ltE_2308_00951": {
+    "non_public_dataset_dependency": "C",
+    "lack_of_nlp_evaluation": "A4"
+  },
+  "ijK5hyxs0n_2312_04501": {
+    "missing_ablation_node_edge_features": "A4",
+    "incomplete_experimental_reporting": "A4"
+  },
+  "gwDuW7Ok5f_2308_07314": {
+    "limited_pose_generalization": "A4"
+  },
+  "6p8lpe4MNf_2310_06356": {
+    "unclear_detection_method_false_positive_stats": "A1",
+    "insufficient_attack_evaluation": "A4"
+  },
+  "KqbCvIFBY7_2310_13102": {
+    "marginal_distribution_shift": "A2"
+  },
+  "LqRGsGWOTX_2401_09587": {
+    "missing_parameter_specification": "A1",
+    "algorithm_structure_error": "C",
+    "unverified_unbounded_smoothness_in_experiments": "A2"
+  },
+  "Oju2Qu9jvn_2306_03301": {
+    "missing_statistical_cmi_baselines": "A4",
+    "unclear_prior_info_and_algorithm_flow": "C",
+    "overstated_uniqueness_on_costs_budgets": "A3"
+  },
+  "I2mIxuXA72_2401_14846": {
+    "unrealistic_feature_assumptions": "A2",
+    "missing_theoretical_proof_for_dg": "A1"
+  },
+  "hv3SklibkL_2402_14393": {
+    "permutation_invariance_assumption": "A1"
+  },
+  "lgaFMvZHSJ_2306_13924": {
+    "limited_transfer_learning_evaluation": "A4"
+  },
+  "UCfz492fM8_2309_17046": {
+    "mapper_evaluation_gap": "A4",
+    "insufficient_training_details": "C",
+    "unclear_root_tracking_reward": "C"
+  },
+  "rmg0qMKYRQ_2309_16779": {
+    "generative_vs_semantic_confound": "A4",
+    "misleading_clustering_analysis": "A3"
+  },
+  "9kG7TwgLYu_2305_13293": {
+    "unclear_motivation_alpha_ctif": "A1"
+  },
+  "ekz1hN5QNh_2303_15919": {
+    "overstated_novelty_missing_citations": "A3",
+    "missing_baseline_comparisons": "A4",
+    "insufficient_component_ablations": "A4"
+  },
+  "yKksu38BpM_2305_14585": {
+    "faithfulness_metric_single_class": "A4",
+    "surrogate_training_targets": "A2"
+  },
+  "0gTW5JUFTW_2310_06753": {
+    "limited_bezier_representation": "A4"
+  },
+  "up6hr4hIQH_2310_01820": {
+    "missing_proof_well_behavedness": "A1",
+    "limited_experimental_evidence": "A4"
+  },
+  "AbXGwqb5Ht_2309_01213": {
+    "weight_tying_initialization_dependency": "A2",
+    "linear_overparameterization_requirement": "A1"
+  },
+  "apXtolxDaJ_2404_12754": {
+    "missing_stop_gradient_eq12": "A1",
+    "absent_computational_overhead_analysis": "C"
+  },
+  "bJx4iOIOxn_2401_12902": {
+    "unsupported_optimization_hypothesis": "A3",
+    "weak_visualization_evidence": "A4"
+  },
+  "Unb5CVPtae_2310_01728": {
+    "unfair_early_stopping_and_code_errors": "A4",
+    "initially_limited_benchmark_scope": "A4"
+  },
+  "RtAct1E2zS_2308_05021": {
+    "unrealistic_assumptions_in_main_theorem": "A1",
+    "incomplete_and_erroneous_proofs": "A1"
+  },
+  "NnYaYVODyV_2311_18296": {
+    "limited_model_scaling": "A4",
+    "missing_detailed_efficiency_metrics": "A4"
+  },
+  "TLADT8Wrhn_2310_16226": {
+    "limited_timesteps": "A4"
+  },
+  "Nshk5YpdWE_2305_16846": {
+    "biased_w2_evaluation": "A4"
+  },
+  "o3BxOLoxm1_2311_16424": {
+    "limited_experimental_scope": "A4",
+    "missing_key_baseline": "A4",
+    "absence_of_human_evaluation": "A4"
+  },
+  "xCRr9DrolJ_2310_07297": {
+    "limited_experimental_coverage": "A4"
+  },
+  "qoHeuRAcSl_2403_17124": {
+    "ambiguous_transition_matrix_and_loss": "A2"
+  },
+  "1mjsP8RYAw_2309_16540": {
+    "limited_dataset_scope": "A4",
+    "missing_ablation_on_best_backbone": "A4",
+    "unclear_cold_start_mechanism_and_notation": "C"
+  },
+  "KkrDUGIASk_2401_13964": {
+    "unclear_performance_attribution": "A4",
+    "insufficient_fusion_benchmark": "A4"
+  },
+  "eOCvA8iwXH_2305_18484": {
+    "unclear_experimental_details": "C",
+    "ambiguous_theorem_statement": "A1"
+  },
+  "vXxardq6db_2401_15024": {
+    "sparsegpt_comparison_missing": "A4",
+    "memory_throughput_evidence_missing": "A4",
+    "layerwise_slicing_analysis_missing": "A4"
+  },
+  "ezBH9WE9s2_2311_03054": {
+    "evaluation_bias_same_ocr": "A4"
+  },
+  "HRkyLbBRHI_2404_04682": {
+    "limited_benchmark_scope": "A4",
+    "missing_hyperparameter_sensitivity": "A4"
+  },
+  "2XkTz7gdpc_2312_11529": {
+    "missing_baseline_comparisons": "A4",
+    "lack_featured_graph_support": "A4"
+  },
+  "TTonmgTT9X_2310_13841": {
+    "greedy_cart_suboptimality": "A2"
+  },
+  "Bl8u7ZRlbM_2405_01470": {
+    "limited_task_coverage_annotation": "A4",
+    "domain_demographic_bias": "B"
+  },
+  "AcoXPIPh4A_2311_14222": {
+    "limited_experimental_support": "A4"
+  },
+  "Y9t7MqZtCR_2305_14852": {
+    "high_training_cost_analysis_missing": "A4",
+    "degraded_performance_low_sparsity": "A2"
+  },
+  "KNvubydSB5_2305_19337": {
+    "missing_complexity_analysis": "C",
+    "no_support_for_attributed_graphs": "A4"
+  },
+  "mhgm0IXtHw_2402_04625": {
+    "limited_spatial_editing": "A4"
+  },
+  "5jcav5RcKw_2309_15564": {
+    "limited_generalization_identical_architectures": "A4",
+    "inadequate_quantitative_multimodal_evaluation": "A4"
+  },
+  "jVEoydFOl9_2310_04562": {
+    "unclear_complexity": "C"
+  },
+  "SKulT2VX9p_2401_10632": {
+    "lack_nonidentification_analysis": "A4",
+    "practical_density_estimation_requirement": "A2"
+  },
+  "qoYogklIPz_2310_04475": {
+    "limited_experimental_scope": "A4"
+  },
+  "okYdj8Ysru_2403_11261": {
+    "missing_computational_analysis": "C",
+    "absent_efficiency_comparison": "A4"
+  },
+  "ViPtjIVzUw_2307_03132": {
+    "incomplete_downstream_evaluation": "A4",
+    "limited_pilot_study_statistical_analysis": "A4",
+    "single_metric_reporting": "A4"
+  },
+  "iTFdNLHE7k_2307_14839": {
+    "misinterpretation_representer_theorem": "A1",
+    "overparameterisation_layers_claim": "A3",
+    "missing_medical_dataset_evaluation": "A4"
+  },
+  "G0vdDSt9XM_2309_17428": {
+    "limited_failure_analysis": "A4"
+  },
+  "vBo7544jZx_2310_09297": {
+    "misleading_memory_framing": "A3",
+    "baseline_naming_confusion": "C"
+  },
+  "fibxvahvs3_2311_12983": {
+    "unclear_evaluation_protocol": "C",
+    "missing_dataset_breakdown": "A4",
+    "incomplete_multimodal_baseline": "A4"
+  },
+  "jE8xbmvFin_2310_02207": {
+    "incomplete_neuron_intervention": "A4"
+  },
+  "14rn7HpKVk_2310_13289": {
+    "missing_reproducibility_details": "C",
+    "unclear_training_procedure": "C"
+  },
+  "OOxotBmGol_2402_03921": {
+    "high_dimensional_scalability": "A4",
+    "closed_source_llm_dependency": "C",
+    "incomplete_hpobench_evaluation": "A4"
+  },
+  "oM7Jbxdk6Z_2307_06235": {
+    "lacking_compute_cost": "C",
+    "missing_baselines": "A4"
+  },
+  "mIEHIcHGOo_2310_11451": {
+    "add_distillation_baselines": "A4",
+    "improve_method_clarity": "C"
+  },
+  "fgKjiVrm6u_2402_17032": {
+    "limited_scope_metamath": "A4",
+    "simplistic_extraction_algorithm": "A2"
+  },
+  "PhMrGCMIRL_2310_01542": {
+    "limited_generalization_evaluation": "A4"
+  },
+  "a4DBEeGfQq_2312_04865": {
+    "limited_graph_type_support": "A4",
+    "theoretical_assumption_strength": "A1"
+  },
+  "qaKRfobbTg_2312_04653": {
+    "assumes_known_lipschitz_constant": "A1",
+    "lack_empirical_validation": "A3"
+  },
+  "IOEEDkla96_2307_11565": {
+    "missing_comparisons_prior_work": "A4",
+    "limited_dataset_scope": "A4"
+  },
+  "EIPLdFy3vp_2402_10434": {
+    "missing_feature_correlation": "A4"
+  },
+  "49z97Y9lMq_2310_06002": {
+    "missing_unique_alpha_proof": "A1",
+    "missing_barycenter_algorithm": "C",
+    "lack_real_data_experiments": "A4"
+  },
+  "PvJnX3dwsD_2205_11787": {
+    "relu_specific_theory": "A2"
+  },
+  "KY8ZNcljVU_2402_07999": {
+    "inadequate_baseline_evaluation": "A4"
+  },
+  "auUngos7eR_2311_10580": {
+    "no_uncertainty_quantification": "A4",
+    "lack_of_theoretical_foundation_for_nonlinear_case": "A1"
+  },
+  "23b9KSNQTX_2311_17264": {
+    "missing_downstream_lm_impact_exp": "A4",
+    "incomplete_baseline_coverage": "A4"
+  },
+  "y01KGvd9Bw_2309_11499": {
+    "insufficient_dataset_ablation": "A4"
+  },
+  "fQHb1uZzl7_2403_11120": {
+    "insufficient_experimental_comparisons": "A4",
+    "unsupported_robustness_claim": "A3"
+  },
+  "yLClGs770I_2309_05653": {
+    "missing_data_ablation_analysis": "A4",
+    "lack_error_analysis": "A4",
+    "baseline_codellama_pot_comparison": "A4"
+  },
+  "XIaS66XkNA_2311_01462": {
+    "missing_ebgan_baseline": "A4",
+    "lack_of_quantitative_evaluation": "A4"
+  },
+  "JfqN3gu0i7_2402_01148": {
+    "missing_network_width_condition": "A1",
+    "unstated_embedding_index_assumption": "A1",
+    "unverified_smoothness_estimator": "A2"
+  },
+  "YCWjhGrJFD_2305_13301": {
+    "reduced_diversity_after_rl_finetuning": "A2",
+    "manual_early_stopping_and_overoptimization": "A4",
+    "insufficient_specification_of_vlm_reward_design": "C"
+  },
+  "dONpC9GL1o_2310_01693": {
+    "cross_entropy_assumption": "A2",
+    "biased_sampling_due_to_sufficient_conditions": "A2",
+    "weak_empirical_evidence": "A4"
+  },
+  "dLrhRIMVmB_2209_09371": {
+    "linear_depth_not_nisq": "A2",
+    "missing_noise_tolerance_analysis": "A1"
+  },
+  "IPhm01y9a9_2311_05613": {
+    "missing_theoretical_analysis": "A1"
+  },
+  "p4S5Z6Sah4_2309_08045": {
+    "unstable_training_measurement": "A4",
+    "limited_mechanistic_analysis": "A4"
+  },
+  "fwCoLe3TAX_2310_11971": {
+    "optimal_group_number": "A4",
+    "missing_robust_optimization_baselines": "A4",
+    "hyperparameter_sensitivity": "A4"
+  },
+  "BnQY9XiRAS_2403_11857": {
+    "missing_completeness_experiments": "A4"
+  },
+  "x5txICnnjC_2305_19394": {
+    "limited_architecture_generalization": "A4"
+  },
+  "YbZxT0SON4_2310_18144": {
+    "overstated_novelty_non_stationarity": "A3",
+    "insufficient_baseline_comparison": "A4",
+    "missing_methodological_details": "C"
+  },
+  "Q3YaCghZNt_2310_04870": {
+    "scalability_small_programs": "A4",
+    "dependence_on_gpt4_oracle": "C"
+  },
+  "RvfPnOkPV4_2310_20707": {
+    "english_only_evaluation": "A4",
+    "no_downstream_model_validation": "A4",
+    "limited_contamination_analysis": "A4"
+  },
+  "Tj3xLVuE9f_2310_16228": {
+    "theory_approximation_validation": "A2"
+  },
+  "GzNaCp6Vcg_2404_07662": {
+    "missing_runtime_analysis": "C",
+    "insufficient_selection_method_explanation": "C"
+  },
+  "FIGXAxr9E4_2403_04547": {
+    "limited_sensitive_attributes": "B"
+  },
+  "8iTpB4RNvP_2402_11473": {
+    "incorrect_formulation": "A1",
+    "limited_generalization": "A4"
+  },
+  "pz2E1Q9Wni_2403_06854": {
+    "insufficient_comparison_prior_work": "A3",
+    "lack_of_intuitive_examples_for_prop3": "A1"
+  },
+  "3UWuFoksGb_2405_03864": {
+    "insufficient_reproducibility_details": "C",
+    "scalability_combinatorial_explosion": "A4"
+  },
+  "ap1ByuwQrX_2405_11891": {
+    "limited_attribute_control": "A4",
+    "missing_sequence_level_attribution": "A4"
+  },
+  "JbcwfmYrob_2310_01777": {
+    "needs_distillation_training": "A2",
+    "no_latency_gain_short_sequences": "A2"
+  },
+  "STUGfUz8ob_2310_09753": {
+    "over_claiming_scope": "A3",
+    "missing_finite_width_validation": "A2"
+  },
+  "VmGRoNDQgJ_2303_12054": {
+    "missing_real_world_validation": "A3",
+    "insufficient_evaluation_against_defenses": "A4",
+    "omitted_joint_nni_prl_results": "A4"
+  },
+  "Ad87VjRqUw_2310_15168": {
+    "real_data_evaluation_missing": "A4",
+    "method_description_insufficient": "C",
+    "watertight_baseline_comparison_missing": "A4"
+  },
+  "bozbTTWcaw_2405_02041": {
+    "limited_contact_evaluation": "A4"
+  },
+  "TyFrPOKYXw_2310_12773": {
+    "missing_baselines": "A4"
+  },
+  "Lvf7GnaLru_2312_16313": {
+    "incorrect_loss_scaling_in_paper": "A1"
+  },
+  "kIPEyMSdFV_2307_02037": {
+    "log_sobolev_claims_unsubstantiated": "A1",
+    "missing_explicit_theoretical_comparison_to_ula": "A2"
+  },
+  "F1TKzG8LJO_2311_01977": {
+    "incomparable_baselines": "A4",
+    "limited_camera_assumptions": "A4"
+  },
+  "vfzRRjumpX_2402_01935": {
+    "missing_large_baselines": "A4",
+    "missing_classification_benchmarks": "A4",
+    "absent_finetuning_results": "A4"
+  },
+  "rBH7x87VfJ_2501_05930": {
+    "limited_empirical_validation": "A4"
+  },
+  "4VgBjsOC8k_2401_14469": {
+    "insufficient_training_variability": "A4",
+    "limited_task_dataset_scope": "A4"
+  },
+  "1oqedRt6Z7_2309_09814": {
+    "missing_uncertainty_evaluation": "A4"
+  },
+  "t8cBsT9mcg_2411_04342": {
+    "missing_baseline": "A4",
+    "calibration_assumption_limited": "A2"
+  },
+  "OIsahq1UYC_2310_02679": {
+    "insufficient_baseline_comparisons": "A4",
+    "unclear_relationship_to_prior_gflownet_work": "A3",
+    "need_for_objective_ablation_on_gflownet_connection": "A4"
+  },
+  "IRcv4yFX6z_2210_00314": {
+    "superpixel_dependency": "A2"
+  },
+  "OHpvivXrQr_2402_18813": {
+    "missing_pretraining_ablation": "A4",
+    "distribution_shift_in_gnn_embeddings": "A2",
+    "insufficient_baseline_comparison": "A4"
+  },
+  "hp4yOjhwTs_2503_16799": {
+    "limited_experimental_scope": "A4",
+    "missing_complexity_analysis": "C"
+  },
+  "IuXR1CCrSi_2310_04560": {
+    "graphqa_description_missing": "C",
+    "limited_task_complexity": "A4",
+    "single_llm_evaluation": "A4"
+  },
+  "BlkxbI6vzl_2309_02046": {
+    "limited_experimental_scalability": "A4",
+    "unfair_baseline_parameterization": "A4"
+  },
+  "pmweVpJ229_2310_14661": {
+    "nonasymptotic_iterations": "C"
+  },
+  "wpXGPCBOTX_2310_05461": {
+    "missing_intuition_precertificate": "A1",
+    "limited_confusing_experiments": "A4",
+    "absent_discussion_bound_tightness": "A1"
+  },
+  "VoLDkQ6yR3_2302_01428": {
+    "unclear_incorrect_theoretical_proofs": "A1"
+  },
+  "fxQiecl9HB_2403_11686": {
+    "missing_potnet_comparison": "A4",
+    "unclear_derivation_of_attention_bias": "C",
+    "lack_of_error_bounds_for_infinite_summation": "A1"
+  },
+  "xAqcJ9XoTf_2310_02579": {
+    "poor_scalability_quadratic_complexity": "A4"
+  },
+  "hCrFG9cyuC_2306_02982": {
+    "unclear_data_construction_and_comparison": "C",
+    "limited_unwritten_language_evaluation": "A4",
+    "missing_baseline_results_for_auxiliary_tasks": "A4"
+  },
+  "rM9VJPB20F_2504_02142": {
+    "limited_dataset_diversity": "A4",
+    "overclaiming_scope_loss_based_methods": "A3"
+  },
+  "nAs4LdaP9Y_2309_01289": {
+    "missing_baseline_comparisons": "A4",
+    "communication_overhead_analysis": "C"
+  },
+  "fpoAYV6Wsk_2310_08744": {
+    "imprecise_overlap_metric": "A4",
+    "limited_generalization_scope": "A4"
+  },
+  "o4CLLlIaaH_2401_14354": {
+    "dependency_on_mvs_initialization": "A2"
+  },
+  "svIdLLZpsA_2310_10402": {
+    "limited_runs": "A4",
+    "missing_privacy_details": "C"
+  },
+  "2Q8TZWAHv4_2401_14578": {
+    "missing_complexity_analysis": "C",
+    "unclear_metric_definitions": "C"
+  },
+  "ph04CRkPdC_2310_02226": {
+    "requires_pause_pretraining": "A2"
+  },
+  "3aZCPl3ZvR_2405_03676": {
+    "limited_dataset_scope": "A4"
+  },
+  "zavLQJ1XjB_2306_00740": {
+    "limited_real_overlap_experiments": "A2"
+  },
+  "G7UtIGQmjm_2309_05660": {
+    "high_computational_cost_and_scalability": "A4"
+  },
+  "VdkGRV1vcf_2305_11463": {
+    "dimension_dependency_clarity": "A1",
+    "high_dimensional_experimentation": "A4"
+  },
+  "qxLVaYbsSI_2402_14430": {
+    "missing_method_details": "C",
+    "insufficient_experiment_rigor": "A4",
+    "increased_resource_overhead": "A4"
+  },
+  "NvbeD9Ttkx_2302_08484": {
+    "missing_convex_convergence": "A1"
+  },
+  "4Zz5UELkIt_2312_02438": {
+    "missing_reproducibility": "C"
+  },
+  "SZOQ9RKYJu_2309_09298": {
+    "gpt4_eval_bias": "A4",
+    "dataset_overlap_uncertainty": "A4",
+    "incomplete_baseline_comparisons": "A4"
+  },
+  "lAhQCHuANV_2211_07245": {
+    "unexplained_model_uncertainty_difference": "A3"
+  },
+  "LZIOBA2oDU_2403_13178": {
+    "insufficient_baselines": "A4",
+    "limited_environment_complexity": "A4"
+  },
+  "GIUjLsDP4Z_2311_14864": {
+    "limited_experimental_scope": "A4",
+    "missing_ablation_on_lcp_components": "A4",
+    "insufficient_methodological_detail": "C"
+  },
+  "kBNIx4Biq4_2306_01843": {
+    "missing_ablations": "A4",
+    "unclear_pathology_exposition": "A1",
+    "missing_reconstruction_metrics": "A4"
+  },
+  "KIPJKST4gw_2309_16298": {
+    "uncontrolled_training_data_size": "A4"
+  },
+  "efeBC1sQj9_2309_15289": {
+    "test_set_pretraining_bias": "A4",
+    "missing_cross_dataset_evidence": "A4",
+    "unclear_novelty_vs_existing_ssl_methods": "A3"
+  },
+  "RIu5lyNXjT_2310_11324": {
+    "limited_generation_scope": "A4",
+    "missing_dispersion_metric": "A4",
+    "missing_confounder_analysis": "A4"
+  },
+  "GTk0AdOYLq_2310_01381": {
+    "limited_baseline_comparison": "A4",
+    "missing_synthesis_time_analysis": "C"
+  },
+  "vSwu81S33z_2403_07282": {
+    "computational_cost_discussion": "C",
+    "misspecification_robustness_clarification": "A1",
+    "missing_generalization_experiments": "A4"
+  },
+  "q4SiDyYQbo_2310_01583": {
+    "limited_experimental_scope": "A4"
+  }
+}

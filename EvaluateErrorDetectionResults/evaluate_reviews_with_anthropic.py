@@ -11,7 +11,7 @@ import re
 from tqdm import tqdm
 import anthropic
 from dotenv import load_dotenv
-
+import pydantic
 # Import the prompts and Pydantic model for evaluation
 from evaluation_prompts import FlawEvaluation, EvaluationPrompts
 
@@ -32,6 +32,8 @@ _RETRYABLE_EXCEPTIONS = (
     anthropic.RateLimitError,
     anthropic.APIConnectionError,
     anthropic.InternalServerError,
+    pydantic.ValidationError,
+    json.JSONDecodeError
 )
 
 def _sanitize_json_string(json_str):
@@ -70,7 +72,7 @@ def evaluate_single_flaw(
     
     # Get the Pydantic model schema and format it for the prompt
     evaluation_schema = FlawEvaluation.model_json_schema()
-    
+    print(evaluation_schema)
     # The user prompt contains the specific data for the task.
     user_prompt = EvaluationPrompts.get_evaluation_prompt(
         review_text=json.dumps(review_content, indent=2),
@@ -85,7 +87,7 @@ def evaluate_single_flaw(
             # Call the Anthropic API using the messages endpoint
             response_obj = anthropic_client.messages.create(
                 model=model_name,
-                max_tokens=10000, # Set a reasonable max token limit for the JSON output
+                max_tokens=4096, # Set a reasonable max token limit for the JSON output
                 messages=[
                     {"role": "user", "content": user_prompt}
                 ]

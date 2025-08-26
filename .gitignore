@@ -24,6 +24,8 @@ BaselineErrorDetection/*data*
 data/
 
 EvaluateErrorDetectionResults/*data*
+EvaluateErrorDetectionResults/claude_3-5_haiku_metareviews
+EvaluateErrorDetectionResults/gemini_2-5_flash_lite_metareviews
 
 BadPaperGeneration/*_flawed_papers*
 BadPaperGeneration/old

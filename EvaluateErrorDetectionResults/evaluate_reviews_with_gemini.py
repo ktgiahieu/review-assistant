@@ -137,6 +137,7 @@ def evaluate_single_flaw(
                 last_exception = e
                 if verbose:
                     _print_method(f"Attempt {attempt + 1} failed with non-retryable error: {type(e).__name__}")
+                    _print_method(f"Error message: {e}")
                 # Break the inner loop to proceed to the corrective attempt (if any).
                 break
         
